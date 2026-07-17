@@ -50,6 +50,16 @@ describe("human-readable reports", () => {
     }
   });
 
+  it("lists unresolved external assessment materials in the preliminary result", () => {
+    const report = generateHumanReport(createDocumentProject(), "preliminary-fit", {
+      generatedAt: GENERATED_AT,
+    });
+
+    expect(report.html).toContain("Missing external assessment materials");
+    expect(report.html).toContain("Bridge letter");
+    expect(report.html).toContain("Missing");
+  });
+
   it("uses the advisor allowlist for the standalone advisor report", () => {
     const project = createDocumentProject();
     project.actions[0]!.sourceRefs = ["PRIVATE-SOURCE-REFERENCE"];
@@ -66,13 +76,13 @@ describe("human-readable reports", () => {
     expect(report.html).not.toContain("#/private/internal-route");
   });
 
-  it("shows every mandatory catalog rule even when the project record has not been started", () => {
+  it("shows every mandatory catalog rule when its seeded record has not been started", () => {
     const report = generateHumanReport(createDocumentProject(), "mandatory-requirements", {
       generatedAt: GENERATED_AT,
     });
 
     expect(report.html).toContain("KSI-CMT-LMC");
-    expect(report.html).toContain("No project record");
+    expect(report.html).toContain("Not started");
     expect(report.html).toContain("2026.07.14.01");
   });
 

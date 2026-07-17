@@ -70,6 +70,9 @@ const resultBody = (project: BridgeProject) => {
     label(answer.value),
     answer.note ?? "",
   ]);
+  const unresolvedMaterials = project.materials
+    .filter((material) => ["missing", "expiring", "needs_confirmation"].includes(material.status))
+    .map((material) => [material.title, label(material.status), material.rationale]);
   return [
     callout(
       `<p><strong>${text(result.label)}</strong></p><p>${text(result.summary)}</p><p>${text(result.disclaimer)}</p>`,
@@ -81,6 +84,10 @@ const resultBody = (project: BridgeProject) => {
     section(
       "Missing information",
       list(result.missingInformation, "No missing information recorded."),
+    ),
+    section(
+      "Missing external assessment materials",
+      table(["Material", "Status", "Why it is unresolved"], unresolvedMaterials),
     ),
     section("Next three actions", list(result.recommendedActions)),
     section("Applicable rule references", list(result.ruleRefs)),

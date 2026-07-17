@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 
+import { RULE_SELECTIONS } from "@class-a-bridge/rules";
+
 import { createOfficialDocuments, serializeJsonArtifact } from "../src/index";
 import { createDocumentProject, GENERATED_AT, OFFICIAL_OPTIONS } from "./fixture";
+
+const accountManagementKsi = (indicators: readonly { readonly ksiId?: unknown }[]) =>
+  indicators.find(({ ksiId }) => ksiId === "KSI-IAM-AAM");
 
 describe("official-schema JSON documents", () => {
   it("creates schema-valid CPO, SDR, and example OCR documents", () => {
@@ -16,8 +21,12 @@ describe("official-schema JSON documents", () => {
     expect(result.certificationPackageOverview.value.serviceIdentification.certificationType).toBe(
       "20x",
     );
-    expect(result.securityDecisionRecord.value.keySecurityIndicators).toHaveLength(1);
-    expect(result.securityDecisionRecord.value.keySecurityIndicators[0]).toMatchObject({
+    expect(result.securityDecisionRecord.value.keySecurityIndicators).toHaveLength(
+      RULE_SELECTIONS.mandatory.filter((ruleId) => ruleId.startsWith("KSI-")).length,
+    );
+    expect(
+      accountManagementKsi(result.securityDecisionRecord.value.keySecurityIndicators),
+    ).toMatchObject({
       ksiEvidence: [],
     });
     expect(result.certificationPackageOverview.value).not.toHaveProperty(
@@ -62,7 +71,9 @@ describe("official-schema JSON documents", () => {
       ...OFFICIAL_OPTIONS,
     });
 
-    expect(result.securityDecisionRecord.value.keySecurityIndicators[0]).toMatchObject({
+    expect(
+      accountManagementKsi(result.securityDecisionRecord.value.keySecurityIndicators),
+    ).toMatchObject({
       ksiImplementationStatus: "Partially Implemented",
     });
   });
@@ -76,7 +87,9 @@ describe("official-schema JSON documents", () => {
       ...OFFICIAL_OPTIONS,
     });
 
-    expect(result.securityDecisionRecord.value.keySecurityIndicators[0]).toMatchObject({
+    expect(
+      accountManagementKsi(result.securityDecisionRecord.value.keySecurityIndicators),
+    ).toMatchObject({
       ksiImplementationStatus: "Partially Implemented",
     });
   });
@@ -93,7 +106,9 @@ describe("official-schema JSON documents", () => {
       ...OFFICIAL_OPTIONS,
     });
 
-    expect(result.securityDecisionRecord.value.keySecurityIndicators[0]).toMatchObject({
+    expect(
+      accountManagementKsi(result.securityDecisionRecord.value.keySecurityIndicators),
+    ).toMatchObject({
       ksiImplementationStatus: "Partially Implemented",
     });
   });
@@ -109,7 +124,9 @@ describe("official-schema JSON documents", () => {
       ...OFFICIAL_OPTIONS,
     });
 
-    expect(result.securityDecisionRecord.value.keySecurityIndicators[0]).toMatchObject({
+    expect(
+      accountManagementKsi(result.securityDecisionRecord.value.keySecurityIndicators),
+    ).toMatchObject({
       ksiImplementationStatus: "Implemented",
     });
   });

@@ -73,7 +73,7 @@ interface EncryptedEnvelope {
 
 const MIN_PBKDF2_ITERATIONS = 10_000;
 const MAX_PBKDF2_ITERATIONS = 1_000_000;
-const MAX_ENCRYPTED_ENVELOPE_BYTES = 150 * 1024 * 1024;
+export const MAX_ENCRYPTED_ENVELOPE_BYTES = 150 * 1024 * 1024;
 
 async function deriveKey(password: string, salt: Uint8Array, iterations: number) {
   const material = await globalThis.crypto.subtle.importKey(

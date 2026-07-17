@@ -1,4 +1,6 @@
 import {
+  MAX_ENCRYPTED_ENVELOPE_BYTES,
+  MAX_PROJECT_BUNDLE_INPUT_BYTES,
   safeFilename,
   sha256Hex,
   type BridgeProject,
@@ -7,6 +9,18 @@ import {
   type ImportedProjectBundle,
   type ProjectStore,
 } from "@class-a-bridge/project";
+
+export async function readProjectBackupFile(file: File): Promise<Uint8Array> {
+  const encrypted = file.name.toLowerCase().endsWith(".encrypted");
+  const maximumBytes = encrypted ? MAX_ENCRYPTED_ENVELOPE_BYTES : MAX_PROJECT_BUNDLE_INPUT_BYTES;
+  if (file.size === 0) throw new Error("The selected project backup is empty.");
+  if (file.size > maximumBytes) {
+    throw new Error(
+      `The selected project backup is too large. ${encrypted ? "Encrypted" : "Standard"} backups are limited to ${Math.floor(maximumBytes / (1024 * 1024))} MiB.`,
+    );
+  }
+  return new Uint8Array(await file.arrayBuffer());
+}
 
 export interface ReferencedLocalAttachment {
   readonly id: string;

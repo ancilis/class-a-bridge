@@ -1,5 +1,7 @@
 import {
   LocalStorageProjectStore,
+  MAX_ENCRYPTED_ENVELOPE_BYTES,
+  MAX_PROJECT_BUNDLE_INPUT_BYTES,
   MemoryProjectStore,
   sha256Hex,
   type ImportedProjectBundle,
@@ -16,10 +18,29 @@ import {
   referencedLocalAttachments,
   referencedGeneratedOutputs,
   removeEvidenceCandidateLocally,
+  readProjectBackupFile,
   restoreImportedProjectAtomically,
 } from "../src/lib/backup";
 
 describe("local project backup orchestration", () => {
+  it.each([
+    ["oversized.classabridge", MAX_PROJECT_BUNDLE_INPUT_BYTES + 1],
+    ["oversized.classabridge.encrypted", MAX_ENCRYPTED_ENVELOPE_BYTES + 1],
+  ])("rejects %s before reading the user-selected file into memory", async (name, size) => {
+    let read = false;
+    const file = {
+      name,
+      size,
+      arrayBuffer: () => {
+        read = true;
+        return Promise.resolve(new ArrayBuffer(0));
+      },
+    } as File;
+
+    await expect(readProjectBackupFile(file)).rejects.toThrow(/too large/iu);
+    expect(read).toBe(false);
+  });
+
   it("persists an imported PDF project and its bytes before extraction review", async () => {
     const store = new MemoryProjectStore();
     const project = structuredClone(ACME_METRICS_PROJECT);

@@ -1,7 +1,7 @@
 import { ACME_METRICS_PROJECT } from "@class-a-bridge/testing";
 import { describe, expect, it } from "vitest";
 
-import { soc2PackageFreshness } from "../src/lib/workspace";
+import { deriveActions, initializeProject, soc2PackageFreshness } from "../src/lib/workspace";
 
 const REFERENCE = new Date("2026-07-17T12:00:00.000Z");
 
@@ -43,5 +43,61 @@ describe("SOC 2 package freshness", () => {
     project.eligibility.answers.at(-1)!.value = "yes";
     project.evidence[0]!.reviewDate = "2026-07-16";
     expect(soc2PackageFreshness(project, REFERENCE)).toBe("stale");
+  });
+});
+
+describe("generated action plan", () => {
+  it("can represent every required action-plan category", () => {
+    const project = initializeProject();
+    project.eligibility.result = structuredClone(ACME_METRICS_PROJECT.eligibility.result);
+    project.scope.mismatchFindings = ["Confirm the proposed boundary."];
+    project.evidence = [structuredClone(ACME_METRICS_PROJECT.evidence[0]!)];
+    delete project.organization.accountableExecutive;
+    project.requirements.find((item) => item.ruleId === "MAS-CSO-IIR")!.status =
+      "needs_technical_confirmation";
+
+    const categories = new Set(deriveActions(project).map((item) => item.category));
+
+    expect(categories).toEqual(
+      new Set([
+        "eligibility_blockers",
+        "scope_blockers",
+        "before_application_preparation",
+        "missing_implementation",
+        "missing_evidence",
+        "technical_confirmation",
+        "executive_approval",
+        "recommended_improvements",
+        "optional_enhancements",
+      ]),
+    );
+  });
+
+  it("preserves provider-authored actions when generated findings are refreshed", () => {
+    const project = structuredClone(ACME_METRICS_PROJECT);
+    project.actions.push({
+      id: "scope-custom",
+      origin: "provider",
+      title: "Provider-authored scope follow-up",
+      description: "Keep this action even though its identifier resembles a generated action.",
+      category: "scope_blockers",
+      priority: "high",
+      owner: "GRC",
+      status: "open",
+      sourceRefs: ["MAS-CSO-IIR"],
+      nextRoute: "/scope",
+    });
+
+    const derived = deriveActions(project);
+
+    expect(derived).toContainEqual(
+      expect.objectContaining({
+        id: "action-training",
+        category: "recommended_improvements",
+      }),
+    );
+    expect(derived).toContainEqual(
+      expect.objectContaining({ id: "scope-custom", origin: "provider" }),
+    );
   });
 });

@@ -33,6 +33,33 @@ const summary = (project: BridgeProject): ProjectSummary => ({
   isSample: project.metadata.isSample,
 });
 
+const STORAGE_PREFIX = "class-a-bridge:";
+
+function browserIndexedDb(): IDBFactory | undefined {
+  try {
+    return globalThis.indexedDB;
+  } catch {
+    return undefined;
+  }
+}
+
+function browserLocalStorage(): Storage | undefined {
+  try {
+    return globalThis.localStorage;
+  } catch {
+    return undefined;
+  }
+}
+
+function clearOwnedLocalStorage(storage: Storage) {
+  const owned: string[] = [];
+  for (let index = 0; index < storage.length; index += 1) {
+    const key = storage.key(index);
+    if (key?.startsWith(STORAGE_PREFIX)) owned.push(key);
+  }
+  for (const key of owned) storage.removeItem(key);
+}
+
 export class MemoryProjectStore implements ProjectStore {
   readonly backend = "memory" as const;
   readonly supportsAttachments = true;
@@ -128,12 +155,7 @@ export class LocalStorageProjectStore implements ProjectStore {
     return Promise.resolve();
   }
   deleteAll(): Promise<void> {
-    const owned: string[] = [];
-    for (let index = 0; index < this.storage.length; index += 1) {
-      const key = this.storage.key(index);
-      if (key?.startsWith("class-a-bridge:")) owned.push(key);
-    }
-    for (const key of owned) this.storage.removeItem(key);
+    clearOwnedLocalStorage(this.storage);
     return Promise.resolve();
   }
   putAttachment(): Promise<void> {
@@ -252,13 +274,20 @@ export class IndexedDbProjectStore implements ProjectStore {
 }
 
 export function createProjectStore(): ProjectStore {
-  if (typeof globalThis.indexedDB !== "undefined") return new IndexedDbProjectStore();
-  if (typeof globalThis.localStorage !== "undefined") return new LocalStorageProjectStore();
+  if (browserIndexedDb()) {
+    try {
+      return new IndexedDbProjectStore();
+    } catch {
+      // Continue to a browser fallback when construction is rejected synchronously.
+    }
+  }
+  const localStorage = browserLocalStorage();
+  if (localStorage) return new LocalStorageProjectStore(localStorage);
   return new MemoryProjectStore();
 }
 
 export async function createProjectStoreSafely(): Promise<ProjectStore> {
-  if (typeof globalThis.indexedDB !== "undefined") {
+  if (browserIndexedDb()) {
     try {
       const indexedDb = new IndexedDbProjectStore();
       await indexedDb.list();
@@ -267,17 +296,44 @@ export async function createProjectStoreSafely(): Promise<ProjectStore> {
       // Some private browsing modes expose IndexedDB but reject opening it.
     }
   }
-  if (typeof globalThis.localStorage !== "undefined") {
+  const localStorage = browserLocalStorage();
+  if (localStorage) {
     try {
       const probe = "class-a-bridge:storage-probe";
-      globalThis.localStorage.setItem(probe, "1");
-      globalThis.localStorage.removeItem(probe);
-      return new LocalStorageProjectStore();
+      localStorage.setItem(probe, "1");
+      localStorage.removeItem(probe);
+      return new LocalStorageProjectStore(localStorage);
     } catch {
       // Continue to the in-memory session fallback.
     }
   }
   return new MemoryProjectStore();
+}
+
+export async function deleteAllLocalProjectData(
+  store: ProjectStore,
+  fallbackStorage: Storage | undefined = browserLocalStorage(),
+): Promise<void> {
+  let activeStoreError: Error | undefined;
+  try {
+    await store.deleteAll();
+  } catch (error) {
+    activeStoreError =
+      error instanceof Error ? error : new Error("Active browser storage deletion failed.");
+  }
+
+  let fallbackError: Error | undefined;
+  if (fallbackStorage) {
+    try {
+      clearOwnedLocalStorage(fallbackStorage);
+    } catch (error) {
+      fallbackError =
+        error instanceof Error ? error : new Error("Fallback browser storage deletion failed.");
+    }
+  }
+
+  if (activeStoreError) throw activeStoreError;
+  if (fallbackError) throw fallbackError;
 }
 
 export async function browserStorageEstimate() {

@@ -38,7 +38,7 @@ describe("evidence metadata", () => {
     await user.click(within(form).getByLabelText("Relate to ACME-CC6.1"));
     await user.click(within(form).getByRole("button", { name: "Add evidence candidate" }));
 
-    const item = screen.getByRole("article", {
+    const item = await screen.findByRole("article", {
       name: "Evidence candidate Quarterly access review record",
     });
     expect(item).toHaveTextContent("Governance repository");
@@ -67,7 +67,7 @@ describe("evidence metadata", () => {
     await user.type(within(form).getByLabelText("External URL (optional)"), "https://example.com");
     await user.click(within(form).getByRole("button", { name: "Add evidence candidate" }));
 
-    const item = screen.getByRole("article", {
+    const item = await screen.findByRole("article", {
       name: "Evidence candidate Trust center reference",
     });
     await user.click(

@@ -8,6 +8,7 @@ import { safeFilename, sha256Hex } from "./security";
 const MAX_ARCHIVE_ENTRIES = 200;
 const MAX_SINGLE_FILE_BYTES = 25 * 1024 * 1024;
 const MAX_EXPANDED_BYTES = 100 * 1024 * 1024;
+export const MAX_PROJECT_BUNDLE_INPUT_BYTES = MAX_EXPANDED_BYTES + 1024 * 1024;
 
 const BundleFileSchema = z
   .object({
@@ -242,6 +243,9 @@ export async function exportProjectBundle(
 }
 
 export async function importProjectBundle(input: Uint8Array): Promise<ImportedProjectBundle> {
+  if (input.byteLength > MAX_PROJECT_BUNDLE_INPUT_BYTES) {
+    throw new Error("Compressed project bundle exceeds the safe import limit.");
+  }
   let entryCount = 0;
   let expandedBytes = 0;
   const names = new Set<string>();
@@ -306,16 +310,31 @@ export async function importProjectBundle(input: Uint8Array): Promise<ImportedPr
   }
 
   let project: BridgeProject;
+  let rawProject: unknown;
   try {
-    project = migrateProject(JSON.parse(strFromU8(projectBytes)));
+    rawProject = JSON.parse(strFromU8(projectBytes));
+    project = migrateProject(rawProject);
   } catch {
     throw new Error("Project bundle contains invalid or unsupported project data.");
   }
-  if (
-    manifest.schemaVersion === PROJECT_SCHEMA_VERSION &&
-    project.metadata.id !== manifest.projectId
-  )
-    throw new Error("Project bundle identity does not match its manifest.");
+  const rawRecord =
+    typeof rawProject === "object" && rawProject !== null
+      ? (rawProject as Record<string, unknown>)
+      : undefined;
+  const rawMetadata =
+    typeof rawRecord?.["metadata"] === "object" && rawRecord["metadata"] !== null
+      ? (rawRecord["metadata"] as Record<string, unknown>)
+      : undefined;
+  const rawSchemaVersion = rawMetadata?.["schemaVersion"] ?? rawRecord?.["schemaVersion"];
+  const currentManifestMatches =
+    manifest.schemaVersion !== PROJECT_SCHEMA_VERSION ||
+    (project.metadata.id === manifest.projectId &&
+      project.metadata.schemaVersion === manifest.schemaVersion &&
+      project.metadata.ruleCatalogVersion === manifest.ruleCatalogVersion &&
+      JSON.stringify(project.metadata.migrations) === JSON.stringify(manifest.migrationHistory));
+  if (rawSchemaVersion !== manifest.schemaVersion || !currentManifestMatches) {
+    throw new Error("Project bundle manifest metadata does not match the project record.");
+  }
 
   validateIncludedFileReferences(project, manifest);
 

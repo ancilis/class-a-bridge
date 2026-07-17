@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { ButtonLink } from "../components/button-link";
 import { FaqList } from "../components/faq-list";
 import { JsonLd } from "../components/json-ld";
+import { bridgeAppHref } from "../content/app-url";
 import { faqStructuredData } from "../content/metadata";
 import { faqItems, homepage } from "../content/site-content";
 
@@ -21,7 +22,7 @@ export default function HomePage() {
             <p className="home-hero__description">{homepage.hero.description}</p>
             <div className="button-row">
               <ButtonLink href="/launch/">{homepage.hero.primaryCta}</ButtonLink>
-              <ButtonLink href="/app/?start=sample" variant="secondary">
+              <ButtonLink href={bridgeAppHref("sample")} variant="secondary">
                 {homepage.hero.secondaryCta}
               </ButtonLink>
             </div>

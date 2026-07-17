@@ -1,4 +1,5 @@
 import type { StaticPageDefinition } from "./types";
+import { bridgeAppHref } from "./app-url";
 
 export const requiredRoutePaths = [
   "/product/",
@@ -1002,19 +1003,19 @@ const launchPage: StaticPageDefinition = {
         {
           title: "Start with my SOC 2 report",
           body: "Choose a PDF from this device. The application processes it locally, proposes metadata, and asks you to confirm every extracted value.",
-          href: "/app/?start=report",
+          href: bridgeAppHref("report"),
           linkLabel: "Choose a local report",
         },
         {
           title: "Start without uploading a report",
           body: "Answer the preliminary questions now and add report details manually when they are available.",
-          href: "/app/?start=manual",
+          href: bridgeAppHref("manual"),
           linkLabel: "Start manually",
         },
         {
           title: "Explore a fictional sample workspace",
           body: "Open Acme Metrics, a populated demonstration that is clearly marked and watermarked as fictional.",
-          href: "/app/?start=sample",
+          href: bridgeAppHref("sample"),
           linkLabel: "Explore Acme Metrics",
         },
       ],

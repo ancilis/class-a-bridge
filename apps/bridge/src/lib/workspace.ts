@@ -115,6 +115,7 @@ function action(
 ): BridgeProject["actions"][number] {
   return {
     id,
+    origin: "generated",
     title,
     description,
     category,
@@ -128,6 +129,7 @@ function action(
 
 export function deriveActions(project: BridgeProject): BridgeProject["actions"] {
   const existing = new Map(project.actions.map((item) => [item.id, item]));
+  const providerAuthored = project.actions.filter((item) => item.origin === "provider");
   const generated: BridgeProject["actions"] = [];
   for (const finding of project.eligibility.result?.findings ?? []) {
     if (finding.certainty === "confirmed" && !finding.humanReview) continue;
@@ -175,22 +177,42 @@ export function deriveActions(project: BridgeProject): BridgeProject["actions"] 
       ),
     );
   const mandatory = new Set<string>(RULE_SELECTIONS.mandatory);
-  for (const requirement of project.requirements.filter((item) => mandatory.has(item.ruleId))) {
+  const recommended = new Set<string>(RULE_SELECTIONS.recommended);
+  const optional = new Set<string>(RULE_SELECTIONS.optional);
+  const beforeApplication = new Set<string>([
+    ...RULE_SELECTIONS.generalProvider,
+    ...RULE_SELECTIONS.externalFramework,
+    ...RULE_SELECTIONS.packageDependencies,
+    ...RULE_SELECTIONS.marketplaceApplication,
+  ]);
+  for (const requirement of project.requirements) {
     if (["complete_for_internal_review", "approved_by_provider"].includes(requirement.status))
       continue;
-    const category =
-      requirement.status === "evidence_missing"
+    const category: BridgeProject["actions"][number]["category"] = mandatory.has(requirement.ruleId)
+      ? requirement.status === "evidence_missing"
         ? "missing_evidence"
         : requirement.status === "needs_technical_confirmation"
           ? "technical_confirmation"
-          : "missing_implementation";
+          : "missing_implementation"
+      : recommended.has(requirement.ruleId)
+        ? "recommended_improvements"
+        : optional.has(requirement.ruleId)
+          ? "optional_enhancements"
+          : beforeApplication.has(requirement.ruleId)
+            ? "before_application_preparation"
+            : "missing_implementation";
+    const priority: BridgeProject["actions"][number]["priority"] = optional.has(requirement.ruleId)
+      ? "low"
+      : recommended.has(requirement.ruleId)
+        ? "medium"
+        : "high";
     generated.push(
       action(
         `requirement-${requirement.ruleId}`,
         `Advance ${requirement.ruleId}`,
         `Current status: ${requirement.status.replaceAll("_", " ")}. Add or confirm the next missing record.`,
         category,
-        "high",
+        priority,
         requirement.owner || "Requirement owner",
         [requirement.ruleId],
         `/requirements/${requirement.ruleId}`,
@@ -227,17 +249,23 @@ export function deriveActions(project: BridgeProject): BridgeProject["actions"] 
       ),
     );
 
-  return generated.map((item) => {
-    const prior = existing.get(item.id);
-    return prior
-      ? {
-          ...item,
-          status: prior.status,
-          ...(prior.owner ? { owner: prior.owner } : {}),
-          ...(prior.dueDate ? { dueDate: prior.dueDate } : {}),
-        }
-      : item;
-  });
+  const providerIds = new Set(providerAuthored.map(({ id }) => id));
+  return [
+    ...providerAuthored,
+    ...generated
+      .filter((item) => !providerIds.has(item.id))
+      .map((item) => {
+        const prior = existing.get(item.id);
+        return prior
+          ? {
+              ...item,
+              status: prior.status,
+              ...(prior.owner ? { owner: prior.owner } : {}),
+              ...(prior.dueDate ? { dueDate: prior.dueDate } : {}),
+            }
+          : item;
+      }),
+  ];
 }
 
 export function requirementMilestone(project: BridgeProject) {

@@ -22,9 +22,19 @@ Deploy only generated output from the reviewed commit. The source archive is mad
 
 ## Recommended topology
 
-For the canonical same-origin deployment, publish `dist/class-a-bridge`; the release assembler has already aligned the `/app/` asset/service-worker path and added the stricter `/app/*` policy. The website contains no project integration or third-party runtime script. Verify both root and `/app/` paths.
+For the canonical same-origin deployment, publish `dist/class-a-bridge`; the release assembler has already aligned the `/app/` asset/service-worker path and added the stricter `/app/*` policy. The website's wildcard Content Security Policy deliberately permits the app's same-origin and `blob:` image/worker sources because some static hosts apply both matching header blocks; the app-specific policy still denies forms, frames, remote scripts, and remote connections. Release assembly fails if these overlapping policies become incompatible. Leave `NEXT_PUBLIC_BRIDGE_APP_URL` and `VITE_WEBSITE_URL` unset: website assessment links default to `/app/`, and the bridge's contact/privacy links default to the current same-origin parent. The website contains no project integration or third-party runtime script. Verify both root and `/app/` paths.
 
-For stronger browser-origin isolation, deploy `apps/bridge/dist` at the root of a dedicated bridge origin using the host-specific configurations below, and set website launch links for that deployment. This gives IndexedDB and the service worker their own origin/scope. A custom path-mounted deployment other than the canonical `/app/` requires matching build base, service-worker scope, links, and tests.
+For stronger browser-origin isolation, deploy `apps/bridge/dist` at the root of a dedicated bridge origin using the host-specific configurations below. Set both public URLs before the corresponding builds:
+
+```sh
+# Website build: exact HTTPS root where the bridge is published.
+NEXT_PUBLIC_BRIDGE_APP_URL=https://bridge.example.com/
+
+# Bridge build: exact HTTPS root containing /contact/ and /security-and-privacy/.
+VITE_WEBSITE_URL=https://www.example.com/
+```
+
+`NEXT_PUBLIC_BRIDGE_APP_URL` belongs in the website build environment; `VITE_WEBSITE_URL` belongs in the bridge build environment. They are compiled into static links, contain no project data, and require a rebuild when changed. Both accept an origin root or an HTTPS URL with a path and normalize a missing trailing slash. Do not include credentials, a query string, or a fragment. This topology gives IndexedDB and the service worker their own origin/scope while keeping deliberate contact and privacy navigation on the public website. A custom path-mounted bridge deployment also requires matching Vite base, manifest `start_url`/`scope`, service-worker scope, SPA fallback, and tests.
 
 The bridge origin must not add analytics, tag managers, chat widgets, remote fonts, remote error reporters, authentication proxies that capture bodies, or injected hosting scripts.
 
@@ -35,7 +45,7 @@ The bridge origin must not add analytics, tag managers, chat widgets, remote fon
 | Netlify              | Use `deploy/netlify.bridge.toml` as the project configuration                                                                            | Applies CSP, HSTS, cache and PWA headers                                                                                 |
 | Vercel               | Use `deploy/vercel.bridge.json` as `vercel.json` for the bridge project                                                                  | Keep website and bridge as separate projects/origins                                                                     |
 | Cloudflare Pages     | Build with `pnpm --filter @class-a-bridge/bridge build`, output `apps/bridge/dist`; include `deploy/cloudflare-pages/_headers` in output | Verify Pages has not modified CSP or MIME types                                                                          |
-| Nginx/static VM      | Copy `apps/bridge/dist` to `/srv/class-a-bridge/bridge`; use `deploy/nginx/class-a-bridge.conf` for the documented bridge subdomain      | Provision the documented certificate/DNS first; test before enabling HSTS preload                                        |
+| Nginx/static VM      | Copy `apps/bridge/dist` to `/srv/class-a-bridge/bridge`; use `deploy/nginx/class-a-bridge.conf` for the documented bridge subdomain      | Provision the documented certificate/DNS before enabling the checked-in one-year HSTS policy                             |
 | Object storage + CDN | Upload hashed assets immutably; `index.html` and `sw.js` no-cache; map SPA fallback to `/index.html`                                     | Configure every baseline response header at the CDN                                                                      |
 | GitHub Pages         | Static files work, but Pages does not provide repository-controlled security headers                                                     | Not recommended for production projects containing sensitive data; place behind a header-capable CDN or use another host |
 
@@ -46,7 +56,7 @@ The website has its own checked-in Netlify/Vercel/static headers under `apps/web
 Use the complete policy in `deploy/*` and [SECURITY_CONTROLS.md](../security/SECURITY_CONTROLS.md). At minimum verify:
 
 - Content Security Policy with same-origin scripts/workers and no remote script origin;
-- `Strict-Transport-Security` after HTTPS/subdomain readiness is confirmed;
+- `Strict-Transport-Security: max-age=31536000` after HTTPS readiness is confirmed;
 - `X-Content-Type-Options: nosniff`;
 - `X-Frame-Options: DENY` and CSP `frame-ancestors 'none'`;
 - `Referrer-Policy: no-referrer`;
@@ -56,7 +66,7 @@ Use the complete policy in `deploy/*` and [SECURITY_CONTROLS.md](../security/SEC
 - no-cache for `index.html` and `sw.js`; and
 - one-year immutable cache only for content-hashed assets.
 
-Do not enable HSTS `includeSubDomains`/preload until every affected subdomain is permanently HTTPS. Remove those directives during preproduction testing rather than training users to bypass TLS failures.
+The checked-in website, bridge, and dedicated-host examples deliberately omit HSTS `includeSubDomains` and `preload`. Add either directive only after every affected subdomain is permanently HTTPS and the domain owner has completed a separate preload-readiness review. Do not send HSTS from a plain-HTTP development or preview origin.
 
 ## Single-page and PWA behavior
 

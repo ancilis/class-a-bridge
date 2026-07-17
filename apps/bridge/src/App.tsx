@@ -9,15 +9,19 @@ import {
   type PreparationPackage,
 } from "@class-a-bridge/documents";
 import {
+  ACTION_CATEGORIES,
   BridgeProjectSchema,
   ELIGIBILITY_QUESTIONS,
   browserStorageEstimate,
   createProjectStore,
   createProjectStoreSafely,
+  deleteAllLocalProjectData,
   decryptBundle,
   encryptBundle,
   exportProjectBundle,
+  finalReviewApprovalScope,
   importProjectBundle,
+  isFinalReviewApprovalForSnapshot,
   safeFilename,
   sha256Hex,
   type AnswerValue,
@@ -60,9 +64,11 @@ import {
   referencedGeneratedOutputs,
   referencedLocalAttachments,
   removeEvidenceCandidateLocally,
+  readProjectBackupFile,
   restoreImportedProjectAtomically,
 } from "./lib/backup";
 import { parsePdfLocally, validatePdfFile } from "./lib/pdf";
+import { websiteHref } from "./lib/website-url";
 import {
   answerEligibility,
   deriveActions,
@@ -483,7 +489,7 @@ function FirstRun({
         </section>
         <footer className="first-run__footer">
           <span>Open source · Local-first · Preparation support, not certification</span>
-          <a href="../security-and-privacy">Security and privacy</a>
+          <a href={websiteHref("/security-and-privacy/")}>Security and privacy</a>
         </footer>
       </main>
     </>
@@ -793,7 +799,7 @@ function Shell({
   }, [route]);
   const screens: Record<Route, ReactNode> = {
     "/overview": <Overview project={project} navigate={setRoute} />,
-    "/eligibility": <Eligibility project={project} update={update} />,
+    "/eligibility": <Eligibility project={project} update={update} navigate={setRoute} />,
     "/scope": <Scope project={project} update={update} />,
     "/soc2-materials": <Soc2Materials project={project} update={update} />,
     "/requirements": <Requirements project={project} update={update} />,
@@ -875,6 +881,18 @@ function Shell({
             <div className="save-state save-state--error" role="alert">
               <strong>Local save failed:</strong> {saveState.message}. Export a backup before
               closing this tab.
+              {store.backend === "memory" && (
+                <> Session-only storage is active; reloading or closing this tab loses this work.</>
+              )}
+            </div>
+          ) : store.backend === "memory" ? (
+            <div
+              className="save-state save-state--error"
+              role="status"
+              aria-label="Session storage warning"
+            >
+              <strong>Session-only storage:</strong> reloading or closing this tab will lose this
+              work. Export a backup before leaving.
             </div>
           ) : (
             <div className="save-state" role="status" aria-label="Local save status">
@@ -1074,7 +1092,7 @@ function Overview({
         </p>
         <a
           className="button button--secondary"
-          href="../contact"
+          href={websiteHref("/contact/")}
           target="_blank"
           rel="noopener noreferrer"
         >
@@ -1089,9 +1107,11 @@ function Overview({
 function Eligibility({
   project,
   update,
+  navigate,
 }: {
   readonly project: BridgeProject;
   readonly update: (recipe: (draft: BridgeProject) => void) => void;
+  readonly navigate: (route: Route) => void;
 }) {
   const answers = new Map(project.eligibility.answers.map((item) => [item.questionId, item.value]));
   const nextQuestion = ELIGIBILITY_QUESTIONS.find((question) => !answers.has(question.id));
@@ -1151,6 +1171,9 @@ function Eligibility({
     );
   }
   const result = project.eligibility.result;
+  const unresolvedMaterials = project.materials.filter((material) =>
+    ["missing", "expiring", "needs_confirmation"].includes(material.status),
+  );
   return (
     <>
       <PageHeading
@@ -1187,6 +1210,27 @@ function Eligibility({
               <h3>Next three actions</h3>
               <ListOrEmpty items={result.recommendedActions} />
             </div>
+          </div>
+          <div>
+            <h3>Missing external assessment materials</h3>
+            {unresolvedMaterials.length > 0 ? (
+              <ul className="plain-list">
+                {unresolvedMaterials.map((material) => (
+                  <li key={material.id}>
+                    <strong>{material.title}</strong>{" "}
+                    <StatusPill tone={toneFor(material.status)}>
+                      {statusLabel(material.status)}
+                    </StatusPill>
+                    <p>{material.rationale}</p>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="empty-copy">No unresolved external assessment materials recorded.</p>
+            )}
+            <Button variant="secondary" onClick={() => navigate("/soc2-materials")}>
+              Review SOC 2 materials
+            </Button>
           </div>
         </Card>
       )}
@@ -3585,7 +3629,7 @@ function ActionPlan({
           Filter category{" "}
           <select value={category} onChange={(event) => setCategory(event.target.value)}>
             <option value="all">All categories</option>
-            {[...new Set(project.actions.map((item) => item.category))].map((value) => (
+            {ACTION_CATEGORIES.map((value) => (
               <option key={value} value={value}>
                 {statusLabel(value)}
               </option>
@@ -3701,12 +3745,28 @@ function Package({
   const [retentionNotice, setRetentionNotice] = useState("");
   const [approver, setApprover] = useState(project.organization.accountableExecutive ?? "");
   const [version, setVersion] = useState("1.0");
+  const [verificationDate, setVerificationDate] = useState("");
+  const [validationDate, setValidationDate] = useState("");
+  const [finalReviewAttested, setFinalReviewAttested] = useState(false);
   const [selectedAttachmentIds, setSelectedAttachmentIds] = useState<ReadonlySet<string>>(
     new Set(),
   );
   const attachmentReferences = referencedLocalAttachments(project);
   const packageResultIsStale =
     Boolean(packageResult) && packageResultProjectUpdatedAt !== project.metadata.updatedAt;
+  const latestSnapshot = project.snapshots.at(-1);
+  const approvalForSnapshot = (snapshot: BridgeProject["snapshots"][number]) =>
+    project.approvals.find((approval) => isFinalReviewApprovalForSnapshot(approval, snapshot));
+  const latestSnapshotApproval = latestSnapshot ? approvalForSnapshot(latestSnapshot) : undefined;
+  const currentUtcDate = new Date().toISOString().slice(0, 10);
+  const snapshotReady = Boolean(
+    version.trim() &&
+    approver.trim() &&
+    verificationDate &&
+    validationDate &&
+    verificationDate <= currentUtcDate &&
+    validationDate <= currentUtcDate,
+  );
   const cpo = project.packageInputs.certificationPackageOverview;
   const sdr = project.packageInputs.securityDecisionRecord;
   const ocr = project.packageInputs.ongoingCertificationReport;
@@ -3764,8 +3824,10 @@ function Package({
     }
   };
   const finalize = async () => {
-    if (!approver.trim()) {
-      setError("Record the provider approver before creating a final-review snapshot.");
+    if (!snapshotReady) {
+      setError(
+        "Enter the package version, provider approver, verification date, and validation date before creating a final-review snapshot.",
+      );
       return;
     }
     setBusy(true);
@@ -3800,26 +3862,16 @@ function Package({
       const output = addGeneratedPackage(next, result, version, finalizedAt);
       next.snapshots.push({
         id: `snapshot-${crypto.randomUUID()}`,
-        version,
+        version: version.trim(),
         createdAt: finalizedAt,
         providerApprover: approver.trim(),
-        verificationDate: finalizedAt.slice(0, 10),
-        validationDate: finalizedAt.slice(0, 10),
+        verificationDate,
+        validationDate,
         projectHash,
         packageHash: result.sha256,
         freshnessStatus: soc2PackageFreshness(next, new Date(finalizedAt)),
         unresolvedItems: unresolved,
         immutable: true,
-      });
-      next.approvals.push({
-        id: `approval-${crypto.randomUUID()}`,
-        kind: "final_internal_review",
-        title: `Package snapshot ${version} prepared for final internal review`,
-        approver: approver.trim(),
-        role: "Provider approver",
-        acceptedAt: finalizedAt,
-        scope: "Internal package snapshot; provider must review and submit its own application.",
-        notes: "This record does not represent FedRAMP approval or acceptance.",
       });
       next.metadata.updatedAt = finalizedAt;
       next.actions = deriveActions(next);
@@ -3829,6 +3881,7 @@ function Package({
       });
       setPackageResult(result);
       setPackageResultProjectUpdatedAt(finalizedAt);
+      setFinalReviewAttested(false);
       downloadBytes(result.bytes, result.fileName, result.mimeType);
       setRetentionNotice(
         retained
@@ -3842,6 +3895,54 @@ function Package({
     } finally {
       setBusy(false);
     }
+  };
+  const recordFinalReviewApproval = (snapshot: BridgeProject["snapshots"][number]) => {
+    setError("");
+    setRetentionNotice("");
+    if (!finalReviewAttested) {
+      setError("Confirm the final internal-review attestation before recording approval.");
+      return;
+    }
+    if (approvalForSnapshot(snapshot)) {
+      setError(`Snapshot version ${snapshot.version} already has a recorded internal approval.`);
+      return;
+    }
+    const expectedSnapshotScope = finalReviewApprovalScope(snapshot);
+    const frozen = project.snapshots.find(
+      (candidate) =>
+        candidate.id === snapshot.id &&
+        finalReviewApprovalScope(candidate) === expectedSnapshotScope,
+    );
+    if (!frozen) {
+      setError("The immutable snapshot hashes changed or the snapshot is no longer available.");
+      return;
+    }
+    const acceptedAt = new Date().toISOString();
+    update((draft) => {
+      const currentFrozen = draft.snapshots.find(
+        (candidate) =>
+          candidate.id === snapshot.id &&
+          finalReviewApprovalScope(candidate) === expectedSnapshotScope,
+      );
+      if (!currentFrozen) return;
+      if (draft.approvals.some((approval) => isFinalReviewApprovalForSnapshot(approval, snapshot)))
+        return;
+      draft.approvals.push({
+        id: `approval-${crypto.randomUUID()}`,
+        kind: "final_internal_review",
+        title: `Final internal-review approval for package snapshot ${snapshot.version}`,
+        approver: snapshot.providerApprover,
+        role: "Provider approver",
+        acceptedAt,
+        scope: finalReviewApprovalScope(currentFrozen),
+        notes:
+          "The provider attested to this immutable internal snapshot. This record is not FedRAMP approval, acceptance, certification, or submission.",
+      });
+    }, acceptedAt);
+    setFinalReviewAttested(false);
+    setRetentionNotice(
+      `Final internal-review approval was recorded locally for immutable snapshot version ${snapshot.version}. This does not represent FedRAMP approval or acceptance.`,
+    );
   };
   const downloadFrozenPackage = async (snapshot: BridgeProject["snapshots"][number]) => {
     setError("");
@@ -4482,36 +4583,104 @@ function Package({
           <Field label="Package version">
             <input value={version} onChange={(event) => setVersion(event.target.value)} />
           </Field>
-          <Field label="Provider approver">
+          <Field
+            label="Provider approver"
+            hint="Naming an approver here does not record approval. Approval is a separate attested action after the snapshot exists."
+          >
             <input
               value={approver}
               onChange={(event) => setApprover(event.target.value)}
               placeholder="Name and accountable role"
             />
           </Field>
+          <Field
+            label="Verification date"
+            hint="Enter the date from the completed verification record; Class A Bridge does not infer it."
+          >
+            <input
+              type="date"
+              max={currentUtcDate}
+              value={verificationDate}
+              onChange={(event) => setVerificationDate(event.target.value)}
+            />
+          </Field>
+          <Field
+            label="Validation date"
+            hint="Enter the date from the completed validation record; Class A Bridge does not infer it."
+          >
+            <input
+              type="date"
+              max={currentUtcDate}
+              value={validationDate}
+              onChange={(event) => setValidationDate(event.target.value)}
+            />
+          </Field>
         </div>
-        <Button onClick={() => void finalize()} disabled={busy}>
+        <Button onClick={() => void finalize()} disabled={busy || !snapshotReady}>
           Create immutable final-review snapshot
         </Button>
-        {project.snapshots.map((snapshot) => (
-          <article className="snapshot" key={snapshot.id}>
-            <div>
-              <strong>Version {snapshot.version}</strong>
-              <span>{snapshot.createdAt}</span>
-            </div>
-            <StatusPill tone={toneFor(snapshot.freshnessStatus)}>
-              {statusLabel(snapshot.freshnessStatus)}
-            </StatusPill>
+        {!snapshotReady && (
+          <p className="small">
+            Enter and confirm both review dates, the package version, and the proposed provider
+            approver before creating the immutable snapshot. Review dates cannot be after the
+            current date in Coordinated Universal Time (UTC).
+          </p>
+        )}
+        {latestSnapshot && !latestSnapshotApproval && (
+          <fieldset className="final-review-approval">
+            <legend>Separate final internal-review approval</legend>
             <p>
-              {snapshot.unresolvedItems.length} unresolved item(s) preserved. Approved internally by{" "}
-              {snapshot.providerApprover}.
+              This action applies only to immutable snapshot version {latestSnapshot.version}, with
+              verification dated {latestSnapshot.verificationDate} and validation dated{" "}
+              {latestSnapshot.validationDate}. The recorded approver is{" "}
+              <strong>{latestSnapshot.providerApprover}</strong>. It does not alter either recorded
+              hash.
             </p>
-            <p className="small">Package SHA-256: {snapshot.packageHash}</p>
-            <Button variant="secondary" onClick={() => void downloadFrozenPackage(snapshot)}>
-              Download frozen package version {snapshot.version}
+            <label className="checkbox-row">
+              <input
+                type="checkbox"
+                checked={finalReviewAttested}
+                onChange={(event) => setFinalReviewAttested(event.target.checked)}
+              />
+              I attest that the named approver reviewed this immutable snapshot, its verification
+              and validation dates, unresolved items, package contents, and provider
+              representations, and affirmatively approves it for final internal review.
+            </label>
+            <Button
+              onClick={() => recordFinalReviewApproval(latestSnapshot)}
+              disabled={busy || !finalReviewAttested}
+            >
+              Record final internal-review approval
             </Button>
-          </article>
-        ))}
+          </fieldset>
+        )}
+        {project.snapshots.map((snapshot) => {
+          const approval = approvalForSnapshot(snapshot);
+          return (
+            <article className="snapshot" key={snapshot.id}>
+              <div>
+                <strong>Version {snapshot.version}</strong>
+                <span>{snapshot.createdAt}</span>
+              </div>
+              <StatusPill tone={toneFor(snapshot.freshnessStatus)}>
+                {statusLabel(snapshot.freshnessStatus)}
+              </StatusPill>
+              <p>
+                {snapshot.unresolvedItems.length} unresolved item(s) preserved. Verification date:{" "}
+                {snapshot.verificationDate}. Validation date: {snapshot.validationDate}.
+              </p>
+              <p>
+                {approval
+                  ? `Approved internally by ${approval.approver} on ${approval.acceptedAt}.`
+                  : `Proposed provider approver: ${snapshot.providerApprover}. No final internal-review approval has been recorded.`}
+              </p>
+              <p className="small">Package SHA-256: {snapshot.packageHash}</p>
+              <Button variant="secondary" onClick={() => void downloadFrozenPackage(snapshot)}>
+                Download frozen package version {snapshot.version}
+              </Button>
+            </article>
+          );
+        })}
       </Card>
     </>
   );
@@ -4683,7 +4852,7 @@ function Settings({
     setDeleting(true);
     setMessage("");
     try {
-      if (allProjects) await store.deleteAll();
+      if (allProjects) await deleteAllLocalProjectData(store);
       else await store.delete(project.metadata.id);
       onClose();
     } catch (caught) {
@@ -4918,7 +5087,11 @@ function Settings({
           <dl className="data-list">
             <div>
               <dt>Storage backend</dt>
-              <dd>{store.backend}</dd>
+              <dd>
+                {store.backend === "memory"
+                  ? "Session-only memory — reload loses work"
+                  : store.backend}
+              </dd>
             </div>
             <div>
               <dt>Project data</dt>
@@ -5114,7 +5287,7 @@ function Settings({
           </Button>
           <a
             className="button button--quiet"
-            href="../security-and-privacy"
+            href={websiteHref("/security-and-privacy/")}
             target="_blank"
             rel="noopener noreferrer"
           >
@@ -5380,7 +5553,7 @@ export function App({ storeFactory = DEFAULT_STORE_FACTORY }: AppProps = {}) {
     }
   };
   const restoreFile = async (file: File, password: string) => {
-    let bytes: Uint8Array = new Uint8Array(await file.arrayBuffer());
+    let bytes = await readProjectBackupFile(file);
     if (file.name.toLowerCase().endsWith(".encrypted"))
       bytes = await decryptBundle(bytes, password);
     const imported = await importProjectBundle(bytes);

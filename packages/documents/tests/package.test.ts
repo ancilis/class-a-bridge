@@ -55,7 +55,8 @@ describe("preparation package", () => {
 
   it("creates an actionable final-review checklist without treating schema validity as approval", () => {
     const project = createDocumentProject();
-    project.requirements[0]!.implementationNarrative = "TBD after engineering review";
+    project.requirements.find(({ ruleId }) => ruleId === "KSI-IAM-AAM")!.implementationNarrative =
+      "TBD after engineering review";
     const official = createOfficialDocuments(project, {
       generatedAt: GENERATED_AT,
       ...OFFICIAL_OPTIONS,
@@ -68,7 +69,7 @@ describe("preparation package", () => {
 
     expect(checklist.packageFreshness).toBe("needs_confirmation");
     expect(checklist.checks.find((check) => check.id === "json-schema")?.status).toBe("pass");
-    expect(checklist.checks.find((check) => check.id === "mandatory-records")?.status).toBe("fail");
+    expect(checklist.checks.find((check) => check.id === "mandatory-records")?.status).toBe("pass");
     expect(checklist.unresolvedPlaceholders).toContain("requirements.KSI-IAM-AAM.implementation");
     expect(checklist.missingApprovals.length).toBeGreaterThan(0);
     expect(checklist.providerSubmissionReminder).toContain("provider must submit");

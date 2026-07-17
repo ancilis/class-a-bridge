@@ -58,6 +58,8 @@ describe("final-review package freshness", () => {
     expect(screen.getByRole("status", { name: /package result freshness/iu })).toHaveTextContent(
       /Project changed since this validation ran.*regenerate/iu,
     );
+    await user.type(screen.getByLabelText("Verification date"), "2026-07-15");
+    await user.type(screen.getByLabelText("Validation date"), "2026-07-16");
     await user.click(
       screen.getByRole("button", { name: /Create immutable final-review snapshot/iu }),
     );
@@ -72,6 +74,105 @@ describe("final-review package freshness", () => {
         screen.queryByRole("status", { name: /package result freshness/iu }),
       ).not.toBeInTheDocument(),
     );
+  });
+
+  it("requires explicit review dates and creates a snapshot without inventing approval", async () => {
+    const store = new MemoryProjectStore();
+    const project = structuredClone(ACME_METRICS_PROJECT);
+    project.metadata.id = "snapshot-without-approval";
+    await store.save(project);
+    const user = userEvent.setup();
+    render(<App storeFactory={() => Promise.resolve(store)} />);
+
+    await user.click(
+      await screen.findByRole("button", { name: /open saved project Acme Metrics/iu }),
+    );
+    await user.click(screen.getByRole("button", { name: "Package" }));
+
+    expect(screen.getByLabelText("Verification date")).toHaveValue("");
+    expect(screen.getByLabelText("Validation date")).toHaveValue("");
+    expect(
+      screen.getByRole("button", { name: /Create immutable final-review snapshot/iu }),
+    ).toBeDisabled();
+
+    await user.type(screen.getByLabelText("Verification date"), "2099-01-01");
+    await user.type(screen.getByLabelText("Validation date"), "2099-01-01");
+    expect(
+      screen.getByRole("button", { name: /Create immutable final-review snapshot/iu }),
+    ).toBeDisabled();
+    await user.clear(screen.getByLabelText("Verification date"));
+    await user.clear(screen.getByLabelText("Validation date"));
+    await user.type(screen.getByLabelText("Verification date"), "2026-07-15");
+    await user.type(screen.getByLabelText("Validation date"), "2026-07-16");
+    await user.click(
+      screen.getByRole("button", { name: /Create immutable final-review snapshot/iu }),
+    );
+
+    await waitFor(async () => {
+      const saved = await store.load(project.metadata.id);
+      expect(saved?.snapshots).toHaveLength(1);
+      expect(saved?.snapshots[0]).toMatchObject({
+        verificationDate: "2026-07-15",
+        validationDate: "2026-07-16",
+        packageHash: PACKAGE_HASH,
+      });
+      expect(
+        saved?.approvals.filter((approval) => approval.kind === "final_internal_review"),
+      ).toHaveLength(0);
+    });
+    expect(screen.getByText(/No final internal-review approval has been recorded/iu)).toBeVisible();
+    expect(screen.queryByText(/Approved internally by/iu)).not.toBeInTheDocument();
+  });
+
+  it("records final internal-review approval only after a separate attested action", async () => {
+    const store = new MemoryProjectStore();
+    const project = structuredClone(ACME_METRICS_PROJECT);
+    project.metadata.id = "separate-final-approval";
+    await store.save(project);
+    const user = userEvent.setup();
+    render(<App storeFactory={() => Promise.resolve(store)} />);
+
+    await user.click(
+      await screen.findByRole("button", { name: /open saved project Acme Metrics/iu }),
+    );
+    await user.click(screen.getByRole("button", { name: "Package" }));
+    await user.type(screen.getByLabelText("Verification date"), "2026-07-15");
+    await user.type(screen.getByLabelText("Validation date"), "2026-07-16");
+    await user.click(
+      screen.getByRole("button", { name: /Create immutable final-review snapshot/iu }),
+    );
+
+    const approvalButton = await screen.findByRole("button", {
+      name: /Record final internal-review approval/iu,
+    });
+    expect(approvalButton).toBeDisabled();
+    let saved = await store.load(project.metadata.id);
+    expect(
+      saved?.approvals.filter((approval) => approval.kind === "final_internal_review"),
+    ).toHaveLength(0);
+    const frozenSnapshot = structuredClone(saved!.snapshots[0]!);
+
+    await user.click(
+      screen.getByLabelText(/I attest that the named approver reviewed this immutable snapshot/iu),
+    );
+    await user.click(approvalButton);
+
+    await waitFor(async () => {
+      saved = await store.load(project.metadata.id);
+      const snapshot = saved?.snapshots[0];
+      const approval = saved?.approvals.find(
+        (candidate) => candidate.kind === "final_internal_review",
+      );
+      expect(approval).toMatchObject({
+        approver: snapshot?.providerApprover,
+        role: "Provider approver",
+      });
+      expect(approval?.acceptedAt).toMatch(/T/u);
+      expect(approval?.scope).toContain(snapshot?.id);
+      expect(approval?.scope).toContain(snapshot?.packageHash);
+      expect(snapshot).toEqual(frozenSnapshot);
+    });
+    expect(screen.getByText(/Approved internally by/iu)).toBeVisible();
   });
 
   it("includes package attachments only after the user explicitly selects them", async () => {
@@ -128,6 +229,8 @@ describe("final-review package freshness", () => {
       await screen.findByRole("button", { name: /open saved project Acme Metrics/iu }),
     );
     await user.click(screen.getByRole("button", { name: "Package" }));
+    await user.type(screen.getByLabelText("Verification date"), "2026-07-15");
+    await user.type(screen.getByLabelText("Validation date"), "2026-07-16");
     await user.click(
       screen.getByRole("button", { name: /Create immutable final-review snapshot/iu }),
     );
@@ -161,7 +264,7 @@ describe("final-review package freshness", () => {
     expect(
       await screen.findByText(/backup created with 3 selected generated output/iu),
     ).toBeInTheDocument();
-  });
+  }, 10_000);
 
   it("discloses metadata-only retention in the browser storage fallback", async () => {
     const store: ProjectStore = new LocalStorageProjectStore(globalThis.localStorage);
@@ -175,6 +278,8 @@ describe("final-review package freshness", () => {
       await screen.findByRole("button", { name: /open saved project Acme Metrics/iu }),
     );
     await user.click(screen.getByRole("button", { name: "Package" }));
+    await user.type(screen.getByLabelText("Verification date"), "2026-07-15");
+    await user.type(screen.getByLabelText("Validation date"), "2026-07-16");
     await user.click(
       screen.getByRole("button", { name: /Create immutable final-review snapshot/iu }),
     );

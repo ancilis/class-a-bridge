@@ -176,6 +176,9 @@ importers:
 
   packages/project:
     dependencies:
+      '@class-a-bridge/rules':
+        specifier: workspace:*
+        version: link:../rules
       fflate:
         specifier: 0.8.2
         version: 0.8.2

@@ -2,6 +2,7 @@ import { strFromU8, strToU8, unzipSync, zipSync } from "fflate";
 import { describe, expect, it } from "vitest";
 
 import {
+  MAX_PROJECT_BUNDLE_INPUT_BYTES,
   createEmptyProject,
   exportProjectBundle,
   importProjectBundle,
@@ -287,9 +288,96 @@ describe(".classabridge bundles", () => {
     await expect(importProjectBundle(traversal)).rejects.toThrow(/unsafe|manifest/iu);
   });
 
+  it("rejects oversized compressed input before ZIP expansion begins", async () => {
+    const tiny = new Uint8Array();
+    Object.defineProperty(tiny, "byteLength", { value: MAX_PROJECT_BUNDLE_INPUT_BYTES + 1 });
+
+    await expect(importProjectBundle(tiny)).rejects.toThrow(/compressed.*safe import limit/iu);
+  });
+
+  it("rejects hash-consistent project JSON with duplicate domain identifiers", async () => {
+    const project = createEmptyProject("Duplicate identities", "Acme Metrics");
+    await addEvidenceAttachmentReference(project, "att-duplicate-domain", strToU8("evidence"));
+    const archive = unzipSync(await exportProjectBundle(project));
+    const projectJson = JSON.parse(strFromU8(archive["project/project.json"]!)) as {
+      evidence: Record<string, unknown>[];
+    };
+    projectJson.evidence.push({ ...projectJson.evidence[0] });
+    const tamperedProjectBytes = strToU8(JSON.stringify(projectJson));
+    const manifest = JSON.parse(strFromU8(archive["manifest.json"]!)) as {
+      files: { path: string; sha256: string; bytes: number }[];
+    };
+    const projectEntry = manifest.files.find((file) => file.path === "project/project.json")!;
+    projectEntry.sha256 = await sha256Hex(tamperedProjectBytes);
+    projectEntry.bytes = tamperedProjectBytes.byteLength;
+    archive["project/project.json"] = tamperedProjectBytes;
+    archive["manifest.json"] = strToU8(JSON.stringify(manifest));
+
+    await expect(importProjectBundle(zipSync(archive))).rejects.toThrow(
+      /invalid or unsupported project data/iu,
+    );
+  });
+
+  it("rejects hash-consistent project JSON that removes a mandatory requirement", async () => {
+    const project = createEmptyProject("Missing mandatory rule", "Acme Metrics");
+    const archive = unzipSync(await exportProjectBundle(project));
+    const projectJson = JSON.parse(strFromU8(archive["project/project.json"]!)) as {
+      requirements: { ruleId: string }[];
+    };
+    projectJson.requirements = projectJson.requirements.filter(
+      ({ ruleId }) => ruleId !== "FRC-CSO-PKG",
+    );
+    const tamperedProjectBytes = strToU8(JSON.stringify(projectJson));
+    const manifest = JSON.parse(strFromU8(archive["manifest.json"]!)) as {
+      files: { path: string; sha256: string; bytes: number }[];
+    };
+    const projectEntry = manifest.files.find((file) => file.path === "project/project.json")!;
+    projectEntry.sha256 = await sha256Hex(tamperedProjectBytes);
+    projectEntry.bytes = tamperedProjectBytes.byteLength;
+    archive["project/project.json"] = tamperedProjectBytes;
+    archive["manifest.json"] = strToU8(JSON.stringify(manifest));
+
+    await expect(importProjectBundle(zipSync(archive))).rejects.toThrow(
+      /invalid or unsupported project data/iu,
+    );
+  });
+
+  it.each([
+    [
+      "rule catalog",
+      (manifest: { ruleCatalogVersion: string }) => {
+        manifest.ruleCatalogVersion = "tampered-catalog";
+      },
+    ],
+    [
+      "schema",
+      (manifest: { schemaVersion: number }) => {
+        manifest.schemaVersion = 0;
+      },
+    ],
+  ])(
+    "rejects a manifest whose %s metadata disagrees with the current project",
+    async (_label, tamper) => {
+      const archive = unzipSync(
+        await exportProjectBundle(createEmptyProject("Manifest binding", "Acme Metrics")),
+      );
+      const manifest = JSON.parse(strFromU8(archive["manifest.json"]!)) as {
+        schemaVersion: number;
+        ruleCatalogVersion: string;
+      };
+      tamper(manifest);
+      archive["manifest.json"] = strToU8(JSON.stringify(manifest));
+
+      await expect(importProjectBundle(zipSync(archive))).rejects.toThrow(/manifest.*metadata/iu);
+    },
+  );
+
   it("rejects a hash-consistent imported project with status-only provider approval", async () => {
     const project = createEmptyProject("Tampered approval", "Acme Metrics");
-    project.requirements.push({
+    const requirementIndex = project.requirements.findIndex(
+      ({ ruleId }) => ruleId === "KSI-IAM-AAM",
+    );
+    project.requirements[requirementIndex] = {
       ruleId: "KSI-IAM-AAM",
       status: "drafted",
       reviewStatus: "in_review",
@@ -306,13 +394,14 @@ describe(".classabridge bundles", () => {
       notes: "",
       openQuestions: [],
       exceptions: [],
-    });
+    };
     const archive = unzipSync(await exportProjectBundle(project));
     const projectBytes = archive["project/project.json"]!;
     const projectJson = JSON.parse(strFromU8(projectBytes)) as {
-      requirements: { status: string }[];
+      requirements: { ruleId: string; status: string }[];
     };
-    projectJson.requirements[0]!.status = "approved_by_provider";
+    projectJson.requirements.find(({ ruleId }) => ruleId === "KSI-IAM-AAM")!.status =
+      "approved_by_provider";
     const tamperedProjectBytes = strToU8(JSON.stringify(projectJson));
     const manifest = JSON.parse(strFromU8(archive["manifest.json"]!)) as {
       files: { path: string; sha256: string; bytes: number }[];
@@ -366,7 +455,10 @@ describe(".classabridge bundles", () => {
 
   it("removes provider approval claims from redacted advisor requirement records", () => {
     const project = createEmptyProject("Advisor approval", "Acme Metrics");
-    project.requirements.push({
+    const requirementIndex = project.requirements.findIndex(
+      ({ ruleId }) => ruleId === "KSI-IAM-AAM",
+    );
+    project.requirements[requirementIndex] = {
       ruleId: "KSI-IAM-AAM",
       status: "approved_by_provider",
       reviewStatus: "approved",
@@ -385,13 +477,14 @@ describe(".classabridge bundles", () => {
       exceptions: [],
       providerApprovedBy: "Provider representative",
       providerApprovedAt: "2026-07-17T15:00:00.000Z",
-    });
+    };
 
     const redacted = projectForAdvisor(project);
+    const requirement = redacted.requirements.find(({ ruleId }) => ruleId === "KSI-IAM-AAM");
 
-    expect(redacted.requirements[0]?.status).toBe("needs_expert_review");
-    expect(redacted.requirements[0]?.reviewStatus).toBe("unreviewed");
-    expect(redacted.requirements[0]?.providerApprovedBy).toBeUndefined();
-    expect(redacted.requirements[0]?.providerApprovedAt).toBeUndefined();
+    expect(requirement?.status).toBe("needs_expert_review");
+    expect(requirement?.reviewStatus).toBe("unreviewed");
+    expect(requirement?.providerApprovedBy).toBeUndefined();
+    expect(requirement?.providerApprovedAt).toBeUndefined();
   });
 });

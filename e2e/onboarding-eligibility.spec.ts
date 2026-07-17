@@ -28,6 +28,13 @@ test("a new user starts without an account and receives a reasoned result after 
   await expect(page.getByRole("heading", { level: 1, name: "Likely fit" })).toBeVisible();
   await expect(page.getByRole("heading", { level: 3, name: "Next three actions" })).toBeVisible();
   await expect(
+    page.getByRole("heading", { level: 3, name: "Missing external assessment materials" }),
+  ).toBeVisible();
+  await expect(page.getByText("Complete SOC 2 Type II report", { exact: true })).toBeVisible();
+  await expect(
+    page.getByText("Verified audit-engagement documentation", { exact: true }),
+  ).toBeVisible();
+  await expect(
     page.getByText(/not a FedRAMP determination, certification, approval/u),
   ).toBeVisible();
   await expect(

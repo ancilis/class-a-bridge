@@ -24,4 +24,8 @@ GitHub Pages cannot express the complete response-header baseline from repositor
 
 ## Base paths
 
-The release is configured for origin-root deployment. A subpath deployment needs a build-time base path, manifest `start_url`/`scope`, service-worker scope, asset URL, SPA fallback, and link test aligned to that path. Treat this as a code/configuration change and run offline/deep-link/install tests; do not rewrite built files manually.
+The canonical combined release needs no URL environment variables: its website uses `/app/`, and bridge links resolve through the current same-origin parent. For separate origins, set `NEXT_PUBLIC_BRIDGE_APP_URL=https://bridge.example.com/` for the website build and `VITE_WEBSITE_URL=https://www.example.com/` for the bridge build. Rebuild both artifacts after either value changes, then verify all three launch cards plus the bridge contact and privacy links.
+
+The bridge artifact is otherwise configured for origin-root deployment. A subpath deployment needs a build-time Vite base path, manifest `start_url`/`scope`, service-worker scope, asset URL, SPA fallback, and link test aligned to that path. Treat this as a code/configuration change and run offline/deep-link/install tests; do not rewrite built files manually.
+
+All header-capable production hosts should emit the checked-in `Strict-Transport-Security: max-age=31536000` policy only over HTTPS. The repository configurations intentionally omit `includeSubDomains` and `preload`; enabling either requires a separate domain-wide HTTPS readiness decision.

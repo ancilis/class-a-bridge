@@ -8,12 +8,95 @@ const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const defaultRoot = path.resolve(scriptDirectory, "..");
 const execFileAsync = promisify(execFile);
 
-function prefixHeaderPaths(source, prefix) {
-  return source
+function headerNamesForPattern(source, pattern) {
+  const names = new Set();
+  let activePattern = "";
+  for (const line of source.split(/\r?\n/u)) {
+    if (line.startsWith("/")) {
+      activePattern = line.trim();
+      continue;
+    }
+    if (activePattern !== pattern) continue;
+    const match = line.match(/^\s+([^:]+):/u);
+    if (match?.[1]) names.add(match[1].toLowerCase());
+  }
+  return names;
+}
+
+function prefixBridgeHeadersForCombinedRelease(bridgeHeaders, websiteHeaders, prefix) {
+  const inheritedHeaderNames = headerNamesForPattern(websiteHeaders, "/*");
+  let activePattern = "";
+  return bridgeHeaders
     .trim()
     .split(/\r?\n/u)
+    .filter((line) => {
+      if (line.startsWith("/")) {
+        activePattern = line.trim();
+        return true;
+      }
+      if (activePattern !== "/*") return true;
+      const match = line.match(/^\s+([^:]+):/u);
+      const headerName = match?.[1]?.toLowerCase();
+      return (
+        !headerName ||
+        headerName === "content-security-policy" ||
+        !inheritedHeaderNames.has(headerName)
+      );
+    })
     .map((line) => (line.startsWith("/") ? `${prefix}${line}` : line))
     .join("\n");
+}
+
+function headerValueForPattern(source, pattern, headerName) {
+  let activePattern = "";
+  for (const line of source.split(/\r?\n/u)) {
+    if (line.startsWith("/")) {
+      activePattern = line.trim();
+      continue;
+    }
+    if (activePattern !== pattern) continue;
+    const match = line.match(/^\s+([^:]+):\s*(.+)$/u);
+    if (match?.[1]?.toLowerCase() === headerName.toLowerCase()) return match[2];
+  }
+  return undefined;
+}
+
+function parseContentSecurityPolicy(value) {
+  const directives = new Map();
+  for (const segment of value.split(";")) {
+    const [name, ...sources] = segment.trim().split(/\s+/u);
+    if (name) directives.set(name.toLowerCase(), sources);
+  }
+  return directives;
+}
+
+function assertCompatibleOverlappingCsp(websiteHeaders, bridgeHeaders) {
+  const websiteValue = headerValueForPattern(websiteHeaders, "/*", "Content-Security-Policy");
+  const bridgeValue = headerValueForPattern(bridgeHeaders, "/*", "Content-Security-Policy");
+  if (!websiteValue || !bridgeValue) return;
+
+  const websitePolicy = parseContentSecurityPolicy(websiteValue);
+  const bridgePolicy = parseContentSecurityPolicy(bridgeValue);
+  const resourceDirectives = [
+    "script-src",
+    "style-src",
+    "img-src",
+    "font-src",
+    "connect-src",
+    "worker-src",
+    "manifest-src",
+    "media-src",
+  ];
+  const incompatible = resourceDirectives.filter((directive) => {
+    const required = bridgePolicy.get(directive) ?? bridgePolicy.get("default-src") ?? [];
+    const allowed = websitePolicy.get(directive) ?? websitePolicy.get("default-src") ?? [];
+    return required.some((source) => source !== "'none'" && !allowed.includes(source));
+  });
+  if (incompatible.length > 0) {
+    throw new Error(
+      `The overlapping website Content Security Policy would block application resources for: ${incompatible.join(", ")}. Align the website wildcard policy before assembling the combined release.`,
+    );
+  }
 }
 
 async function requireFile(filePath, description) {
@@ -104,9 +187,14 @@ export async function assembleRelease({
     readFile(headersPath, "utf8").catch(() => ""),
     readFile(path.join(resolvedBridge, "_headers"), "utf8"),
   ]);
+  assertCompatibleOverlappingCsp(websiteHeaders, bridgeHeaders);
   await writeFile(
     headersPath,
-    `${websiteHeaders.trimEnd()}\n\n${prefixHeaderPaths(bridgeHeaders, "/app")}\n`,
+    `${websiteHeaders.trimEnd()}\n\n${prefixBridgeHeadersForCombinedRelease(
+      bridgeHeaders,
+      websiteHeaders,
+      "/app",
+    )}\n`,
   );
   await writeFile(
     path.join(resolvedDestination, "release-manifest.json"),

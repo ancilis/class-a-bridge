@@ -13,7 +13,7 @@ const prepareCapture = async (page: Page) => {
     }
     window.scrollTo(0, 0);
   });
-  await page.waitForTimeout(180);
+  await page.waitForTimeout(400);
 };
 
 test("capture release screenshots from the working browser application", async ({ page }) => {

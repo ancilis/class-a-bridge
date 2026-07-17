@@ -7,7 +7,7 @@ import {
   type EligibilityQuestionId,
   type RequirementWork,
 } from "@class-a-bridge/project";
-import { KSI_WORKFLOWS, RULE_GUIDANCE, RULE_SELECTIONS } from "@class-a-bridge/rules";
+import { KSI_WORKFLOWS, RULE_GUIDANCE, RULE_REGISTRY } from "@class-a-bridge/rules";
 
 export const SAMPLE_WATERMARK = "Fictional example — not for submission." as const;
 const FIXED_DATE = "2026-07-15T14:00:00.000Z";
@@ -397,7 +397,7 @@ function createAcmeMetricsProject(): BridgeProject {
     },
   ];
 
-  project.requirements = RULE_SELECTIONS.mandatory.map(requirementFor);
+  project.requirements = RULE_REGISTRY.map(({ id }, index) => requirementFor(id, index));
   project.evidence = [
     {
       id: "evidence-change-sample",
@@ -506,6 +506,7 @@ function createAcmeMetricsProject(): BridgeProject {
   project.actions = [
     {
       id: "action-host-scope",
+      origin: "provider",
       title: "Confirm cloud-host scope treatment",
       description:
         "Resolve how the carved-out hosting provider supports the proposed Class A boundary.",
@@ -519,6 +520,7 @@ function createAcmeMetricsProject(): BridgeProject {
     },
     {
       id: "action-access-remediation",
+      origin: "provider",
       title: "Add access-removal remediation evidence",
       description:
         "Collect a current candidate showing the delayed-removal exception was addressed.",
@@ -532,6 +534,7 @@ function createAcmeMetricsProject(): BridgeProject {
     },
     {
       id: "action-exec-approval",
+      origin: "provider",
       title: "Confirm accountable executive approval path",
       description:
         "Record who approves provider representations and the final internal package snapshot.",
@@ -545,6 +548,7 @@ function createAcmeMetricsProject(): BridgeProject {
     },
     {
       id: "action-training",
+      origin: "provider",
       title: "Refresh training evidence",
       description: "Collect the next completion export before the current record becomes stale.",
       category: "recommended_improvements",

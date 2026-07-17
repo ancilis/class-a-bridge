@@ -1,4 +1,5 @@
 import { BridgeProjectSchema } from "@class-a-bridge/project";
+import { RULE_REGISTRY } from "@class-a-bridge/rules";
 import { describe, expect, it } from "vitest";
 
 import { ACME_METRICS_PROJECT, SAMPLE_WATERMARK } from "../src/index";
@@ -9,6 +10,9 @@ describe("Acme Metrics fictional workspace", () => {
     expect(ACME_METRICS_PROJECT.metadata.isSample).toBe(true);
     expect(ACME_METRICS_PROJECT.metadata.watermark).toBe(SAMPLE_WATERMARK);
     expect(ACME_METRICS_PROJECT.requirements.length).toBeGreaterThanOrEqual(23);
+    expect(new Set(ACME_METRICS_PROJECT.requirements.map((item) => item.ruleId))).toEqual(
+      new Set(RULE_REGISTRY.map((item) => item.id)),
+    );
     expect(
       new Set(ACME_METRICS_PROJECT.requirements.map((item) => item.status)).size,
     ).toBeGreaterThan(2);

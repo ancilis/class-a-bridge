@@ -2,12 +2,13 @@ import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryProjectStore, type ProjectStore } from "@class-a-bridge/project";
 import { ACME_METRICS_PROJECT } from "@class-a-bridge/testing";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { App } from "../src/App";
 
 describe("Class A Bridge application shell", () => {
   beforeEach(() => {
+    vi.unstubAllEnvs();
     globalThis.localStorage.clear();
     Object.defineProperty(globalThis.navigator, "onLine", { configurable: true, value: true });
   });
@@ -21,7 +22,33 @@ describe("Class A Bridge application shell", () => {
     expect(
       screen.getByRole("button", { name: /explore a fictional sample/iu }),
     ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Security and privacy" })).toHaveAttribute(
+      "href",
+      "../security-and-privacy/",
+    );
     expect(screen.queryByText(/sign in/iu)).not.toBeInTheDocument();
+  });
+
+  it("uses the configured website origin for contact and privacy links", async () => {
+    vi.stubEnv("VITE_WEBSITE_URL", "https://classabridge.example.com/");
+    const user = userEvent.setup();
+    render(<App />);
+
+    expect(screen.getByRole("link", { name: "Security and privacy" })).toHaveAttribute(
+      "href",
+      "https://classabridge.example.com/security-and-privacy/",
+    );
+
+    await user.click(screen.getByRole("button", { name: /explore a fictional sample/iu }));
+    expect(
+      screen.getByRole("link", { name: /request an Ancilis Class A readiness review/iu }),
+    ).toHaveAttribute("href", "https://classabridge.example.com/contact/");
+
+    await user.click(screen.getByRole("button", { name: "Project settings" }));
+    expect(screen.getByRole("link", { name: "Read privacy documentation" })).toHaveAttribute(
+      "href",
+      "https://classabridge.example.com/security-and-privacy/",
+    );
   });
 
   it("opens a useful fictional workspace with privacy and navigation labels", async () => {
@@ -53,6 +80,20 @@ describe("Class A Bridge application shell", () => {
       expect(screen.getByRole("button", { name: label })).toBeInTheDocument();
     }
     expect(screen.getAllByText(/Needs expert review/iu).length).toBeGreaterThan(0);
+  });
+
+  it("shows unresolved external assessment materials with the preliminary result", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole("button", { name: /explore a fictional sample/iu }));
+    await user.click(screen.getByRole("button", { name: "Eligibility" }));
+
+    expect(
+      screen.getByRole("heading", { name: "Missing external assessment materials" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Verified audit engagement documentation")).toBeInTheDocument();
+    expect(screen.getByText("Supplemental compliance evidence")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Review SOC 2 materials/iu })).toBeInTheDocument();
   });
 
   it("lists and opens projects already persisted in the selected browser store", async () => {
@@ -105,6 +146,43 @@ describe("Class A Bridge application shell", () => {
     expect(await screen.findByRole("alert", {}, { timeout: 2_000 })).toHaveTextContent(
       /Local save failed.*storage quota is unavailable/iu,
     );
+  });
+
+  it("warns that memory storage is session-only and never calls it saved locally", async () => {
+    const store = new MemoryProjectStore();
+    const user = userEvent.setup();
+
+    render(<App storeFactory={() => Promise.resolve(store)} />);
+    await screen.findByText(/No saved projects are stored/iu);
+    await user.click(screen.getByRole("button", { name: /explore a fictional sample/iu }));
+
+    expect(
+      await screen.findByRole("status", { name: /Session storage warning/iu }),
+    ).toHaveTextContent(/Session-only storage.*reload.*lose/iu);
+    expect(screen.queryByText(/^Saved locally$/iu)).not.toBeInTheDocument();
+  });
+
+  it("deletes active project files and prior localStorage fallback data from settings", async () => {
+    const store = new MemoryProjectStore();
+    const user = userEvent.setup();
+    globalThis.localStorage.setItem("class-a-bridge:project:legacy", "legacy project");
+    globalThis.localStorage.setItem("another-app:project", "preserve me");
+
+    render(<App storeFactory={() => Promise.resolve(store)} />);
+    await screen.findByText(/No saved projects are stored/iu);
+    await user.click(screen.getByRole("button", { name: /explore a fictional sample/iu }));
+    await user.click(screen.getByRole("button", { name: "Project settings" }));
+    await user.click(screen.getByRole("button", { name: /Review deletion options/iu }));
+    const deleteAll = screen.getByRole("button", {
+      name: /Delete all Class A Bridge local data/iu,
+    });
+    await waitFor(() => expect(deleteAll).toBeEnabled());
+    await user.click(deleteAll);
+
+    expect(await screen.findByRole("heading", { name: /Turn your SOC 2 Type II/iu })).toBeVisible();
+    expect(await store.list()).toEqual([]);
+    expect(globalThis.localStorage.getItem("class-a-bridge:project:legacy")).toBeNull();
+    expect(globalThis.localStorage.getItem("another-app:project")).toBe("preserve me");
   });
 
   it("offers backup import on first run, including after local deletion returns there", () => {

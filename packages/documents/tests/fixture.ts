@@ -121,9 +121,9 @@ export function createDocumentProject(options: { sample?: boolean } = {}): Bridg
       rationale: "Confirm whether the report-to-application gap requires one.",
     },
   );
-  project.requirements.push(
+  Object.assign(
+    project.requirements.find(({ ruleId }) => ruleId === "KSI-IAM-AAM")!,
     {
-      ruleId: "KSI-IAM-AAM",
       status: "drafted",
       reviewStatus: "in_review",
       userResponse: "Central identity workflows manage workforce accounts.",
@@ -141,8 +141,10 @@ export function createDocumentProject(options: { sample?: boolean } = {}): Bridg
       openQuestions: ["Confirm service-account coverage."],
       exceptions: [],
     },
+  );
+  Object.assign(
+    project.requirements.find(({ ruleId }) => ruleId === "FRC-CSO-PKG")!,
     {
-      ruleId: "FRC-CSO-PKG",
       status: "needs_information",
       reviewStatus: "unreviewed",
       userResponse: "",
@@ -196,6 +198,7 @@ export function createDocumentProject(options: { sample?: boolean } = {}): Bridg
   project.actions.push(
     {
       id: "act-1",
+      origin: "provider",
       title: '=HYPERLINK("https://attacker.invalid","Review")',
       description: "Collect the account lifecycle configuration.",
       category: "missing_evidence",
@@ -208,6 +211,7 @@ export function createDocumentProject(options: { sample?: boolean } = {}): Bridg
     },
     {
       id: "act-2",
+      origin: "provider",
       title: "Confirm bridge-letter period",
       description: "Ask the report issuer whether a bridge letter is needed.",
       category: "before_application_preparation",
