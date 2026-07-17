@@ -74,6 +74,16 @@ interface ApiShape {
     official: Record<string, unknown>;
     selectionTags: string[];
     source: Record<string, unknown>;
+    officialTitle?: string;
+    requirementLevel?: string;
+    applicability?: readonly string[];
+    officialSourceReference?: string;
+    sourceVersion?: string;
+    effectiveDate?: string | null;
+    effectiveDateNote?: string;
+    lastVerifiedDate?: string;
+    officialText?: string;
+    changeHistory?: readonly Record<string, unknown>[];
   }[];
   RULE_SELECTIONS?: {
     mandatory: readonly string[];
@@ -130,6 +140,20 @@ describe("official Class A registry", () => {
       expect(record.official).toEqual(expect.objectContaining({ name: expect.any(String) }));
       expect(record.official).not.toHaveProperty("plainLanguage");
       expect(record.official).not.toHaveProperty("questions");
+      expect(record).toEqual(
+        expect.objectContaining({
+          officialTitle: expect.any(String),
+          requirementLevel: expect.any(String),
+          applicability: expect.any(Array),
+          officialSourceReference: expect.stringMatching(/^https:\/\//u),
+          sourceVersion: "2026.07.14.01",
+          effectiveDateNote: expect.any(String),
+          lastVerifiedDate: "2026-07-17",
+          officialText: expect.any(String),
+          changeHistory: expect.any(Array),
+        }),
+      );
+      expect(record.effectiveDate === null || typeof record.effectiveDate === "string").toBe(true);
       expect(record.source).toEqual(
         expect.objectContaining({
           catalogVersion: "2026.07.14.01",
@@ -151,7 +175,10 @@ describe("official Class A registry", () => {
           authoredBy: "Ancilis",
           disclaimer: expect.stringMatching(/not.*FedRAMP.*determination/iu),
           evidenceExamples: expect.arrayContaining([expect.any(String)]),
+          whyItMatters: expect.stringMatching(/.{20}/u),
           mappingHints: expect.arrayContaining([expect.any(String)]),
+          outputDocumentMappings: expect.arrayContaining([expect.any(String)]),
+          jsonSchemaMappings: expect.any(Array),
           plainLanguage: expect.stringMatching(/.{20}/u),
           questions: expect.arrayContaining([expect.any(String)]),
           ruleId: expect.any(String),

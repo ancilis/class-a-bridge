@@ -91,6 +91,16 @@ export type OfficialRule = Readonly<Record<string, unknown>> & {
 
 export interface NormalizedRuleRecord {
   readonly id: string;
+  readonly officialTitle: string;
+  readonly requirementLevel: string;
+  readonly applicability: readonly string[];
+  readonly officialSourceReference: string;
+  readonly sourceVersion: string;
+  readonly effectiveDate: string | null;
+  readonly effectiveDateNote: string;
+  readonly lastVerifiedDate: string;
+  readonly officialText: string;
+  readonly changeHistory: readonly { readonly date: string; readonly comment: string }[];
   readonly official: OfficialRule;
   readonly selectionTags: readonly RuleSelection[];
   readonly source: {
@@ -107,7 +117,10 @@ export interface RuleGuidanceRecord {
   readonly authoredBy: "Ancilis";
   readonly disclaimer: string;
   readonly evidenceExamples: readonly string[];
+  readonly whyItMatters: string;
   readonly mappingHints: readonly string[];
+  readonly outputDocumentMappings: readonly string[];
+  readonly jsonSchemaMappings: readonly string[];
   readonly plainLanguage: string;
   readonly questions: readonly string[];
   readonly ruleId: string;
@@ -137,6 +150,12 @@ function collectOfficialRules(value: unknown, result = new Map<string, OfficialR
 const officialById = collectOfficialRules(officialCatalogJson);
 const selectedIds = [...new Set(Object.values(RULE_SELECTIONS).flat())];
 
+const stringArray = (value: unknown): string[] =>
+  Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+
+const officialStatement = (official: OfficialRule) =>
+  typeof official.statement === "string" ? official.statement : official.name;
+
 export const RULE_REGISTRY: readonly NormalizedRuleRecord[] = selectedIds.map((id) => {
   const official = officialById.get(id);
   if (!official) throw new Error(`Official catalog does not contain selected rule ${id}`);
@@ -146,6 +165,23 @@ export const RULE_REGISTRY: readonly NormalizedRuleRecord[] = selectedIds.map((i
 
   return {
     id,
+    officialTitle: official.name,
+    requirementLevel: typeof official.force === "string" ? official.force : "UNSPECIFIED",
+    applicability: [
+      ...stringArray(official.affects),
+      ...stringArray(official.certifications),
+      ...stringArray(official.classes),
+    ],
+    officialSourceReference: `${CATALOG_MANIFEST.sourceUrl}#${id}`,
+    sourceVersion: CATALOG_MANIFEST.catalogVersion,
+    effectiveDate: typeof official.effective_date === "string" ? official.effective_date : null,
+    effectiveDateNote:
+      typeof official.effective_date === "string"
+        ? "Copied from the official rule record."
+        : "The official rule record does not publish a separate effective-date field; no date is inferred.",
+    lastVerifiedDate: CATALOG_MANIFEST.verifiedAt,
+    officialText: officialStatement(official),
+    changeHistory: official.updated ?? [],
     official,
     selectionTags,
     source: {
@@ -169,6 +205,31 @@ const ownerFor = (id: string) => {
   return "FedRAMP program owner";
 };
 
+const outputMappingsFor = (id: string): string[] => {
+  const mappings = ["Mandatory requirements report", "Detailed gap report", "Action plan"];
+  if (id.startsWith("MAS-")) mappings.push("Scope summary");
+  if (id.startsWith("KSI-") || id.startsWith("SDR-")) mappings.push("Security Decision Record");
+  if (/^(CCM|IEC|VDR|VER)-/u.test(id)) mappings.push("Ongoing Certification Report");
+  if (/^(FRC|CPO|CDS)-/u.test(id)) mappings.push("Certification Package Overview");
+  if (/^(IVV|FRC)-/u.test(id)) mappings.push("External assessment materials checklist");
+  return [...new Set(mappings)];
+};
+
+const schemaMappingsFor = (official: OfficialRule, id: string): string[] => {
+  const schema =
+    isObject(official.schema) && typeof official.schema.url === "string"
+      ? [official.schema.url]
+      : [];
+  if (schema.length > 0) return schema;
+  if (id.startsWith("KSI-") || id.startsWith("SDR-")) {
+    return ["fedramp-security-decision-record-schema-2026-06-24.json"];
+  }
+  if (/^(CCM|IEC|VDR|VER)-/u.test(id)) {
+    return ["fedramp-ongoing-certification-report-schema-2026-06-24.json"];
+  }
+  return [];
+};
+
 export const RULE_GUIDANCE: readonly RuleGuidanceRecord[] = RULE_REGISTRY.map(
   ({ id, official }) => {
     const related = Array.isArray(official.related)
@@ -187,11 +248,14 @@ export const RULE_GUIDANCE: readonly RuleGuidanceRecord[] = RULE_REGISTRY.map(
         `A dated policy, configuration export, operating record, or review result that directly supports ${official.name}.`,
         "An owner-approved explanation connecting the evidence to the federal offering and its current scope.",
       ],
+      whyItMatters: `A provider needs a reviewable, current record for ${official.name} so its own approvers and independent reviewers can evaluate the representation in the context of the proposed cloud offering.`,
       mappingHints: [
         mappingTargets.length > 0
           ? `Confirm mappings to official references: ${mappingTargets.join(", ")}.`
           : "Map only confirmed SOC 2 controls or evidence whose scope and test period match this rule.",
       ],
+      outputDocumentMappings: outputMappingsFor(id),
+      jsonSchemaMappings: schemaMappingsFor(official, id),
       plainLanguage: `Explain how ${official.name} applies to the federal cloud offering, who owns it, and how a reviewer can verify that it operates as described.`,
       questions: [
         `What current process or technical measure addresses ${official.name}?`,
