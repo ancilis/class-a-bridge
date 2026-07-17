@@ -1,3 +1,4 @@
+import { cloneElement, isValidElement, useId } from "react";
 import type { ButtonHTMLAttributes, HTMLAttributes, PropsWithChildren, ReactNode } from "react";
 
 type Tone = "neutral" | "info" | "positive" | "warning" | "critical";
@@ -100,13 +101,40 @@ export function Field({
   error,
   children,
 }: PropsWithChildren<{ readonly label: string; readonly hint?: string; readonly error?: string }>) {
+  const generatedId = useId();
+  const labelId = `${generatedId}-label`;
+  const hintId = hint ? `${generatedId}-hint` : undefined;
+  const errorId = error ? `${generatedId}-error` : undefined;
+  const describedBy = [hintId, errorId].filter(Boolean).join(" ") || undefined;
+  const control = isValidElement<{
+    readonly "aria-describedby"?: string;
+    readonly "aria-labelledby"?: string;
+  }>(children)
+    ? cloneElement(children, {
+        "aria-labelledby": children.props["aria-labelledby"] ?? labelId,
+        ...([children.props["aria-describedby"], describedBy].filter(Boolean).join(" ")
+          ? {
+              "aria-describedby": [children.props["aria-describedby"], describedBy]
+                .filter(Boolean)
+                .join(" "),
+            }
+          : {}),
+      })
+    : children;
+
   return (
     <div className="field">
-      <span className="field__label">{label}</span>
-      {hint && <span className="field__hint">{hint}</span>}
-      {children}
+      <span className="field__label" id={labelId}>
+        {label}
+      </span>
+      {hint && (
+        <span className="field__hint" id={hintId}>
+          {hint}
+        </span>
+      )}
+      {control}
       {error && (
-        <span className="field__error" role="alert">
+        <span className="field__error" id={errorId} role="alert">
           {error}
         </span>
       )}

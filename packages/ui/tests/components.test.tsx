@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import { Callout, Card, ProgressTrack, StatusPill } from "../src/index";
+import { Callout, Card, Field, ProgressTrack, StatusPill } from "../src/index";
 
 describe("shared accessible components", () => {
   it("exposes status and progress without relying on color", () => {
@@ -24,5 +24,17 @@ describe("shared accessible components", () => {
     );
     expect(screen.getByRole("region", { name: "Current status" })).toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveTextContent("Local only");
+  });
+
+  it("gives a nested form control an accessible name and associated guidance", () => {
+    render(
+      <Field label="Product name" hint="Use the customer-facing name" error="Required">
+        <input />
+      </Field>,
+    );
+
+    expect(screen.getByRole("textbox", { name: "Product name" })).toHaveAccessibleDescription(
+      "Use the customer-facing name Required",
+    );
   });
 });
