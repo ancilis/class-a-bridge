@@ -386,6 +386,24 @@ const SnapshotSchema = z
   })
   .strict();
 
+const ApprovalSchema = z
+  .object({
+    id: z.string().min(1),
+    kind: z.enum([
+      "requirement",
+      "provider_representation",
+      "senior_official",
+      "final_internal_review",
+    ]),
+    title: z.string().min(1),
+    approver: z.string().min(1),
+    role: z.string().min(1),
+    acceptedAt: z.string().datetime(),
+    scope: z.string().min(1),
+    notes: z.string(),
+  })
+  .strict();
+
 export const BridgeProjectSchema = z
   .object({
     metadata: ProjectMetadataSchema,
@@ -416,10 +434,20 @@ export const BridgeProjectSchema = z
     actions: z.array(ActionSchema),
     generatedOutputs: z.array(GeneratedOutputSchema),
     snapshots: z.array(SnapshotSchema),
+    approvals: z.array(ApprovalSchema),
     advisorFlags: z.array(z.string()),
     notes: z.string(),
   })
-  .strict();
+  .strict()
+  .superRefine((project, context) => {
+    if (project.metadata.isSample && !project.metadata.watermark?.trim()) {
+      context.addIssue({
+        code: "custom",
+        path: ["metadata", "watermark"],
+        message: "A fictional sample project requires a visible watermark.",
+      });
+    }
+  });
 
 export type BridgeProject = z.infer<typeof BridgeProjectSchema>;
 export type EvidenceItem = z.infer<typeof EvidenceSchema>;
@@ -478,6 +506,7 @@ export function createEmptyProject(name: string, organizationName: string): Brid
     actions: [],
     generatedOutputs: [],
     snapshots: [],
+    approvals: [],
     advisorFlags: [],
     notes: "",
   });

@@ -35,4 +35,22 @@ describe("portable-file security", () => {
       /unable to decrypt/iu,
     );
   });
+
+  it("rejects attacker-controlled cryptographic work factors", async () => {
+    const encrypted = await encryptBundle(
+      new Uint8Array([1, 2, 3]),
+      "correct horse battery staple",
+      {
+        iterations: 10_000,
+      },
+    );
+    const envelope = JSON.parse(new TextDecoder().decode(encrypted)) as Record<string, unknown>;
+    envelope.iterations = 50_000_000;
+    await expect(
+      decryptBundle(
+        new TextEncoder().encode(JSON.stringify(envelope)),
+        "correct horse battery staple",
+      ),
+    ).rejects.toThrow(/unable to decrypt/iu);
+  });
 });

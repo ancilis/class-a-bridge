@@ -11,6 +11,12 @@ import { KSI_WORKFLOWS, RULE_GUIDANCE, RULE_SELECTIONS } from "@class-a-bridge/r
 
 export const SAMPLE_WATERMARK = "Fictional example — not for submission." as const;
 const FIXED_DATE = "2026-07-15T14:00:00.000Z";
+const FIT_REPORT_CONTENT = `<p>${SAMPLE_WATERMARK}</p><p>Needs expert review because the fictional scope includes a material carve-out and exception.</p>`;
+const VALIDATION_REPORT_CONTENT = JSON.stringify({
+  watermark: SAMPLE_WATERMARK,
+  status: "invalid",
+  issues: [{ field: "provider approval", message: "Missing fictional provider approval" }],
+});
 
 const answerValues: Record<EligibilityQuestionId, AnswerValue> = {
   soc2_type_ii: "yes",
@@ -24,6 +30,23 @@ const answerValues: Record<EligibilityQuestionId, AnswerValue> = {
 };
 
 const ksiIds = new Set(KSI_WORKFLOWS.map(({ ruleId }) => ruleId));
+const evidenceByRule: Readonly<Record<string, readonly string[]>> = {
+  "KSI-CMT-LMC": ["evidence-change-sample"],
+  "KSI-IAM-AAM": ["evidence-access-review"],
+  "KSI-IAM-APM": ["evidence-access-review"],
+  "KSI-INR-RIR": ["evidence-ir-exercise"],
+  "IEC-CSO-FIR": ["evidence-ir-exercise"],
+  "KSI-CED-RAT": ["evidence-training"],
+};
+const soc2ByRule: Readonly<
+  Record<string, { readonly ids: readonly string[]; readonly pages: readonly number[] }>
+> = {
+  "KSI-CMT-LMC": { ids: ["ACME-CC8.1"], pages: [70] },
+  "KSI-IAM-AAM": { ids: ["ACME-CC6.1"], pages: [42] },
+  "KSI-IAM-APM": { ids: ["ACME-CC6.1"], pages: [42] },
+  "KSI-INR-RIR": { ids: ["ACME-CC7.2"], pages: [61] },
+  "IEC-CSO-FIR": { ids: ["ACME-CC7.2"], pages: [61] },
+};
 
 function requirementFor(ruleId: string, index: number): RequirementWork {
   const isKsi = ksiIds.has(ruleId);
@@ -61,14 +84,9 @@ function requirementFor(ruleId: string, index: number): RequirementWork {
     independentValidation: isKsi
       ? "The validation sample and reviewer independence remain to be confirmed."
       : "",
-    soc2ControlIds: index % 3 === 0 ? ["ACME-CC6.1"] : index % 3 === 1 ? ["ACME-CC7.2"] : [],
-    soc2PageReferences: index % 3 === 0 ? [42] : index % 3 === 1 ? [61] : [],
-    evidenceIds:
-      index % 3 === 0
-        ? ["evidence-change-sample"]
-        : index % 3 === 1
-          ? ["evidence-access-review"]
-          : [],
+    soc2ControlIds: [...(soc2ByRule[ruleId]?.ids ?? [])],
+    soc2PageReferences: [...(soc2ByRule[ruleId]?.pages ?? [])],
+    evidenceIds: [...(evidenceByRule[ruleId] ?? [])],
     owner: guidance?.suggestedOwner ?? "FedRAMP program owner",
     notes:
       index === 4
@@ -493,8 +511,8 @@ function createAcmeMetricsProject(): BridgeProject {
       title: `Preliminary fit assessment — ${SAMPLE_WATERMARK}`,
       format: "html",
       generatedAt: FIXED_DATE,
-      sha256: "5".repeat(64),
-      content: `<p>${SAMPLE_WATERMARK}</p><p>Needs expert review because the fictional scope includes a material carve-out and exception.</p>`,
+      sha256: "21c23ecd5b118e2a351e51eac8a019a30667f536843f0fff89874a449e27b6ad",
+      content: FIT_REPORT_CONTENT,
       validationStatus: "not_applicable",
       validationIssues: [],
     },
@@ -504,12 +522,8 @@ function createAcmeMetricsProject(): BridgeProject {
       title: `JSON validation report — ${SAMPLE_WATERMARK}`,
       format: "json",
       generatedAt: FIXED_DATE,
-      sha256: "6".repeat(64),
-      content: JSON.stringify({
-        watermark: SAMPLE_WATERMARK,
-        status: "invalid",
-        issues: [{ field: "provider approval", message: "Missing fictional provider approval" }],
-      }),
+      sha256: "bb0acb1efd613aa6a01baf042297f0f75c3fc6c4e1833d070e0a9ef6d3b9a953",
+      content: VALIDATION_REPORT_CONTENT,
       validationStatus: "invalid",
       validationIssues: [
         {
@@ -518,6 +532,18 @@ function createAcmeMetricsProject(): BridgeProject {
           route: "/package/finalize",
         },
       ],
+    },
+  ];
+  project.approvals = [
+    {
+      id: "approval-public-information-draft",
+      kind: "requirement",
+      title: "Public-information narrative approved for internal package review",
+      approver: "Jordan Lee",
+      role: "Chief Operating Officer (fictional)",
+      acceptedAt: FIXED_DATE,
+      scope: "CDS-CSO-PUB draft representation only; not final package approval.",
+      notes: "Fictional demonstration approval — not for submission.",
     },
   ];
   project.advisorFlags = [

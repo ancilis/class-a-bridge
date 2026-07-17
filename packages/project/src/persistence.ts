@@ -1,5 +1,6 @@
 import { openDB, type DBSchema, type IDBPDatabase } from "idb";
 
+import { migrateProject } from "./migrations";
 import { BridgeProjectSchema, type BridgeProject } from "./model";
 
 export interface ProjectSummary {
@@ -18,7 +19,7 @@ export interface ProjectStore {
   list(): Promise<readonly ProjectSummary[]>;
   delete(id: string): Promise<void>;
   deleteAll(): Promise<void>;
-  putAttachment(id: string, bytes: Uint8Array): Promise<void>;
+  putAttachment(id: string, bytes: Uint8Array, projectId?: string): Promise<void>;
   getAttachment(id: string): Promise<Uint8Array | undefined>;
   deleteAttachment(id: string): Promise<void>;
   estimateOwnedBytes(): Promise<number>;
@@ -36,7 +37,7 @@ export class MemoryProjectStore implements ProjectStore {
   readonly backend = "memory" as const;
   readonly supportsAttachments = true;
   private readonly projects = new Map<string, BridgeProject>();
-  private readonly attachments = new Map<string, Uint8Array>();
+  private readonly attachments = new Map<string, { projectId: string; bytes: Uint8Array }>();
 
   save(project: BridgeProject): Promise<void> {
     const parsed = BridgeProjectSchema.parse(project);
@@ -56,6 +57,9 @@ export class MemoryProjectStore implements ProjectStore {
   }
   delete(id: string): Promise<void> {
     this.projects.delete(id);
+    for (const [attachmentId, attachment] of this.attachments) {
+      if (attachment.projectId === id) this.attachments.delete(attachmentId);
+    }
     return Promise.resolve();
   }
   deleteAll(): Promise<void> {
@@ -63,12 +67,12 @@ export class MemoryProjectStore implements ProjectStore {
     this.attachments.clear();
     return Promise.resolve();
   }
-  putAttachment(id: string, bytes: Uint8Array): Promise<void> {
-    this.attachments.set(id, bytes.slice());
+  putAttachment(id: string, bytes: Uint8Array, projectId = "unowned"): Promise<void> {
+    this.attachments.set(id, { projectId, bytes: bytes.slice() });
     return Promise.resolve();
   }
   getAttachment(id: string): Promise<Uint8Array | undefined> {
-    return Promise.resolve(this.attachments.get(id)?.slice());
+    return Promise.resolve(this.attachments.get(id)?.bytes.slice());
   }
   deleteAttachment(id: string): Promise<void> {
     this.attachments.delete(id);
@@ -81,7 +85,10 @@ export class MemoryProjectStore implements ProjectStore {
     );
     return Promise.resolve(
       projectBytes +
-        [...this.attachments.values()].reduce((total, bytes) => total + bytes.byteLength, 0),
+        [...this.attachments.values()].reduce(
+          (total, attachment) => total + attachment.bytes.byteLength,
+          0,
+        ),
     );
   }
 }
@@ -99,7 +106,7 @@ export class LocalStorageProjectStore implements ProjectStore {
   }
   load(id: string): Promise<BridgeProject | undefined> {
     const raw = this.storage.getItem(`${this.prefix}${id}`);
-    return Promise.resolve(raw ? BridgeProjectSchema.parse(JSON.parse(raw)) : undefined);
+    return Promise.resolve(raw ? migrateProject(JSON.parse(raw)) : undefined);
   }
   list(): Promise<readonly ProjectSummary[]> {
     const projects: ProjectSummary[] = [];
@@ -108,8 +115,11 @@ export class LocalStorageProjectStore implements ProjectStore {
       if (!key?.startsWith(this.prefix)) continue;
       const raw = this.storage.getItem(key);
       if (!raw) continue;
-      const parsed = BridgeProjectSchema.safeParse(JSON.parse(raw));
-      if (parsed.success) projects.push(summary(parsed.data));
+      try {
+        projects.push(summary(migrateProject(JSON.parse(raw))));
+      } catch {
+        // Invalid owned records are ignored in the project picker and remain available for diagnostics.
+      }
     }
     return Promise.resolve(projects.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)));
   }
@@ -149,9 +159,14 @@ export class LocalStorageProjectStore implements ProjectStore {
   }
 }
 
+interface StoredAttachment {
+  readonly projectId: string;
+  readonly bytes: Uint8Array;
+}
+
 interface BridgeDatabase extends DBSchema {
-  projects: { key: string; value: BridgeProject };
-  attachments: { key: string; value: Uint8Array };
+  projects: { key: string; value: unknown };
+  attachments: { key: string; value: StoredAttachment | Uint8Array };
 }
 
 export class IndexedDbProjectStore implements ProjectStore {
@@ -159,10 +174,11 @@ export class IndexedDbProjectStore implements ProjectStore {
   readonly supportsAttachments = true;
   private readonly database: Promise<IDBPDatabase<BridgeDatabase>>;
   constructor(name = "class-a-bridge-v1") {
-    this.database = openDB<BridgeDatabase>(name, 1, {
+    this.database = openDB<BridgeDatabase>(name, 2, {
       upgrade(database) {
-        database.createObjectStore("projects");
-        database.createObjectStore("attachments");
+        if (!database.objectStoreNames.contains("projects")) database.createObjectStore("projects");
+        if (!database.objectStoreNames.contains("attachments"))
+          database.createObjectStore("attachments");
       },
     });
   }
@@ -172,15 +188,31 @@ export class IndexedDbProjectStore implements ProjectStore {
   }
   async load(id: string) {
     const project = await (await this.database).get("projects", id);
-    return project ? BridgeProjectSchema.parse(project) : undefined;
+    return project ? migrateProject(project) : undefined;
   }
   async list() {
     return (await (await this.database).getAll("projects"))
-      .map((project) => summary(BridgeProjectSchema.parse(project)))
+      .map((project) => summary(migrateProject(project)))
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   }
   async delete(id: string) {
-    await (await this.database).delete("projects", id);
+    const db = await this.database;
+    const transaction = db.transaction(["projects", "attachments"], "readwrite");
+    await transaction.objectStore("projects").delete(id);
+    const attachmentStore = transaction.objectStore("attachments");
+    const [keys, values] = await Promise.all([
+      attachmentStore.getAllKeys(),
+      attachmentStore.getAll(),
+    ]);
+    await Promise.all(
+      values.map((value, index) => {
+        const key = keys[index];
+        return !(value instanceof Uint8Array) && value.projectId === id && key !== undefined
+          ? attachmentStore.delete(key)
+          : Promise.resolve();
+      }),
+    );
+    await transaction.done;
   }
   async deleteAll() {
     const db = await this.database;
@@ -191,11 +223,12 @@ export class IndexedDbProjectStore implements ProjectStore {
       transaction.done,
     ]);
   }
-  async putAttachment(id: string, bytes: Uint8Array) {
-    await (await this.database).put("attachments", bytes.slice(), id);
+  async putAttachment(id: string, bytes: Uint8Array, projectId = "unowned") {
+    await (await this.database).put("attachments", { projectId, bytes: bytes.slice() }, id);
   }
   async getAttachment(id: string) {
-    return (await (await this.database).get("attachments", id))?.slice();
+    const stored = await (await this.database).get("attachments", id);
+    return stored instanceof Uint8Array ? stored.slice() : stored?.bytes.slice();
   }
   async deleteAttachment(id: string) {
     await (await this.database).delete("attachments", id);
@@ -208,7 +241,12 @@ export class IndexedDbProjectStore implements ProjectStore {
     ]);
     return (
       new TextEncoder().encode(JSON.stringify(projects)).byteLength +
-      attachments.reduce((total, bytes) => total + bytes.byteLength, 0)
+      attachments.reduce(
+        (total, attachment) =>
+          total +
+          (attachment instanceof Uint8Array ? attachment.byteLength : attachment.bytes.byteLength),
+        0,
+      )
     );
   }
 }
@@ -216,6 +254,29 @@ export class IndexedDbProjectStore implements ProjectStore {
 export function createProjectStore(): ProjectStore {
   if (typeof globalThis.indexedDB !== "undefined") return new IndexedDbProjectStore();
   if (typeof globalThis.localStorage !== "undefined") return new LocalStorageProjectStore();
+  return new MemoryProjectStore();
+}
+
+export async function createProjectStoreSafely(): Promise<ProjectStore> {
+  if (typeof globalThis.indexedDB !== "undefined") {
+    try {
+      const indexedDb = new IndexedDbProjectStore();
+      await indexedDb.list();
+      return indexedDb;
+    } catch {
+      // Some private browsing modes expose IndexedDB but reject opening it.
+    }
+  }
+  if (typeof globalThis.localStorage !== "undefined") {
+    try {
+      const probe = "class-a-bridge:storage-probe";
+      globalThis.localStorage.setItem(probe, "1");
+      globalThis.localStorage.removeItem(probe);
+      return new LocalStorageProjectStore();
+    } catch {
+      // Continue to the in-memory session fallback.
+    }
+  }
   return new MemoryProjectStore();
 }
 

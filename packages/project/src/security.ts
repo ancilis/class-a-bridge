@@ -71,6 +71,10 @@ interface EncryptedEnvelope {
   readonly ciphertext: string;
 }
 
+const MIN_PBKDF2_ITERATIONS = 10_000;
+const MAX_PBKDF2_ITERATIONS = 1_000_000;
+const MAX_ENCRYPTED_ENVELOPE_BYTES = 150 * 1024 * 1024;
+
 async function deriveKey(password: string, salt: Uint8Array, iterations: number) {
   const material = await globalThis.crypto.subtle.importKey(
     "raw",
@@ -95,6 +99,9 @@ export async function encryptBundle(
 ): Promise<Uint8Array> {
   if (password.length < 12) throw new Error("Use a password with at least 12 characters.");
   const iterations = options.iterations ?? 310_000;
+  if (iterations < MIN_PBKDF2_ITERATIONS || iterations > MAX_PBKDF2_ITERATIONS) {
+    throw new Error("The cryptographic work factor is outside the supported range.");
+  }
   const salt = globalThis.crypto.getRandomValues(new Uint8Array(16));
   const iv = globalThis.crypto.getRandomValues(new Uint8Array(12));
   const key = await deriveKey(password, salt, iterations);
@@ -118,6 +125,7 @@ export async function encryptBundle(
 
 export async function decryptBundle(encrypted: Uint8Array, password: string): Promise<Uint8Array> {
   try {
+    if (encrypted.byteLength > MAX_ENCRYPTED_ENVELOPE_BYTES) throw new Error("Envelope too large");
     const parsed = JSON.parse(textDecoder.decode(encrypted)) as Partial<EncryptedEnvelope>;
     if (
       parsed.magic !== "CLASSABRIDGE-ENC" ||
@@ -125,8 +133,13 @@ export async function decryptBundle(encrypted: Uint8Array, password: string): Pr
       parsed.algorithm !== "AES-256-GCM" ||
       parsed.kdf !== "PBKDF2-HMAC-SHA-256" ||
       typeof parsed.iterations !== "number" ||
+      !Number.isInteger(parsed.iterations) ||
+      parsed.iterations < MIN_PBKDF2_ITERATIONS ||
+      parsed.iterations > MAX_PBKDF2_ITERATIONS ||
       typeof parsed.salt !== "string" ||
+      parsed.salt.length > 64 ||
       typeof parsed.iv !== "string" ||
+      parsed.iv.length > 64 ||
       typeof parsed.ciphertext !== "string"
     ) {
       throw new Error("Invalid envelope");

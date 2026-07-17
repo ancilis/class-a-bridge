@@ -9,7 +9,16 @@ describe("BridgeProject", () => {
     expect(project.metadata).toEqual(
       expect.objectContaining({ schemaVersion: 1, ruleCatalogVersion: "2026.07.14.01" }),
     );
+    expect(project.approvals).toEqual([]);
     expect(() => BridgeProjectSchema.parse({ ...project, injected: true })).toThrow();
+  });
+
+  it("requires a visible watermark for fictional sample projects", () => {
+    const project = createEmptyProject("Sample", "Fictional Co");
+    project.metadata.isSample = true;
+    expect(() => BridgeProjectSchema.parse(project)).toThrow(/watermark/iu);
+    project.metadata.watermark = "Fictional example — not for submission.";
+    expect(BridgeProjectSchema.parse(project)).toEqual(project);
   });
 
   it("migrates legacy projects and records migration history", () => {

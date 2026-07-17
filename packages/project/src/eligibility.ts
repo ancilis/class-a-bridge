@@ -123,11 +123,13 @@ export function evaluateEligibility(input: Record<string, unknown>): Preliminary
 
   for (const question of ELIGIBILITY_QUESTIONS) {
     const value = answers[question.id];
-    const concerning =
-      value === "not_sure" ||
-      (question.id === "federal_differs" ? value === "yes" : value === "no") ||
-      ((["carved_out", "material_exceptions"] as EligibilityQuestionId[]).includes(question.id) &&
-        value === "yes");
+    const adverseAnswer =
+      question.id === "federal_differs" ||
+      question.id === "carved_out" ||
+      question.id === "material_exceptions"
+        ? value === "yes"
+        : value === "no";
+    const concerning = value === "not_sure" || adverseAnswer;
     if (concerning) {
       const uncertain = value === "not_sure";
       const summary = uncertain

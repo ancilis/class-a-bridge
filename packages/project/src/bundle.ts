@@ -2,12 +2,7 @@ import { strFromU8, strToU8, unzipSync, zipSync } from "fflate";
 import { z } from "zod";
 
 import { migrateProject } from "./migrations";
-import {
-  BridgeProjectSchema,
-  PROJECT_SCHEMA_VERSION,
-  RULE_CATALOG_VERSION,
-  type BridgeProject,
-} from "./model";
+import { BridgeProjectSchema, PROJECT_SCHEMA_VERSION, type BridgeProject } from "./model";
 import { safeFilename, sha256Hex } from "./security";
 
 const MAX_ARCHIVE_ENTRIES = 200;
@@ -20,6 +15,7 @@ const BundleFileSchema = z
     sha256: z.string().regex(/^[a-f0-9]{64}$/u),
     bytes: z.number().int().nonnegative(),
     kind: z.enum(["project", "attachment", "migration", "generated_output"]),
+    logicalId: z.string().min(1).optional(),
   })
   .strict();
 
@@ -29,8 +25,8 @@ export const ProjectBundleManifestSchema = z
     formatVersion: z.literal(1),
     createdAt: z.string().datetime(),
     projectId: z.string().min(1),
-    schemaVersion: z.literal(PROJECT_SCHEMA_VERSION),
-    ruleCatalogVersion: z.literal(RULE_CATALOG_VERSION),
+    schemaVersion: z.number().int().nonnegative().max(PROJECT_SCHEMA_VERSION),
+    ruleCatalogVersion: z.string().min(1),
     files: z.array(BundleFileSchema).max(MAX_ARCHIVE_ENTRIES),
     migrationHistory: z.array(
       z
@@ -104,6 +100,7 @@ export async function exportProjectBundle(
     path: string,
     bytes: Uint8Array,
     kind: ProjectBundleManifest["files"][number]["kind"],
+    logicalId?: string,
   ) => {
     if (!safeArchivePath(path)) throw new Error(`Unsafe project bundle path: ${path}`);
     if (bytes.byteLength > MAX_SINGLE_FILE_BYTES)
@@ -111,7 +108,13 @@ export async function exportProjectBundle(
     if (paths.has(path)) throw new Error(`Duplicate project bundle path: ${path}`);
     paths.add(path);
     archive[path] = bytes;
-    files.push({ path, sha256: await sha256Hex(bytes), bytes: bytes.byteLength, kind });
+    files.push({
+      path,
+      sha256: await sha256Hex(bytes),
+      bytes: bytes.byteLength,
+      kind,
+      ...(logicalId ? { logicalId } : {}),
+    });
   };
 
   await addFile("project/project.json", strToU8(JSON.stringify(project, null, 2)), "project");
@@ -131,12 +134,12 @@ export async function exportProjectBundle(
     const path = uniquePath("attachments", attachment.id, attachment.fileName, paths);
     // uniquePath reserves the path; addFile performs the canonical duplicate check.
     paths.delete(path);
-    await addFile(path, attachment.bytes, "attachment");
+    await addFile(path, attachment.bytes, "attachment", attachment.id);
   }
   for (const output of options.generatedOutputs ?? []) {
     const path = uniquePath("generated", output.id, output.fileName, paths);
     paths.delete(path);
-    await addFile(path, output.bytes, "generated_output");
+    await addFile(path, output.bytes, "generated_output", output.id);
   }
 
   const expandedBytes = files.reduce((total, file) => total + file.bytes, 0);
@@ -176,9 +179,10 @@ export async function importProjectBundle(input: Uint8Array): Promise<ImportedPr
       if (
         entryCount > MAX_ARCHIVE_ENTRIES ||
         file.originalSize > MAX_SINGLE_FILE_BYTES ||
-        expandedBytes > MAX_EXPANDED_BYTES
+        expandedBytes > MAX_EXPANDED_BYTES ||
+        (file.originalSize > 1024 * 1024 && file.originalSize / Math.max(file.size, 1) > 100)
       ) {
-        throw new Error("Project bundle exceeds safe import limits.");
+        throw new Error("Project bundle exceeds safe import or compression-ratio limits.");
       }
       return true;
     },
@@ -218,7 +222,10 @@ export async function importProjectBundle(input: Uint8Array): Promise<ImportedPr
   } catch {
     throw new Error("Project bundle contains invalid or unsupported project data.");
   }
-  if (project.metadata.id !== manifest.projectId)
+  if (
+    manifest.schemaVersion === PROJECT_SCHEMA_VERSION &&
+    project.metadata.id !== manifest.projectId
+  )
     throw new Error("Project bundle identity does not match its manifest.");
 
   const attachments = new Map<string, Uint8Array>();
@@ -226,8 +233,9 @@ export async function importProjectBundle(input: Uint8Array): Promise<ImportedPr
   for (const file of manifest.files) {
     const bytes = archive[file.path];
     if (!bytes) continue;
-    if (file.kind === "attachment") attachments.set(file.path, bytes.slice());
-    if (file.kind === "generated_output") generatedOutputs.set(file.path, bytes.slice());
+    if (file.kind === "attachment") attachments.set(file.logicalId ?? file.path, bytes.slice());
+    if (file.kind === "generated_output")
+      generatedOutputs.set(file.logicalId ?? file.path, bytes.slice());
   }
   return { project, manifest, attachments, generatedOutputs };
 }
@@ -270,5 +278,6 @@ export function projectForAdvisor(projectInput: BridgeProject): BridgeProject {
     delete redacted.content;
     return redacted;
   });
+  project.approvals = project.approvals.map((approval) => ({ ...approval, notes: "" }));
   return BridgeProjectSchema.parse(project);
 }

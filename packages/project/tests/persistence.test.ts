@@ -44,3 +44,13 @@ describe.each([
     expect(await store.list()).toEqual([]);
   });
 });
+
+it("deletes attachments owned by a deleted project", async () => {
+  const store = new MemoryProjectStore();
+  const project = createEmptyProject("Files", "Acme");
+  await store.save(project);
+  await store.putAttachment("att-owned", new Uint8Array([1, 2, 3]), project.metadata.id);
+  expect(await store.getAttachment("att-owned")).toBeDefined();
+  await store.delete(project.metadata.id);
+  expect(await store.getAttachment("att-owned")).toBeUndefined();
+});

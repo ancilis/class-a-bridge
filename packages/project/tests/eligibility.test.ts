@@ -31,10 +31,22 @@ describe("preliminary eligibility", () => {
   it("returns a likely fit with traceable reasons and exactly three actions", () => {
     const result = evaluateEligibility(strong);
     expect(result.classification).toBe("likely_fit");
+    expect(result.blockers).toEqual([]);
+    expect(result.findings).toHaveLength(1);
+    expect(result.findings[0]?.id).toBe("finding-preliminary-alignment");
     expect(result.recommendedActions).toHaveLength(3);
     expect(result.supportingAnswerIds).toHaveLength(8);
     expect(result.findings.every((finding) => finding.method === "deterministic")).toBe(true);
     expect(result.disclaimer).toMatch(/not a FedRAMP determination/iu);
+  });
+
+  it("treats affirmative carve-outs and exceptions as concerns, not their strong negative answers", () => {
+    expect(evaluateEligibility({ ...strong, carved_out: "yes" }).blockers.length).toBeGreaterThan(
+      0,
+    );
+    expect(
+      evaluateEligibility({ ...strong, material_exceptions: "yes" }).blockers.length,
+    ).toBeGreaterThan(0);
   });
 
   it("classifies stale or non-Type-II starting points as not currently eligible", () => {
