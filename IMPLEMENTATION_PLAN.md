@@ -6,20 +6,20 @@
 
 **Architecture:** A pnpm/Turborepo monorepo separates the statically exported website from the offline Vite/React PWA. Shared packages own UI, dated regulatory content, official schemas, the portable project model, document generation, and fixtures. All assessment data processing, persistence, cryptography, validation, and export occurs in the browser.
 
-**Tech stack:** TypeScript, React, Next.js static export, Vite, vite-plugin-pwa, React Router, Zod, Dexie, PDF.js, AJV, fflate, Web Crypto, pdf-lib, docx, Vitest, React Testing Library, Playwright, axe-core, ESLint, Prettier, pnpm, Turborepo.
+**Tech stack:** TypeScript, React, Next.js static export, Vite with an explicit service worker and hash-based in-app navigation, Zod, `idb`, PDF.js, AJV standalone validators, fflate, Web Crypto, browser print/PDF, minimal Open XML DOCX generation, Vitest, React Testing Library, Playwright, axe-core, ESLint, Prettier, pnpm, and Turborepo.
 
 ---
 
 ## File map
 
 - Root configuration owns workspace scripts, quality gates, policies, and public-repository documentation.
-- `apps/bridge/src/app` owns routing and the application shell; `features/*` owns each guided workflow; `state/*` owns project context only.
+- `apps/bridge/src/App.tsx` owns the application shell and guided screens; `src/lib/*` owns PDF processing, storage/backup orchestration, downloads, and deterministic workspace derivations.
 - `apps/website/app` owns static routes; `content/*` owns reusable editorial data; `components/*` owns website composition.
 - `packages/rules/src/catalog` contains one normalized registry; `scripts/compare-official.ts` is the only update entry point.
 - `packages/schemas/vendor` contains untouched official JSON; `src` contains metadata and validator wiring.
-- `packages/project/src/model` defines portable types; `storage`, `bundle`, and `security` are separate adapters.
-- `packages/documents/src/artifacts` defines artifact models; serializers cannot read storage directly.
-- `packages/testing/src/fixtures` owns fictional test/sample records.
+- `packages/project/src/model.ts` defines portable types; `storage.ts`, `bundle.ts`, `migrations.ts`, `redaction.ts`, and `security.ts` are separate trust-boundary modules.
+- `packages/documents/src` defines artifact models and pure serializers; serializers cannot read browser storage directly.
+- `packages/testing/src/acme.ts` owns the fictional sample record.
 
 ## Task 1: Repository and quality foundation
 
