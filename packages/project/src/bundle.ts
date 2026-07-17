@@ -87,6 +87,82 @@ function uniquePath(prefix: string, id: string, fileName: string, existing: Set<
   return path;
 }
 
+interface AttachmentReference {
+  readonly expectedHashes: Set<string>;
+}
+
+function projectAttachmentReferences(
+  project: BridgeProject,
+): ReadonlyMap<string, AttachmentReference> {
+  const references = new Map<string, AttachmentReference>();
+  const addReference = (logicalId: string, expectedHash?: string) => {
+    const reference = references.get(logicalId) ?? { expectedHashes: new Set<string>() };
+    if (expectedHash) reference.expectedHashes.add(expectedHash);
+    references.set(logicalId, reference);
+  };
+
+  if (project.soc2.sourceReport) {
+    addReference(project.soc2.sourceReport.attachmentId, project.soc2.sourceReport.sha256);
+  }
+  for (const evidence of project.evidence) {
+    if (evidence.attachmentId) addReference(evidence.attachmentId, evidence.sha256);
+  }
+  for (const material of project.materials) {
+    if (material.attachmentId) addReference(material.attachmentId);
+  }
+  return references;
+}
+
+function projectGeneratedOutputHashes(
+  project: BridgeProject,
+): ReadonlyMap<string, ReadonlySet<string>> {
+  const references = new Map<string, Set<string>>();
+  for (const output of project.generatedOutputs) {
+    const hashes = references.get(output.id) ?? new Set<string>();
+    hashes.add(output.sha256);
+    references.set(output.id, hashes);
+  }
+  return references;
+}
+
+function validateIncludedFileReferences(
+  project: BridgeProject,
+  manifest: ProjectBundleManifest,
+): void {
+  const attachmentReferences = projectAttachmentReferences(project);
+  const generatedOutputHashes = projectGeneratedOutputHashes(project);
+
+  for (const file of manifest.files) {
+    if (file.kind === "attachment") {
+      const logicalId = file.logicalId!;
+      const reference = attachmentReferences.get(logicalId);
+      if (!reference) {
+        throw new Error(
+          `Project bundle attachment logical ID ${logicalId} is not referenced by the project.`,
+        );
+      }
+      if ([...reference.expectedHashes].some((expectedHash) => expectedHash !== file.sha256)) {
+        throw new Error(`Project bundle attachment ${logicalId} does not match the project hash.`);
+      }
+    }
+
+    if (file.kind === "generated_output") {
+      const logicalId = file.logicalId!;
+      const expectedHashes = generatedOutputHashes.get(logicalId);
+      if (!expectedHashes) {
+        throw new Error(
+          `Project bundle generated output logical ID ${logicalId} is not referenced by the project.`,
+        );
+      }
+      if ([...expectedHashes].some((expectedHash) => expectedHash !== file.sha256)) {
+        throw new Error(
+          `Project bundle generated output ${logicalId} does not match the project hash.`,
+        );
+      }
+    }
+  }
+}
+
 export async function exportProjectBundle(
   projectInput: BridgeProject,
   options: ProjectBundleOptions = {},
@@ -200,10 +276,23 @@ export async function importProjectBundle(input: Uint8Array): Promise<ImportedPr
     throw new Error("Project bundle manifest is invalid.");
   }
 
-  const declared = new Set(manifest.files.map((file) => file.path));
+  const declared = new Set<string>();
+  const logicalIds = new Set<string>();
   for (const file of manifest.files) {
     if (!safeArchivePath(file.path))
       throw new Error(`Unsafe project bundle manifest path: ${file.path}`);
+    if (declared.has(file.path))
+      throw new Error(`Duplicate project bundle manifest path: ${file.path}`);
+    declared.add(file.path);
+    if (file.kind === "attachment" || file.kind === "generated_output") {
+      if (!file.logicalId)
+        throw new Error(`Project bundle ${file.kind} entries require a logical ID.`);
+    }
+    if (file.logicalId) {
+      if (logicalIds.has(file.logicalId))
+        throw new Error(`Project bundle has a duplicate logical ID: ${file.logicalId}.`);
+      logicalIds.add(file.logicalId);
+    }
     const bytes = archive[file.path];
     if (!bytes || bytes.byteLength !== file.bytes || (await sha256Hex(bytes)) !== file.sha256) {
       throw new Error(`Project bundle integrity check failed for ${file.path}.`);
@@ -228,14 +317,15 @@ export async function importProjectBundle(input: Uint8Array): Promise<ImportedPr
   )
     throw new Error("Project bundle identity does not match its manifest.");
 
+  validateIncludedFileReferences(project, manifest);
+
   const attachments = new Map<string, Uint8Array>();
   const generatedOutputs = new Map<string, Uint8Array>();
   for (const file of manifest.files) {
     const bytes = archive[file.path];
     if (!bytes) continue;
-    if (file.kind === "attachment") attachments.set(file.logicalId ?? file.path, bytes.slice());
-    if (file.kind === "generated_output")
-      generatedOutputs.set(file.logicalId ?? file.path, bytes.slice());
+    if (file.kind === "attachment") attachments.set(file.logicalId!, bytes.slice());
+    if (file.kind === "generated_output") generatedOutputs.set(file.logicalId!, bytes.slice());
   }
   return { project, manifest, attachments, generatedOutputs };
 }
@@ -266,17 +356,25 @@ export function projectForAdvisor(projectInput: BridgeProject): BridgeProject {
     ...exception,
     description: "",
   }));
-  project.requirements = project.requirements.map((requirement) => ({
-    ...requirement,
-    userResponse: "",
-    implementationNarrative: "",
-    verificationNarrative: "",
-    validationNarrative: "",
-    independentVerification: "",
-    independentValidation: "",
-    notes: "",
-    exceptions: [],
-  }));
+  project.requirements = project.requirements.map((requirement) => {
+    const redacted = {
+      ...requirement,
+      ...(requirement.status === "approved_by_provider"
+        ? { status: "needs_expert_review" as const, reviewStatus: "unreviewed" as const }
+        : {}),
+      userResponse: "",
+      implementationNarrative: "",
+      verificationNarrative: "",
+      validationNarrative: "",
+      independentVerification: "",
+      independentValidation: "",
+      notes: "",
+      exceptions: [],
+    };
+    delete redacted.providerApprovedBy;
+    delete redacted.providerApprovedAt;
+    return redacted;
+  });
   project.evidence = project.evidence.map((item) => {
     const redacted = { ...item, description: "", notes: "" };
     delete redacted.attachmentId;
