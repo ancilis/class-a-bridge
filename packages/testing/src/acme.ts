@@ -128,6 +128,55 @@ function createAcmeMetricsProject(): BridgeProject {
     handlesFederalData: "yes",
     website: "https://example.com/acme-metrics/cloud",
   };
+  project.packageInputs = {
+    certificationPackageOverview: {
+      fedRampPackageId: "ACME-AMC-FICTIONAL",
+      ueiNumber: "FICTIONAL123",
+      website: "https://example.com/acme-metrics/cloud",
+      deploymentModel: "Public Cloud",
+      businessCategories: ["Data Analytics"],
+      securityContact: {
+        name: "Morgan Reyes",
+        email: "security@example.com",
+        phone: "+1-202-555-0100",
+      },
+      salesContact: {
+        name: "Avery Chen",
+        email: "federal-sales@example.com",
+        phone: "+1-202-555-0101",
+      },
+      trustCenterAuthenticationRequired: true,
+      trustCenterAccessInstructions:
+        "Fictional reviewers request access from the provider contact.",
+      nextOngoingCertificationReportDate: "2026-10-15",
+    },
+    securityDecisionRecord: {
+      certificationPackageOverviewUri: "./certification-package-overview.json",
+      portsAndProtocols: [
+        {
+          id: "port-https",
+          serviceName: "HTTPS",
+          portNumber: "443",
+          transportProtocol: "TCP",
+          encryption: "TLS 1.3",
+          purpose: "Fictional customer and administrative web traffic.",
+        },
+      ],
+    },
+    ongoingCertificationReport: {
+      certificationPackageOverviewUri: "./certification-package-overview.json",
+      reportFrom: "2026-07-01",
+      reportTo: "2026-09-30",
+      planningHorizonThrough: "2027-03-31",
+      certificationDataChanges: ["No fictional certification-data changes recorded."],
+      plannedChanges: ["Review passwordless coverage for administrative recovery paths."],
+      acceptedVulnerabilitiesSummary:
+        "No fictional accepted vulnerabilities are included in this sample.",
+      transformativeChanges: [],
+      updatedRecommendations: ["Close the access-removal evidence gap."],
+      activeAgencies: [],
+    },
+  };
 
   project.eligibility.answers = Object.entries(answerValues).map(([questionId, value]) => ({
     questionId: questionId as EligibilityQuestionId,

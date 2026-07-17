@@ -107,6 +107,67 @@ const OfferingSchema = z
   })
   .strict();
 
+const PackageContactSchema = z
+  .object({ name: z.string(), email: z.string(), phone: z.string() })
+  .strict();
+
+const PackageInputsSchema = z
+  .object({
+    certificationPackageOverview: z
+      .object({
+        fedRampPackageId: z.string(),
+        ueiNumber: z.string(),
+        website: z.string(),
+        deploymentModel: z.enum([
+          "",
+          "Public Cloud",
+          "Government-Only Cloud",
+          "Hybrid Cloud",
+          "Community Cloud",
+          "Government Community Cloud",
+        ]),
+        businessCategories: z.array(z.string()),
+        securityContact: PackageContactSchema,
+        salesContact: PackageContactSchema,
+        trustCenterAuthenticationRequired: z.boolean(),
+        trustCenterAccessInstructions: z.string(),
+        nextOngoingCertificationReportDate: z.string(),
+      })
+      .strict(),
+    securityDecisionRecord: z
+      .object({
+        certificationPackageOverviewUri: z.string(),
+        portsAndProtocols: z.array(
+          z
+            .object({
+              id: z.string(),
+              serviceName: z.string(),
+              portNumber: z.string(),
+              transportProtocol: z.string(),
+              encryption: z.string(),
+              purpose: z.string(),
+            })
+            .strict(),
+        ),
+      })
+      .strict(),
+    ongoingCertificationReport: z
+      .object({
+        certificationPackageOverviewUri: z.string(),
+        reportFrom: z.string(),
+        reportTo: z.string(),
+        planningHorizonThrough: z.string(),
+        certificationDataChanges: z.array(z.string()),
+        plannedChanges: z.array(z.string()),
+        acceptedVulnerabilitiesSummary: z.string(),
+        transformativeChanges: z.array(z.string()),
+        updatedRecommendations: z.array(z.string()),
+        activeAgencies: z.array(z.string()),
+      })
+      .strict(),
+  })
+  .strict();
+
 const EligibilityAnswerSchema = z
   .object({
     questionId: EligibilityQuestionIdSchema,
@@ -409,6 +470,7 @@ export const BridgeProjectSchema = z
     metadata: ProjectMetadataSchema,
     organization: OrganizationSchema,
     offering: OfferingSchema,
+    packageInputs: PackageInputsSchema,
     eligibility: z
       .object({
         answers: z.array(EligibilityAnswerSchema),
@@ -477,6 +539,36 @@ export function createEmptyProject(name: string, organizationName: string): Brid
       deploymentModel: "",
       federalUseCase: "",
       handlesFederalData: "not_sure",
+    },
+    packageInputs: {
+      certificationPackageOverview: {
+        fedRampPackageId: "",
+        ueiNumber: "",
+        website: "",
+        deploymentModel: "",
+        businessCategories: [],
+        securityContact: { name: "", email: "", phone: "" },
+        salesContact: { name: "", email: "", phone: "" },
+        trustCenterAuthenticationRequired: false,
+        trustCenterAccessInstructions: "",
+        nextOngoingCertificationReportDate: "",
+      },
+      securityDecisionRecord: {
+        certificationPackageOverviewUri: "",
+        portsAndProtocols: [],
+      },
+      ongoingCertificationReport: {
+        certificationPackageOverviewUri: "",
+        reportFrom: "",
+        reportTo: "",
+        planningHorizonThrough: "",
+        certificationDataChanges: [],
+        plannedChanges: [],
+        acceptedVulnerabilitiesSummary: "",
+        transformativeChanges: [],
+        updatedRecommendations: [],
+        activeAgencies: [],
+      },
     },
     eligibility: { answers: [], history: [] },
     soc2: {

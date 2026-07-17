@@ -248,6 +248,17 @@ export async function importProjectBundle(input: Uint8Array): Promise<ImportedPr
 export function projectForAdvisor(projectInput: BridgeProject): BridgeProject {
   const project = structuredClone(BridgeProjectSchema.parse(projectInput));
   project.notes = "";
+  project.packageInputs.certificationPackageOverview.ueiNumber = "";
+  project.packageInputs.certificationPackageOverview.securityContact = {
+    name: "",
+    email: "",
+    phone: "",
+  };
+  project.packageInputs.certificationPackageOverview.salesContact = {
+    name: "",
+    email: "",
+    phone: "",
+  };
   delete project.soc2.sourceReport;
   project.soc2.extractionCandidates = [];
   project.soc2.controls = project.soc2.controls.map((control) => ({ ...control, excerpt: "" }));
