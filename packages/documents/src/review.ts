@@ -113,13 +113,27 @@ function freshness(project: BridgeProject, generatedAt: string): PackageFreshnes
   );
   if (freshnessAnswer?.value === "no") return "stale";
   if (project.evidence.some((item) => item.reviewDate && item.reviewDate < date)) return "stale";
+
+  const reportDate = project.soc2.reportDate ?? project.soc2.reportEnd;
+  const completedAt = reportDate ? new Date(`${reportDate}T00:00:00.000Z`) : undefined;
+  const generated = new Date(generatedAt);
+  if (!completedAt || Number.isNaN(completedAt.getTime()) || completedAt > generated) {
+    return "needs_confirmation";
+  }
+  const expiresAt = new Date(completedAt);
+  expiresAt.setUTCFullYear(expiresAt.getUTCFullYear() + 1);
+  if (generated >= expiresAt) return "stale";
+
+  const agingThrough = new Date(generated);
+  agingThrough.setUTCDate(agingThrough.getUTCDate() + 30);
+  if (expiresAt <= agingThrough) return "aging";
   if (!freshnessAnswer || freshnessAnswer.value === "not_sure") return "needs_confirmation";
-  const threshold = new Date(generatedAt);
-  threshold.setUTCDate(threshold.getUTCDate() + 30);
-  const agingThrough = threshold.toISOString().slice(0, 10);
   if (
     project.evidence.some(
-      (item) => item.reviewDate && item.reviewDate >= date && item.reviewDate <= agingThrough,
+      (item) =>
+        item.reviewDate &&
+        item.reviewDate >= date &&
+        item.reviewDate <= agingThrough.toISOString().slice(0, 10),
     )
   ) {
     return "aging";

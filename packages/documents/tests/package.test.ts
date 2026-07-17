@@ -74,6 +74,44 @@ describe("preparation package", () => {
     expect(checklist.providerSubmissionReminder).toContain("provider must submit");
   });
 
+  it("recalculates SOC 2 freshness from report dates instead of trusting a historical answer", () => {
+    const project = createDocumentProject();
+    project.eligibility.answers.push({
+      questionId: "soc2_fresh",
+      value: "yes",
+      answeredAt: "2025-01-01T00:00:00.000Z",
+    });
+    project.soc2.reportDate = "2025-07-01";
+    const official = createOfficialDocuments(project, {
+      generatedAt: GENERATED_AT,
+      ...OFFICIAL_OPTIONS,
+    });
+
+    expect(
+      createFinalReviewChecklist(project, summarizeValidation(official), GENERATED_AT)
+        .packageFreshness,
+    ).toBe("stale");
+  });
+
+  it("flags a report approaching the 12-month boundary as aging", () => {
+    const project = createDocumentProject();
+    project.eligibility.answers.push({
+      questionId: "soc2_fresh",
+      value: "yes",
+      answeredAt: "2026-01-01T00:00:00.000Z",
+    });
+    project.soc2.reportDate = "2025-08-01";
+    const official = createOfficialDocuments(project, {
+      generatedAt: GENERATED_AT,
+      ...OFFICIAL_OPTIONS,
+    });
+
+    expect(
+      createFinalReviewChecklist(project, summarizeValidation(official), GENERATED_AT)
+        .packageFreshness,
+    ).toBe("aging");
+  });
+
   it("flags broken scope, mapping, and evidence relationship references", () => {
     const project = createDocumentProject();
     project.scope.relationships[0]!.toId = "missing-resource";
