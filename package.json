@@ -28,9 +28,10 @@
     "test:a11y": "playwright test e2e/accessibility-keyboard.spec.ts --project=chromium",
     "test:e2e": "playwright test",
     "test:cross-browser": "playwright test e2e/cross-browser.spec.ts",
+    "test:links": "pnpm --filter @class-a-bridge/website check:release-links",
     "test:release": "node --test scripts/assemble-release.test.mjs",
     "typecheck": "turbo run typecheck",
-    "verify": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm test:release && pnpm build && pnpm release:assemble"
+    "verify": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm test:release && pnpm build && pnpm release:assemble && pnpm test:links"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.12.1",

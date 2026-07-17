@@ -57,6 +57,37 @@ interface Detector {
   readonly value: (match: RegExpExecArray) => string;
 }
 
+const MONTH_NUMBER: Readonly<Record<string, string>> = {
+  january: "01",
+  february: "02",
+  march: "03",
+  april: "04",
+  may: "05",
+  june: "06",
+  july: "07",
+  august: "08",
+  september: "09",
+  october: "10",
+  november: "11",
+  december: "12",
+};
+
+function isoDate(input: string): string {
+  const match = /^([A-Z][a-z]+)\s+(\d{1,2}),?\s+(20\d{2})$/u.exec(input.trim());
+  if (!match) return input.trim();
+  const month = MONTH_NUMBER[(match[1] ?? "").toLowerCase()];
+  const day = Number(match[2]);
+  const year = Number(match[3]);
+  if (!month || day < 1 || day > 31) return input.trim();
+  const normalized = `${year}-${month}-${String(day).padStart(2, "0")}`;
+  const parsed = new Date(`${normalized}T00:00:00Z`);
+  return parsed.getUTCFullYear() === year &&
+    parsed.getUTCMonth() + 1 === Number(month) &&
+    parsed.getUTCDate() === day
+    ? normalized
+    : input.trim();
+}
+
 const detectors: readonly Detector[] = [
   {
     field: "SOC 2 report type",
@@ -65,11 +96,25 @@ const detectors: readonly Detector[] = [
     value: () => "SOC 2 Type II",
   },
   {
+    field: "Report issuer",
+    pattern:
+      /(?:report\s+issuer|independent\s+service\s+auditor|auditor|issued\s+by)\s*(?::|—|-)\s*([A-Z][A-Za-z0-9&,'’ .-]{1,120}?(?:L\.L\.P\.|L\.L\.C\.|LLP|LLC|P\.?C\.?|PLLC|Inc\.?|Corporation|Company))/iu,
+    confidence: "medium",
+    value: (match) => match[1] ?? match[0],
+  },
+  {
+    field: "Report date",
+    pattern:
+      /(?:report|opinion|issuance)\s+date\s*(?::|—|-)?\s*([A-Z][a-z]+\s+\d{1,2},?\s+20\d{2})/iu,
+    confidence: "high",
+    value: (match) => isoDate(match[1] ?? match[0]),
+  },
+  {
     field: "Report period",
     pattern:
       /(?:period|from)\s+([A-Z][a-z]+\s+\d{1,2},?\s+20\d{2})\s+(?:through|to|—|-)\s+([A-Z][a-z]+\s+\d{1,2},?\s+20\d{2})/iu,
     confidence: "medium",
-    value: (match) => `${match[1] ?? ""} to ${match[2] ?? ""}`,
+    value: (match) => `${isoDate(match[1] ?? "")} to ${isoDate(match[2] ?? "")}`,
   },
   {
     field: "System or service name",
@@ -101,6 +146,12 @@ const detectors: readonly Detector[] = [
     pattern: /\bcarve[- ]out (?:method|treatment)\b/iu,
     confidence: "high",
     value: () => "Carve-out treatment mentioned",
+  },
+  {
+    field: "Inclusive treatment",
+    pattern: /\binclusive (?:method|treatment)\b/iu,
+    confidence: "high",
+    value: () => "Inclusive treatment mentioned",
   },
   {
     field: "Auditor exception",
