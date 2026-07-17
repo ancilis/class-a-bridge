@@ -118,6 +118,7 @@ const PackageInputsSchema = z
         fedRampPackageId: z.string(),
         ueiNumber: z.string(),
         website: z.string(),
+        logoUrl: z.string().default(""),
         deploymentModel: z.enum([
           "",
           "Public Cloud",
@@ -545,6 +546,7 @@ export function createEmptyProject(name: string, organizationName: string): Brid
         fedRampPackageId: "",
         ueiNumber: "",
         website: "",
+        logoUrl: "",
         deploymentModel: "",
         businessCategories: [],
         securityContact: { name: "", email: "", phone: "" },

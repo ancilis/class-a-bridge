@@ -34,4 +34,17 @@ describe("BridgeProject", () => {
     ]);
     expect(BridgeProjectSchema.parse(migrated)).toEqual(migrated);
   });
+
+  it("defaults the optional package logo field when an older v1 project is restored", () => {
+    const project = createEmptyProject("Existing", "Existing Co");
+    const legacyShape = structuredClone(project) as Record<string, unknown>;
+    const packageInputs = legacyShape.packageInputs as {
+      certificationPackageOverview: Record<string, unknown>;
+    };
+    delete packageInputs.certificationPackageOverview.logoUrl;
+
+    expect(
+      BridgeProjectSchema.parse(legacyShape).packageInputs.certificationPackageOverview.logoUrl,
+    ).toBe("");
+  });
 });

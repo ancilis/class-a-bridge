@@ -20,5 +20,17 @@ describe("Acme Metrics fictional workspace", () => {
     expect(ACME_METRICS_PROJECT.evidence.length).toBeGreaterThan(2);
     expect(ACME_METRICS_PROJECT.actions.length).toBeGreaterThan(2);
     expect(ACME_METRICS_PROJECT.advisorFlags.length).toBeGreaterThan(0);
+    expect(ACME_METRICS_PROJECT.packageInputs.certificationPackageOverview).toEqual(
+      expect.objectContaining({
+        logoUrl: expect.stringMatching(/^https:\/\//u),
+        businessCategories: ["Analytics"],
+      }),
+    );
+    expect(
+      ACME_METRICS_PROJECT.packageInputs.certificationPackageOverview.securityContact.phone,
+    ).toMatch(/^\d{3}-\d{3}-\d{4}$/u);
+    expect(
+      ACME_METRICS_PROJECT.packageInputs.securityDecisionRecord.certificationPackageOverviewUri,
+    ).toMatch(/^https:\/\//u);
   });
 });

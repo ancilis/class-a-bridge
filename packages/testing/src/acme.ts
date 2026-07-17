@@ -133,17 +133,18 @@ function createAcmeMetricsProject(): BridgeProject {
       fedRampPackageId: "ACME-AMC-FICTIONAL",
       ueiNumber: "FICTIONAL123",
       website: "https://example.com/acme-metrics/cloud",
+      logoUrl: "https://example.com/acme-metrics/fictional-logo.svg",
       deploymentModel: "Public Cloud",
-      businessCategories: ["Data Analytics"],
+      businessCategories: ["Analytics"],
       securityContact: {
         name: "Morgan Reyes",
         email: "security@example.com",
-        phone: "+1-202-555-0100",
+        phone: "202-555-0100",
       },
       salesContact: {
         name: "Avery Chen",
         email: "federal-sales@example.com",
-        phone: "+1-202-555-0101",
+        phone: "202-555-0101",
       },
       trustCenterAuthenticationRequired: true,
       trustCenterAccessInstructions:
@@ -151,7 +152,8 @@ function createAcmeMetricsProject(): BridgeProject {
       nextOngoingCertificationReportDate: "2026-10-15",
     },
     securityDecisionRecord: {
-      certificationPackageOverviewUri: "./certification-package-overview.json",
+      certificationPackageOverviewUri:
+        "https://example.com/acme-metrics/package/certification-package-overview.json",
       portsAndProtocols: [
         {
           id: "port-https",
@@ -164,7 +166,8 @@ function createAcmeMetricsProject(): BridgeProject {
       ],
     },
     ongoingCertificationReport: {
-      certificationPackageOverviewUri: "./certification-package-overview.json",
+      certificationPackageOverviewUri:
+        "https://example.com/acme-metrics/package/certification-package-overview.json",
       reportFrom: "2026-07-01",
       reportTo: "2026-09-30",
       planningHorizonThrough: "2027-03-31",
