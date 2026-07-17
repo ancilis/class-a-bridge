@@ -21,10 +21,20 @@ test("assembles the website and PWA into one static release", async () => {
     await writeFile(path.join(bridge, "sw.js"), "// service worker");
     await writeFile(path.join(bridge, "assets", "app.js"), "export {};");
 
-    const result = await assembleRelease({ root, website, bridge, destination });
+    const result = await assembleRelease({
+      root,
+      website,
+      bridge,
+      destination,
+      sourceArchiveBytes: new Uint8Array([31, 139, 8, 0]),
+    });
 
     assert.equal(await readFile(path.join(destination, "index.html"), "utf8"), "marketing");
     assert.equal(await readFile(path.join(destination, "app", "index.html"), "utf8"), "workspace");
+    assert.deepEqual(
+      await readFile(path.join(destination, "downloads", "class-a-bridge-1.0.0-source.tar.gz")),
+      Buffer.from([31, 139, 8, 0]),
+    );
     assert.match(await readFile(path.join(destination, "_headers"), "utf8"), /\/app\/\*/u);
     assert.match(await readFile(path.join(destination, "_headers"), "utf8"), /connect-src 'none'/u);
     assert.equal(result.destination, destination);

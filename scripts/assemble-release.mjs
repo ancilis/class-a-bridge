@@ -1,9 +1,12 @@
+import { execFile } from "node:child_process";
 import { cp, mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { promisify } from "node:util";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const defaultRoot = path.resolve(scriptDirectory, "..");
+const execFileAsync = promisify(execFile);
 
 const APP_HEADERS = `
 /app/*
@@ -47,6 +50,7 @@ export async function assembleRelease({
   website = path.join(root, "apps", "website", "out"),
   bridge = path.join(root, "apps", "bridge", "dist"),
   destination = path.join(root, "dist", "class-a-bridge"),
+  sourceArchiveBytes,
 } = {}) {
   const resolvedRoot = path.resolve(root);
   const resolvedWebsite = path.resolve(website);
@@ -69,6 +73,22 @@ export async function assembleRelease({
   await cp(resolvedWebsite, resolvedDestination, { recursive: true });
   await cp(resolvedBridge, path.join(resolvedDestination, "app"), { recursive: true });
 
+  const downloadsDirectory = path.join(resolvedDestination, "downloads");
+  const sourceArchivePath = path.join(downloadsDirectory, "class-a-bridge-1.0.0-source.tar.gz");
+  await mkdir(downloadsDirectory, { recursive: true });
+  if (sourceArchiveBytes) {
+    await writeFile(sourceArchivePath, sourceArchiveBytes);
+  } else {
+    await execFileAsync("git", [
+      "-C",
+      resolvedRoot,
+      "archive",
+      "--format=tar.gz",
+      `--output=${sourceArchivePath}`,
+      "HEAD",
+    ]);
+  }
+
   const headersPath = path.join(resolvedDestination, "_headers");
   const websiteHeaders = await readFile(headersPath, "utf8").catch(() => "");
   await writeFile(headersPath, `${websiteHeaders.trimEnd()}\n${APP_HEADERS.trimStart()}`);
@@ -82,6 +102,7 @@ export async function assembleRelease({
         bridgePath: "/app/",
         websiteFiles,
         bridgeFiles,
+        sourceArchive: "/downloads/class-a-bridge-1.0.0-source.tar.gz",
         projectDataTransmission: "none during normal assessment use",
       },
       null,
