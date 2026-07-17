@@ -18,13 +18,16 @@
     "rules:compare": "pnpm --filter @class-a-bridge/rules rules:compare",
     "schemas:verify": "pnpm --filter @class-a-bridge/schemas schemas:verify",
     "test": "turbo run test",
-    "test:a11y": "turbo run test:a11y",
-    "test:e2e": "turbo run test:e2e",
+    "test:a11y": "playwright test e2e/accessibility-keyboard.spec.ts --project=chromium",
+    "test:e2e": "playwright test",
+    "test:cross-browser": "playwright test e2e/cross-browser.spec.ts",
     "typecheck": "turbo run typecheck",
     "verify": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.12.1",
     "@eslint/js": "10.0.1",
+    "@playwright/test": "1.61.1",
     "@types/node": "24.10.4",
     "eslint": "10.7.0",
     "globals": "17.3.0",
