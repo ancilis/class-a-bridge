@@ -17,13 +17,13 @@ The default application includes:
 - no third-party scripts, fonts, or trackers; and
 - no automatic assessor, advisor, or Ancilis sharing.
 
-Projects and selected attachments are stored in browser storage on the device. Anyone with access to the same browser profile or an exported backup may be able to access that information. Users should use an access-controlled device, export backups deliberately, choose password-protected export for sensitive transfer, and delete local data when the device is shared or retired.
+Projects, selected attachments, and retained generated packages are stored in browser storage on the device. Anyone with access to the same browser profile or an exported backup may be able to access that information. Users should use an access-controlled device, export backups deliberately, choose password-protected export for sensitive transfer, and delete local data when the device is shared or retired.
 
 Clearing browser data, private-browsing expiration, storage eviction, or device loss can erase local work. A standard or password-protected `.classabridge` backup is the recovery mechanism. Passwords are not stored and cannot be recovered.
 
 ## Exports and sharing
 
-Export is initiated by the user. Standard project export includes the project record and only attachments the user selects. Redacted advisor handoff excludes original reports, attachments, report excerpts, and sensitive notes by default. Users must review the export manifest before sharing.
+Export is initiated by the user. Standard project export includes the project record and generated outputs selected by default; users can deselect an output that should remain only in that browser. A generated package may contain attachments that the user explicitly selected during package generation, so the backup screen discloses this before export. Original SOC 2 reports and standalone evidence attachments remain opt-in. Redacted advisor handoff excludes original reports, attachments, report excerpts, generated bodies, and sensitive notes by default. Users must review the export manifest before sharing.
 
 Generated reports may contain user-entered project information. Download locations, browser history, print queues, email systems, shared drives, and recipient systems are outside the application's control.
 

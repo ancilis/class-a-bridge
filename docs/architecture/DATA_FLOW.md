@@ -86,18 +86,19 @@ The privacy indicator, save state, storage panel, export, and deletion controls 
 3. JSON outputs are validated against precompiled local official schemas.
 4. Issues point back to an editable route. Failure does not alter source project fields or completion status.
 5. The user explicitly downloads individual reports or a package ZIP.
+6. A generated package record stores its hash and validation state. IndexedDB-capable storage retains the exact ZIP under the output identifier; the metadata-only fallback retains the record and tells the user to preserve the downloaded ZIP.
 
 Original evidence and the source SOC 2 report are excluded from a package unless the user selects files for inclusion.
 
 ## Flow 5: project backup and restore
 
-1. The user chooses standard or password-protected export and attachment selections.
-2. The app creates declared archive paths, a manifest, hashes, migration metadata, and checksums.
+1. The user chooses standard or password-protected export, reviews generated outputs selected by default, and makes any opt-in attachment selections.
+2. The app verifies selected output and attachment bytes against their project-record hashes, then creates declared archive paths, a manifest, migration metadata, and checksums.
 3. Password protection, when chosen, encrypts the complete bundle locally with Web Crypto.
 4. The browser downloads the file.
 5. On import, the app limits and validates the envelope/archive, verifies every declared hash, migrates and validates a temporary project, then asks/acts to replace active state.
 
-Invalid imports do not partially write attachments or replace the current project.
+Invalid imports do not partially write attachments, generated outputs, or replace the current project. Restore stages both byte classes transactionally, rejects identifier collisions, removes superseded owned bytes, and rolls back on failure.
 
 ## Flow 6: redacted advisor handoff
 

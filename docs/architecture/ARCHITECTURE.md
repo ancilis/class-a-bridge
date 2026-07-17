@@ -52,7 +52,7 @@ The canonical assembled build places the website at `/` and bridge at `/app/`, w
 
 ## Project aggregate and derivation
 
-`BridgeProject` is the portable aggregate root. It contains version metadata, organization/offering, eligibility answers and results, SOC 2 metadata and extraction candidates, scope resources and relationships, assessment materials, requirement work, evidence metadata, mappings, actions, generated-output metadata, approvals, snapshots, and migration history.
+`BridgeProject` is the portable aggregate root. It contains version metadata, organization/offering, eligibility answers and results, SOC 2 metadata and extraction candidates, scope resources and relationships, assessment materials, requirement work, evidence metadata, mappings, actions, generated-output metadata, approvals, snapshots, and migration history. Binary generated packages are stored separately under content-addressed identifiers and are bound back to project records by SHA-256.
 
 All imported or restored data passes strict Zod schemas. Unknown fields are rejected at trust boundaries. Migrations produce a new validated object in memory before replacing current state. Attachments are separate from project JSON and referenced by identifiers and SHA-256 hashes.
 
@@ -74,10 +74,10 @@ checksums.txt
 project/project.json
 migration/metadata.json
 attachments/                 # only explicit selections
-generated/                   # only explicit selections
+generated/                   # selected generated outputs; selected by default in the UI
 ```
 
-The manifest records format/schema/catalog versions, project identity, migration history, logical identifiers, byte sizes, and SHA-256 hashes. Import rejects unsafe/duplicate paths, undeclared files, too many files, large expanded entries, excessive total size, suspicious compression ratios, invalid manifests, hash differences, unsupported migrations, and project/manifest identity disagreement.
+The manifest records format/schema/catalog versions, project identity, migration history, logical identifiers, byte sizes, and SHA-256 hashes. Import rejects unsafe/duplicate paths, undeclared files, duplicate logical identifiers, too many files, large expanded entries, excessive total size, suspicious compression ratios, invalid manifests, hash differences, unsupported migrations, output/attachment identifier collisions, and project/manifest identity disagreement. Attachments remain opt-in; generated outputs are selected by default and can be deselected when a retained package contains material that should not travel in a backup.
 
 Password protection wraps the complete standard bundle in a versioned envelope using PBKDF2-HMAC-SHA-256 and AES-256-GCM through Web Crypto. Salt and initialization vector are random. Passwords and derived keys are never stored. A redacted advisor projection removes source documents, attachments, excerpts, sensitive notes, contact details, and generated bodies unless the user makes a separate inclusion choice.
 
@@ -85,7 +85,7 @@ Password protection wraps the complete standard bundle in a versioned envelope u
 
 Document generators receive an already validated project snapshot and have no storage or network access. They produce an intermediate artifact model, then safe HTML, JSON, CSV, PDF/DOCX where supported, or package ZIP output. HTML escapes project strings; CSV protects formula-significant prefixes; filenames are normalized; JSON is validated against precompiled vendored schemas.
 
-A validation issue includes the document, JSON pointer, friendly expectation, current value, application route, and remediation. Final-review mode copies an immutable project/artifact snapshot and records package version, approvals, verification/validation dates, freshness, placeholders, missing references, validation output, and the provider-submission reminder.
+A validation issue includes the document, JSON pointer, friendly expectation, current value, application route, and remediation. Final-review mode regenerates the package from the current project, records the source-project hash, retains the exact package ZIP under its verified hash when binary browser storage is available, and records package version, approvals, verification/validation dates, freshness, placeholders, missing references, validation output, and the provider-submission reminder. The metadata-only fallback downloads the exact ZIP and clearly warns that only its record and hash remain in browser storage.
 
 ## PDF processing
 

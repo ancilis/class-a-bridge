@@ -5,6 +5,7 @@ import type * as DocumentExports from "@class-a-bridge/documents";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const generatePreparationPackage = vi.hoisted(() => vi.fn());
+const PACKAGE_HASH = "039058c6f2c0cb492c533b0a4d14ef77cc0f78abccced5287d84a1a2011cfb81";
 
 vi.mock("@class-a-bridge/documents", async (importOriginal) => {
   const actual = await importOriginal<typeof DocumentExports>();
@@ -20,10 +21,7 @@ describe("package validation navigation", () => {
       label: "Edit report period",
     });
     expect(
-      validationEditTarget(
-        "ongoing-certification-report",
-        "/plannedCertificationDataChanges",
-      ),
+      validationEditTarget("ongoing-certification-report", "/plannedCertificationDataChanges"),
     ).toMatchObject({
       id: "package-ocr-planned-changes",
       label: "Edit planned certification changes",
@@ -41,7 +39,7 @@ describe("package validation navigation", () => {
       bytes: new Uint8Array([1, 2, 3]),
       fileName: "package.zip",
       mimeType: "application/zip",
-      sha256: "a".repeat(64),
+      sha256: PACKAGE_HASH,
       validation: {
         valid: false,
         documents: [
@@ -51,6 +49,7 @@ describe("package validation navigation", () => {
             issues: [
               {
                 pointer: "/serviceProperties/serviceType",
+                route: "#/package/certification-package-overview/serviceProperties/serviceType",
                 keyword: "minItems",
                 expected: "At least one service model.",
                 current: [],

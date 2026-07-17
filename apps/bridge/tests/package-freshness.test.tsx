@@ -2,7 +2,13 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type * as DocumentExports from "@class-a-bridge/documents";
 import type { PreparationPackage, PreparationPackageOptions } from "@class-a-bridge/documents";
-import { MemoryProjectStore, sha256Hex, type BridgeProject } from "@class-a-bridge/project";
+import {
+  LocalStorageProjectStore,
+  MemoryProjectStore,
+  sha256Hex,
+  type BridgeProject,
+  type ProjectStore,
+} from "@class-a-bridge/project";
 import { ACME_METRICS_PROJECT } from "@class-a-bridge/testing";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -12,6 +18,7 @@ type GeneratePreparationPackage = (
 ) => Promise<PreparationPackage>;
 
 const generatePreparationPackage = vi.hoisted(() => vi.fn<GeneratePreparationPackage>());
+const PACKAGE_HASH = "039058c6f2c0cb492c533b0a4d14ef77cc0f78abccced5287d84a1a2011cfb81";
 
 vi.mock("@class-a-bridge/documents", async (importOriginal) => {
   const actual = await importOriginal<typeof DocumentExports>();
@@ -27,7 +34,7 @@ describe("final-review package freshness", () => {
       bytes: new Uint8Array([1, 2, 3]),
       fileName: "package.zip",
       mimeType: "application/zip",
-      sha256: "a".repeat(64),
+      sha256: PACKAGE_HASH,
       validation: { valid: true, documents: [] },
     } as unknown as PreparationPackage);
     Object.defineProperty(URL, "createObjectURL", {
@@ -77,11 +84,7 @@ describe("final-review package freshness", () => {
       sha256: await sha256Hex(sourceReportBytes),
     };
     await store.save(project);
-    await store.putAttachment(
-      "soc2-package-opt-in",
-      sourceReportBytes,
-      project.metadata.id,
-    );
+    await store.putAttachment("soc2-package-opt-in", sourceReportBytes, project.metadata.id);
     const user = userEvent.setup();
     render(<App storeFactory={() => Promise.resolve(store)} />);
     await user.click(
@@ -111,5 +114,78 @@ describe("final-review package freshness", () => {
         bytes: new Uint8Array([7, 8, 9]),
       }),
     ]);
+  });
+
+  it("retains the exact generated package bytes and binds a final snapshot to them", async () => {
+    const store = new MemoryProjectStore();
+    const project = structuredClone(ACME_METRICS_PROJECT);
+    project.metadata.id = "retained-package-project";
+    await store.save(project);
+    const user = userEvent.setup();
+    render(<App storeFactory={() => Promise.resolve(store)} />);
+
+    await user.click(
+      await screen.findByRole("button", { name: /open saved project Acme Metrics/iu }),
+    );
+    await user.click(screen.getByRole("button", { name: "Package" }));
+    await user.click(
+      screen.getByRole("button", { name: /Create immutable final-review snapshot/iu }),
+    );
+
+    await waitFor(async () => {
+      const saved = await store.load(project.metadata.id);
+      expect(saved?.snapshots.at(-1)?.packageHash).toBe(PACKAGE_HASH);
+      expect(saved?.generatedOutputs).toContainEqual(
+        expect.objectContaining({
+          kind: "preparation_package",
+          format: "zip",
+          sha256: PACKAGE_HASH,
+        }),
+      );
+    });
+    const saved = await store.load(project.metadata.id);
+    const output = saved?.generatedOutputs.find((candidate) => candidate.sha256 === PACKAGE_HASH);
+    expect(output).toBeDefined();
+    expect(await store.getAttachment(output!.id)).toEqual(new Uint8Array([1, 2, 3]));
+    expect(
+      screen.getByRole("button", { name: /Download frozen package version 1\.0/iu }),
+    ).toBeEnabled();
+
+    await user.click(screen.getByRole("button", { name: "Project settings" }));
+    expect(
+      screen.getByRole("checkbox", {
+        name: /Generated output — Preparation package version 1\.0/iu,
+      }),
+    ).toBeChecked();
+    await user.click(screen.getByRole("button", { name: "Export .classabridge" }));
+    expect(
+      await screen.findByText(/backup created with 3 selected generated output/iu),
+    ).toBeInTheDocument();
+  });
+
+  it("discloses metadata-only retention in the browser storage fallback", async () => {
+    const store: ProjectStore = new LocalStorageProjectStore(globalThis.localStorage);
+    const project = structuredClone(ACME_METRICS_PROJECT);
+    project.metadata.id = "fallback-final-snapshot";
+    await store.save(project);
+    const user = userEvent.setup();
+    render(<App storeFactory={() => Promise.resolve(store)} />);
+
+    await user.click(
+      await screen.findByRole("button", { name: /open saved project Acme Metrics/iu }),
+    );
+    await user.click(screen.getByRole("button", { name: "Package" }));
+    await user.click(
+      screen.getByRole("button", { name: /Create immutable final-review snapshot/iu }),
+    );
+
+    expect(
+      await screen.findByText(/storage fallback retained only snapshot metadata and hashes/iu),
+    ).toBeInTheDocument();
+    const saved = await store.load(project.metadata.id);
+    const output = saved?.generatedOutputs.find((candidate) => candidate.sha256 === PACKAGE_HASH);
+    expect(saved?.snapshots.at(-1)?.packageHash).toBe(PACKAGE_HASH);
+    expect(output).toBeDefined();
+    expect(await store.getAttachment(output!.id)).toBeUndefined();
   });
 });

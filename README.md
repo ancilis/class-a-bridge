@@ -83,7 +83,7 @@ The canonical release includes `release-manifest.json` and `/downloads/class-a-b
 
 ## Security and privacy
 
-The bridge has no assessment analytics, remote artificial-intelligence service, third-party document parser, or runtime backend dependency. Files are parsed locally. Project backups are explicit. Attachments and the original SOC 2 report are excluded from advisor handoffs unless the user selects them.
+The bridge has no assessment analytics, remote artificial-intelligence service, third-party document parser, or runtime backend dependency. Files are parsed locally. Project backups are explicit: generated outputs are reviewable selections, while evidence attachments and the original SOC 2 report remain opt-in. Advisor handoffs exclude original reports, attachments, excerpts, and generated bodies by default.
 
 The optional contact handler is isolated and rejects unknown/project fields. Clicking an advisory call to action does not read or transmit a project. Review the [threat model](docs/security/THREAT_MODEL.md), [privacy statement](PRIVACY.md), and [security policy](SECURITY.md) before operating a public deployment.
 

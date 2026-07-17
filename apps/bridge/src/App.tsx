@@ -6,6 +6,7 @@ import {
   generatePreparationPackage,
   REPORT_KINDS,
   type OfficialDocumentOptions,
+  type PreparationPackage,
 } from "@class-a-bridge/documents";
 import {
   BridgeProjectSchema,
@@ -53,7 +54,10 @@ import {
 import { diagnosticReport, downloadBytes, downloadText } from "./lib/download";
 import {
   collectBundleAttachments,
+  collectBundleGeneratedOutputs,
   persistProjectWithAttachmentAtomically,
+  persistProjectWithGeneratedOutputAtomically,
+  referencedGeneratedOutputs,
   referencedLocalAttachments,
   removeEvidenceCandidateLocally,
   restoreImportedProjectAtomically,
@@ -119,10 +123,7 @@ interface ValidationEditTarget {
   readonly label: string;
 }
 
-export function validationEditTarget(
-  documentName: string,
-  pointer: string,
-): ValidationEditTarget {
+export function validationEditTarget(documentName: string, pointer: string): ValidationEditTarget {
   if (documentName === "certification-package-overview") {
     if (pointer.includes("/providerName"))
       return { route: "/settings", id: "settings-organization-name", label: "Edit provider name" };
@@ -278,6 +279,42 @@ function officialDocumentOptions(
 
 function cloneProject(project: BridgeProject) {
   return structuredClone(project);
+}
+
+function generatedPackageOutput(
+  result: PreparationPackage,
+  version: string,
+  generatedAt: string,
+): BridgeProject["generatedOutputs"][number] {
+  return {
+    id: `preparation-package-${result.sha256}`,
+    kind: "preparation_package",
+    title: `Preparation package version ${version}`,
+    format: "zip",
+    generatedAt,
+    sha256: result.sha256,
+    validationStatus: result.validation.valid ? "valid" : "invalid",
+    validationIssues: result.validation.documents.flatMap((document) =>
+      document.issues.map((issue) => ({
+        pointer: issue.pointer,
+        message: `${document.name}: ${issue.resolution}`,
+        route: issue.route,
+      })),
+    ),
+  };
+}
+
+function addGeneratedPackage(
+  project: BridgeProject,
+  result: PreparationPackage,
+  version: string,
+  generatedAt: string,
+) {
+  const output = generatedPackageOutput(result, version, generatedAt);
+  if (!project.generatedOutputs.some((candidate) => candidate.id === output.id)) {
+    project.generatedOutputs.push(output);
+  }
+  return output;
 }
 
 function localErrorMessage(error: unknown, fallback: string) {
@@ -722,6 +759,7 @@ function Shell({
   setRoute,
   update,
   store,
+  persistGeneratedProject,
   onClose,
   onRestore,
   saveState,
@@ -736,6 +774,10 @@ function Shell({
   readonly setRoute: (route: Route) => void;
   readonly update: (recipe: (draft: BridgeProject) => void) => void;
   readonly store: ProjectStore;
+  readonly persistGeneratedProject: (
+    project: BridgeProject,
+    output: { readonly id: string; readonly bytes: Uint8Array },
+  ) => Promise<boolean>;
   readonly onClose: () => void;
   readonly onRestore: (file: File, password: string) => Promise<void>;
   readonly saveState: SaveState;
@@ -757,7 +799,15 @@ function Shell({
     "/requirements": <Requirements project={project} update={update} />,
     "/evidence": <Evidence project={project} update={update} store={store} />,
     "/action-plan": <ActionPlan project={project} update={update} navigate={setRoute} />,
-    "/package": <Package project={project} update={update} store={store} navigate={setRoute} />,
+    "/package": (
+      <Package
+        project={project}
+        update={update}
+        store={store}
+        navigate={setRoute}
+        persistGeneratedProject={persistGeneratedProject}
+      />
+    ),
     "/reports": <Reports project={project} />,
     "/settings": (
       <Settings
@@ -936,9 +986,7 @@ function Overview({
         </Card>
         <Card title="SOC 2 freshness">
           <StatusPill tone={toneFor(soc2Freshness)}>
-            {soc2Freshness === "fresh"
-              ? "Confirmed within window"
-              : statusLabel(soc2Freshness)}
+            {soc2Freshness === "fresh" ? "Confirmed within window" : statusLabel(soc2Freshness)}
           </StatusPill>
           <p>
             {project.soc2.reportEnd
@@ -2930,9 +2978,7 @@ function Evidence({
         validatedExternalUrl = url.toString();
       }
       let hash = await sha256Hex(
-        new TextEncoder().encode(
-          validatedExternalUrl ?? `${title.trim()}|${sourceSystem.trim()}`,
-        ),
+        new TextEncoder().encode(validatedExternalUrl ?? `${title.trim()}|${sourceSystem.trim()}`),
       );
       if (file) {
         if (file.size > 25 * 1024 * 1024)
@@ -3636,17 +3682,23 @@ function Package({
   update,
   store,
   navigate,
+  persistGeneratedProject,
 }: {
   readonly project: BridgeProject;
   readonly update: (recipe: (draft: BridgeProject) => void, updatedAt?: string) => void;
   readonly store: ProjectStore;
   readonly navigate: (route: Route) => void;
+  readonly persistGeneratedProject: (
+    project: BridgeProject,
+    output: { readonly id: string; readonly bytes: Uint8Array },
+  ) => Promise<boolean>;
 }) {
   const [packageResult, setPackageResult] =
     useState<Awaited<ReturnType<typeof generatePreparationPackage>>>();
   const [packageResultProjectUpdatedAt, setPackageResultProjectUpdatedAt] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [retentionNotice, setRetentionNotice] = useState("");
   const [approver, setApprover] = useState(project.organization.accountableExecutive ?? "");
   const [version, setVersion] = useState("1.0");
   const [selectedAttachmentIds, setSelectedAttachmentIds] = useState<ReadonlySet<string>>(
@@ -3680,6 +3732,7 @@ function Package({
   const generate = async () => {
     setBusy(true);
     setError("");
+    setRetentionNotice("");
     try {
       const selectedAttachments = await selectedPackageAttachments();
       const result = await generatePreparationPackage(project, {
@@ -3687,9 +3740,23 @@ function Package({
         officialDocuments: officialDocumentOptions(project),
         selectedAttachments,
       });
+      const generatedAt = new Date().toISOString();
+      const next = cloneProject(project);
+      const output = addGeneratedPackage(next, result, version, generatedAt);
+      next.metadata.updatedAt = generatedAt;
+      next.actions = deriveActions(next);
+      const retained = await persistGeneratedProject(next, {
+        id: output.id,
+        bytes: result.bytes,
+      });
       setPackageResult(result);
-      setPackageResultProjectUpdatedAt(project.metadata.updatedAt);
+      setPackageResultProjectUpdatedAt(generatedAt);
       downloadBytes(result.bytes, result.fileName, result.mimeType);
+      setRetentionNotice(
+        retained
+          ? "The exact generated ZIP was downloaded and retained in this browser with its SHA-256 hash."
+          : "The ZIP was downloaded. This browser storage fallback retained its metadata and hash, but cannot retain binary package bytes.",
+      );
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Package generation failed locally.");
     } finally {
@@ -3703,6 +3770,7 @@ function Package({
     }
     setBusy(true);
     setError("");
+    setRetentionNotice("");
     try {
       // Finalization always regenerates from the current project. A prior on-screen validation
       // result may predate edits made after the user downloaded the last package.
@@ -3728,40 +3796,73 @@ function Package({
         ),
       ];
       const finalizedAt = new Date().toISOString();
-      update((draft) => {
-        const now = finalizedAt;
-        draft.snapshots.push({
-          id: `snapshot-${crypto.randomUUID()}`,
-          version,
-          createdAt: now,
-          providerApprover: approver.trim(),
-          verificationDate: now.slice(0, 10),
-          validationDate: now.slice(0, 10),
-          projectHash,
-          packageHash: result.sha256,
-          freshnessStatus: soc2PackageFreshness(draft, new Date(now)),
-          unresolvedItems: unresolved,
-          immutable: true,
-        });
-        draft.approvals.push({
-          id: `approval-${crypto.randomUUID()}`,
-          kind: "final_internal_review",
-          title: `Package snapshot ${version} prepared for final internal review`,
-          approver: approver.trim(),
-          role: "Provider approver",
-          acceptedAt: now,
-          scope: "Internal package snapshot; provider must review and submit its own application.",
-          notes: "This record does not represent FedRAMP approval or acceptance.",
-        });
-      }, finalizedAt);
+      const next = cloneProject(project);
+      const output = addGeneratedPackage(next, result, version, finalizedAt);
+      next.snapshots.push({
+        id: `snapshot-${crypto.randomUUID()}`,
+        version,
+        createdAt: finalizedAt,
+        providerApprover: approver.trim(),
+        verificationDate: finalizedAt.slice(0, 10),
+        validationDate: finalizedAt.slice(0, 10),
+        projectHash,
+        packageHash: result.sha256,
+        freshnessStatus: soc2PackageFreshness(next, new Date(finalizedAt)),
+        unresolvedItems: unresolved,
+        immutable: true,
+      });
+      next.approvals.push({
+        id: `approval-${crypto.randomUUID()}`,
+        kind: "final_internal_review",
+        title: `Package snapshot ${version} prepared for final internal review`,
+        approver: approver.trim(),
+        role: "Provider approver",
+        acceptedAt: finalizedAt,
+        scope: "Internal package snapshot; provider must review and submit its own application.",
+        notes: "This record does not represent FedRAMP approval or acceptance.",
+      });
+      next.metadata.updatedAt = finalizedAt;
+      next.actions = deriveActions(next);
+      const retained = await persistGeneratedProject(next, {
+        id: output.id,
+        bytes: result.bytes,
+      });
       setPackageResult(result);
       setPackageResultProjectUpdatedAt(finalizedAt);
+      downloadBytes(result.bytes, result.fileName, result.mimeType);
+      setRetentionNotice(
+        retained
+          ? "The exact frozen ZIP was downloaded and retained locally. Its hash is bound to this immutable snapshot record."
+          : "The frozen ZIP was downloaded, but this browser storage fallback retained only snapshot metadata and hashes. Archive the downloaded ZIP with your review record.",
+      );
     } catch (caught) {
       setError(
         caught instanceof Error ? caught.message : "Final-review snapshot could not be created.",
       );
     } finally {
       setBusy(false);
+    }
+  };
+  const downloadFrozenPackage = async (snapshot: BridgeProject["snapshots"][number]) => {
+    setError("");
+    const output = project.generatedOutputs.find(
+      (candidate) => candidate.format === "zip" && candidate.sha256 === snapshot.packageHash,
+    );
+    if (!output) {
+      setError("This snapshot is missing its generated-package record. Restore a complete backup.");
+      return;
+    }
+    try {
+      const [generated] = await collectBundleGeneratedOutputs(project, store, new Set([output.id]));
+      if (!generated) throw new Error("The frozen package bytes are not retained in this browser.");
+      downloadBytes(generated.bytes, generated.fileName, "application/zip");
+      setRetentionNotice(`Frozen package version ${snapshot.version} passed its hash check.`);
+    } catch (caught) {
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "The frozen package could not be read from local storage.",
+      );
     }
   };
   return (
@@ -3782,10 +3883,18 @@ function Package({
           <p>{error}</p>
         </div>
       )}
+      {retentionNotice && (
+        <div className="callout callout--info" role="status" aria-label="Package retention status">
+          <strong>Package record updated</strong>
+          <p>{retentionNotice}</p>
+        </div>
+      )}
       <Card title="Optional package attachments" eyebrow="Explicit consent required">
         <p>
           The package excludes the original SOC 2 report and evidence files by default. Select only
-          attachments your provider approver intends to place in this generated ZIP.
+          attachments your provider approver intends to place in this generated ZIP. The exact ZIP
+          is retained locally when browser storage supports it and is selected by default in a
+          complete project backup; you can deselect that generated output in Project settings.
         </p>
         {attachmentReferences.length === 0 ? (
           <p className="empty-copy">
@@ -4397,6 +4506,10 @@ function Package({
               {snapshot.unresolvedItems.length} unresolved item(s) preserved. Approved internally by{" "}
               {snapshot.providerApprover}.
             </p>
+            <p className="small">Package SHA-256: {snapshot.packageHash}</p>
+            <Button variant="secondary" onClick={() => void downloadFrozenPackage(snapshot)}>
+              Download frozen package version {snapshot.version}
+            </Button>
           </article>
         ))}
       </Card>
@@ -4482,6 +4595,15 @@ function Settings({
     new Set(),
   );
   const attachmentReferences = referencedLocalAttachments(project);
+  const generatedOutputReferences = referencedGeneratedOutputs(project);
+  const [selectedGeneratedOutputIds, setSelectedGeneratedOutputIds] = useState<ReadonlySet<string>>(
+    () =>
+      new Set(
+        generatedOutputReferences
+          .filter((reference) => reference.inline || store.supportsAttachments)
+          .map((reference) => reference.id),
+      ),
+  );
   useEffect(() => {
     void Promise.all([store.estimateOwnedBytes(), browserStorageEstimate()]).then(
       ([owned, estimate]) => {
@@ -4493,16 +4615,19 @@ function Settings({
   const standard = async () => {
     try {
       const attachments = await collectBundleAttachments(project, store, selectedAttachmentIds);
-      const bundle = await exportProjectBundle(project, { attachments });
+      const generatedOutputs = await collectBundleGeneratedOutputs(
+        project,
+        store,
+        selectedGeneratedOutputIds,
+      );
+      const bundle = await exportProjectBundle(project, { attachments, generatedOutputs });
       downloadBytes(
         bundle,
         `${safeFilename(project.metadata.name)}.classabridge`,
         "application/vnd.class-a-bridge+zip",
       );
       setMessage(
-        attachments.length === 0
-          ? "Standard project backup created without attachments."
-          : `Standard project backup created with ${attachments.length} explicitly selected attachment(s).`,
+        `Standard project backup created with ${generatedOutputs.length} selected generated output(s) and ${attachments.length} explicitly selected sensitive attachment(s).`,
       );
     } catch (caught) {
       setMessage(caught instanceof Error ? caught.message : "Standard export failed safely.");
@@ -4511,7 +4636,12 @@ function Settings({
   const protectedExport = async () => {
     try {
       const attachments = await collectBundleAttachments(project, store, selectedAttachmentIds);
-      const bundle = await exportProjectBundle(project, { attachments });
+      const generatedOutputs = await collectBundleGeneratedOutputs(
+        project,
+        store,
+        selectedGeneratedOutputIds,
+      );
+      const bundle = await exportProjectBundle(project, { attachments, generatedOutputs });
       const encrypted = await encryptBundle(bundle, password);
       downloadBytes(
         encrypted,
@@ -4519,7 +4649,7 @@ function Settings({
         "application/vnd.class-a-bridge+encrypted",
       );
       setMessage(
-        `Password-protected backup created with ${attachments.length} selected attachment(s). The password is not stored.`,
+        `Password-protected backup created with ${generatedOutputs.length} generated output(s) and ${attachments.length} selected sensitive attachment(s). The password is not stored.`,
       );
     } catch (caught) {
       setMessage(caught instanceof Error ? caught.message : "Encrypted export failed.");
@@ -4815,6 +4945,10 @@ function Settings({
               </dd>
             </div>
             <div>
+              <dt>Generated outputs</dt>
+              <dd>{project.generatedOutputs.length} recorded</dd>
+            </div>
+            <div>
               <dt>Last local save</dt>
               <dd>{project.metadata.lastLocalSaveAt ?? "Saving is pending"}</dd>
             </div>
@@ -4862,20 +4996,58 @@ function Settings({
             ))}
           </fieldset>
         )}
+        {generatedOutputReferences.length > 0 && (
+          <fieldset className="attachment-selector">
+            <legend>Generated outputs</legend>
+            <p>
+              Generated outputs are selected by default so the backup can reproduce frozen review
+              records. A package ZIP can contain sensitive attachments you previously chose during
+              package generation; deselect any output that should remain only in this browser.
+            </p>
+            {generatedOutputReferences.map((reference) => {
+              const available = reference.inline || store.supportsAttachments;
+              return (
+                <label className="checkbox-row" key={reference.id}>
+                  <input
+                    type="checkbox"
+                    disabled={!available}
+                    checked={selectedGeneratedOutputIds.has(reference.id) && available}
+                    onChange={(event) =>
+                      setSelectedGeneratedOutputIds((current) => {
+                        const next = new Set(current);
+                        if (event.target.checked) next.add(reference.id);
+                        else next.delete(reference.id);
+                        return next;
+                      })
+                    }
+                  />
+                  <span>
+                    <strong>{reference.label}</strong>
+                    <small>
+                      {available
+                        ? "Included in this backup unless deselected"
+                        : "Metadata only — bytes are unavailable in this storage fallback"}
+                    </small>
+                  </span>
+                </label>
+              );
+            })}
+          </fieldset>
+        )}
         <div className="export-grid">
           <div>
             <h3>Standard project export</h3>
             <p>
-              Project JSON, manifest, hashes, versions, migrations, and generated-output metadata.
-              Attachments are omitted unless selected above.
+              Project JSON, manifest, hashes, versions, migrations, and selected generated outputs.
+              Source reports and evidence attachments are omitted unless selected above.
             </p>
             <Button onClick={() => void standard()}>Export .classabridge</Button>
           </div>
           <div>
             <h3>Password-protected export</h3>
             <p>
-              Encrypts the bundle and any attachments selected above with AES-256-GCM and a
-              password-derived key in this browser.
+              Encrypts the bundle, selected generated outputs, and any attachments selected above
+              with AES-256-GCM and a password-derived key in this browser.
             </p>
             <input
               type="password"
@@ -5074,6 +5246,7 @@ export function App({ storeFactory = DEFAULT_STORE_FACTORY }: AppProps = {}) {
     const sequence = ++saveSequence.current;
     setSaveState({ status: "saving" });
     const timer = setTimeout(() => {
+      if (sequence !== saveSequence.current) return;
       const next = cloneProject(project);
       next.metadata.lastLocalSaveAt = new Date().toISOString();
       void store
@@ -5146,6 +5319,30 @@ export function App({ storeFactory = DEFAULT_STORE_FACTORY }: AppProps = {}) {
       draft.actions = deriveActions(draft);
       return draft;
     });
+  const persistGeneratedProject = async (
+    next: BridgeProject,
+    output: { readonly id: string; readonly bytes: Uint8Array },
+  ) => {
+    const sequence = ++saveSequence.current;
+    next.metadata.lastLocalSaveAt = new Date().toISOString();
+    setSaveState({ status: "saving" });
+    try {
+      const retained = await persistProjectWithGeneratedOutputAtomically(store, next, output);
+      setProject((current) =>
+        current?.metadata.id === next.metadata.id ? cloneProject(next) : current,
+      );
+      if (sequence === saveSequence.current) setSaveState({ status: "saved" });
+      return retained;
+    } catch (error) {
+      if (sequence === saveSequence.current) {
+        setSaveState({
+          status: "error",
+          message: localErrorMessage(error, "generated package storage rejected the write"),
+        });
+      }
+      throw error;
+    }
+  };
   const enter = (next: BridgeProject, nextRoute: Route) => {
     setRestoreMessage("");
     setProject(cloneProject(next));
@@ -5187,12 +5384,14 @@ export function App({ storeFactory = DEFAULT_STORE_FACTORY }: AppProps = {}) {
     if (file.name.toLowerCase().endsWith(".encrypted"))
       bytes = await decryptBundle(bytes, password);
     const imported = await importProjectBundle(bytes);
-    const omittedAttachmentCount = store.supportsAttachments ? 0 : imported.attachments.size;
+    const omittedBinaryCount = store.supportsAttachments
+      ? 0
+      : imported.attachments.size + imported.generatedOutputs.size;
     const restored = await restoreImportedProjectAtomically(store, imported);
     enter(restored, "/overview");
     setRestoreMessage(
-      omittedAttachmentCount > 0
-        ? `Restored “${restored.metadata.name}” after schema and integrity checks. This browser fallback restored the project record but could not retain ${omittedAttachmentCount} bundled attachment${omittedAttachmentCount === 1 ? "" : "s"}.`
+      omittedBinaryCount > 0
+        ? `Restored “${restored.metadata.name}” after schema and integrity checks. This browser fallback restored the project record but could not retain ${omittedBinaryCount} bundled binary file${omittedBinaryCount === 1 ? "" : "s"}. Inline report content remains in the project record.`
         : `Restored “${restored.metadata.name}” after schema, integrity, and storage checks.`,
     );
     await refreshSavedProjects();
@@ -5252,6 +5451,7 @@ export function App({ storeFactory = DEFAULT_STORE_FACTORY }: AppProps = {}) {
       }}
       update={update}
       store={store}
+      persistGeneratedProject={persistGeneratedProject}
       saveState={saveState}
       online={online}
       updateAvailable={Boolean(updateRegistration?.waiting)}

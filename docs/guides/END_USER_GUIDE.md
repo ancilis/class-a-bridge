@@ -66,15 +66,15 @@ Work in priority order: eligibility blockers, scope blockers, before application
 
 Generate reports and package documents from a validated snapshot. JSON validation errors show the affected section, expected/current value, an editable link, and a resolution. Fix the project field and regenerate; do not edit generated JSON as the authoritative record.
 
-The package ZIP excludes original reports and sensitive evidence attachments unless you select them. Review its index, manifest, checksums, rule/schema versions, open items, disclaimer, and approvals.
+The package ZIP excludes original reports and sensitive evidence attachments unless you select them. Review its index, manifest, checksums, rule/schema versions, open items, disclaimer, and approvals. When binary browser storage is available, the exact generated ZIP is retained locally under its SHA-256 hash; a metadata-only fallback downloads the ZIP and tells you that it cannot retain the bytes.
 
-“Prepare final review” creates an immutable internal snapshot and checks freshness, references, schema validity, placeholders, and approvals. It does not submit an application. The provider submits its own application.
+“Prepare final review” regenerates and downloads the current package, binds its verified hash to an immutable internal snapshot record, and checks freshness, references, schema validity, placeholders, and approvals. It does not submit an application. The provider submits its own application.
 
 ## Back up and restore
 
 Open Project settings to see storage backend, approximate size, last save, exports, deletion, and privacy documentation.
 
-- **Standard export** creates a portable `.classabridge` bundle. Attachments are opt-in.
+- **Standard export** creates a portable `.classabridge` bundle. Generated outputs are selected by default so frozen package records can be restored; deselect an output if it should remain only in this browser. Original reports and evidence attachments are always opt-in.
 - **Password-protected export** encrypts the bundle in the browser. Use a unique long password and transfer it through a different channel. The password cannot be recovered.
 - **Redacted advisor handoff** removes reports, attachments, excerpts, sensitive notes, contact details, and generated bodies by default. Review before sharing.
 
