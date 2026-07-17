@@ -3,6 +3,7 @@ coverage
 dist
 node_modules
 out
+pnpm-lock.yaml
 packages/rules/vendor
 packages/schemas/vendor
 packages/schemas/src/generated

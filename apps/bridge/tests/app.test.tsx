@@ -142,5 +142,4 @@ describe("Class A Bridge application shell", () => {
       /Offline.*workspace remains available/iu,
     );
   });
-
 });

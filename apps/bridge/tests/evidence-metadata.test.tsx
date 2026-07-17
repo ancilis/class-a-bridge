@@ -70,7 +70,9 @@ describe("evidence metadata", () => {
     const item = screen.getByRole("article", {
       name: "Evidence candidate Trust center reference",
     });
-    await user.click(within(item).getByLabelText("Edit evidence metadata for Trust center reference"));
+    await user.click(
+      within(item).getByLabelText("Edit evidence metadata for Trust center reference"),
+    );
     expect(within(item).getByLabelText("Title")).toBeDisabled();
     expect(within(item).getByLabelText("Source system")).toBeDisabled();
     expect(within(item).getByLabelText("External URL (optional)")).toBeDisabled();
@@ -78,10 +80,12 @@ describe("evidence metadata", () => {
     const expectedHash = await sha256Hex(new TextEncoder().encode("https://example.com/"));
     await waitFor(async () => {
       const saved = await store.load((await store.list())[0]!.id);
-      expect(saved?.evidence.find(({ title }) => title === "Trust center reference")).toMatchObject({
-        externalUrl: "https://example.com/",
-        sha256: expectedHash,
-      });
+      expect(saved?.evidence.find(({ title }) => title === "Trust center reference")).toMatchObject(
+        {
+          externalUrl: "https://example.com/",
+          sha256: expectedHash,
+        },
+      );
     });
   });
 });

@@ -65,10 +65,7 @@ test("assembles the website and PWA into one static release", async () => {
       headers,
       /\/app\/index\.html\s+Cache-Control: no-cache, no-store, must-revalidate/u,
     );
-    assert.match(
-      headers,
-      /\/app\/sw\.js\s+Cache-Control: no-cache, no-store, must-revalidate/u,
-    );
+    assert.match(headers, /\/app\/sw\.js\s+Cache-Control: no-cache, no-store, must-revalidate/u);
     await assert.rejects(() => readFile(path.join(destination, "app", "_headers"), "utf8"));
     assert.equal(result.destination, destination);
     assert.equal(result.websiteFiles, 2);
