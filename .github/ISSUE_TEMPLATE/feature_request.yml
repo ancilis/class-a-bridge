@@ -1,0 +1,39 @@
+name: Product proposal
+description: Propose a user outcome or workflow improvement without assessment data.
+title: "proposal: "
+labels: [enhancement, needs-triage]
+body:
+  - type: markdown
+    attributes:
+      value: Do not include customer, report, evidence, project, credential, incident, or personal data.
+  - type: textarea
+    id: user
+    attributes:
+      label: User and problem
+      description: Who needs this and what decision or task is difficult now?
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired outcome
+      description: Describe success without prescribing implementation.
+    validations:
+      required: true
+  - type: textarea
+    id: current
+    attributes:
+      label: Current workaround
+    validations:
+      required: true
+  - type: checkboxes
+    id: boundaries
+    attributes:
+      label: Product-boundary review
+      options:
+        - label: The proposal preserves a useful no-account, local-first core or explains a proposed architecture/privacy review.
+          required: true
+        - label: The proposal does not rely on certification, approval, guaranteed eligibility, or automatic completion claims.
+          required: true
+        - label: I used no real assessment data in this issue.
+          required: true

@@ -1,0 +1,73 @@
+name: Bug report
+description: Report reproducible product behavior using fictional or redacted data only.
+title: "bug: "
+labels: [bug, needs-triage]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not include a real SOC 2 report, project bundle, evidence, credentials, personal information, or incident detail. Security vulnerabilities must use the private process in SECURITY.md, not this form.
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      description: Use the About/version display or exact commit.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - First run and eligibility
+        - PDF and SOC 2 materials
+        - Scope
+        - Requirements and KSI workflows
+        - Evidence and mappings
+        - Actions, reports, package, or validation
+        - Storage, export, import, or deletion
+        - Website or contact
+        - Accessibility, print, or responsive behavior
+        - Build, documentation, or deployment
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Observed behavior
+      description: Describe the result and any visible error code using fictional values.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction steps
+      description: Start from a new fictional/manual or Acme Metrics workspace.
+      placeholder: |
+        1. Open …
+        2. Choose …
+        3. Observe …
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Browser and operating system
+      description: Include browser major version and whether private/offline mode was used.
+    validations:
+      required: true
+  - type: checkboxes
+    id: safe-data
+    attributes:
+      label: Data safety confirmation
+      options:
+        - label: I used only fictional/redacted data and removed filenames, project identifiers, evidence, credentials, and personal information.
+          required: true
+        - label: This is not an undisclosed security vulnerability.
+          required: true

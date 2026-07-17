@@ -1,0 +1,11 @@
+{
+  "name": "class-a-bridge-contact",
+  "main": "dist/worker.js",
+  "compatibility_date": "2026-07-17",
+  "observability": {
+    "enabled": false,
+  },
+  "vars": {
+    "CONTACT_WEBSITE_ORIGIN": "https://classabridge.ancilis.com",
+  },
+}

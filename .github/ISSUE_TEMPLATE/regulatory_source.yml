@@ -1,0 +1,41 @@
+name: Regulatory source change
+description: Identify a verifiable official rule/schema change without proposing a silent interpretation.
+title: "regulatory: "
+labels: [regulatory, needs-review]
+body:
+  - type: input
+    id: official-url
+    attributes:
+      label: Official HTTPS source
+      description: Link directly to the current GSA/FedRAMP source or official source repository commit.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Source version, date, or commit
+    validations:
+      required: true
+  - type: textarea
+    id: change
+    attributes:
+      label: Observed source change
+      description: Identify exact rule/schema identifiers and factual byte/content difference. Do not paste large official documents.
+    validations:
+      required: true
+  - type: textarea
+    id: impact
+    attributes:
+      label: Possible product impact and uncertainty
+      description: Separate a source fact from any suggested interpretation and list questions needing confirmation.
+    validations:
+      required: true
+  - type: checkboxes
+    id: review
+    attributes:
+      label: Review confirmation
+      options:
+        - label: I understand that an official-source change requires provenance, guidance, mapping, fixture, test, and release review before application.
+          required: true
+        - label: This report contains no customer or assessment data.
+          required: true

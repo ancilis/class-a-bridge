@@ -1,0 +1,16 @@
+Class A Bridge by Ancilis
+Copyright 2026 Ancilis
+
+This product includes Ancilis-authored software and documentation licensed
+under the Apache License, Version 2.0.
+
+The repository also vendors unmodified FedRAMP Consolidated Rules and JSON
+Schema materials published by the U.S. General Services Administration. Those
+materials retain their source attribution and are not represented as
+Ancilis-authored content. See packages/rules/vendor, packages/schemas/vendor,
+and docs/guides/RULES_AND_SCHEMAS.md for sources, versions, retrieval dates,
+checksums, and the separation between official text and Ancilis guidance.
+
+FedRAMP and related names are used descriptively. This project is independent
+and is not affiliated with, endorsed by, approved by, or certified by the U.S.
+General Services Administration or FedRAMP. No government logo or seal is used.
