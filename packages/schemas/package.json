@@ -10,6 +10,7 @@
     "build": "pnpm generate && tsc --noEmit",
     "generate": "tsx scripts/generate-validators.ts",
     "lint": "eslint .",
+    "schemas:compare": "tsx scripts/compare-official.ts",
     "schemas:verify": "vitest run tests/manifest.test.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"

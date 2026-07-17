@@ -17,6 +17,7 @@
     "lint": "turbo run lint",
     "rules:compare": "pnpm --filter @class-a-bridge/rules rules:compare",
     "release:assemble": "node scripts/assemble-release.mjs",
+    "schemas:compare": "pnpm --filter @class-a-bridge/schemas schemas:compare",
     "schemas:verify": "pnpm --filter @class-a-bridge/schemas schemas:verify",
     "test": "turbo run test",
     "test:a11y": "playwright test e2e/accessibility-keyboard.spec.ts --project=chromium",
