@@ -2,6 +2,7 @@ import { safeFilename } from "@class-a-bridge/project";
 import type { BridgeProject } from "@class-a-bridge/project";
 import { getRule, RULE_SELECTIONS } from "@class-a-bridge/rules";
 
+import { createAdvisorHandoff } from "./advisor";
 import {
   callout,
   list,
@@ -498,6 +499,9 @@ export function generateHumanReport(
   kind: HumanReportKind,
   options: GenerationOptions = {},
 ): HumanReport {
+  if (kind === "advisor-handoff") {
+    return createAdvisorHandoff(project, options).report;
+  }
   const generatedAt = options.generatedAt ?? new Date().toISOString();
   const title = TITLES[kind];
   const body = bodyFor(project, kind);

@@ -146,6 +146,19 @@ export function createAdvisorHandoff(
         ]),
       ),
     ),
+    section(
+      "Open action summary",
+      table(
+        ["Action", "Category", "Priority", "Status", "Owner"],
+        model.actions.map((action) => [
+          action.title,
+          action.category,
+          action.priority,
+          action.status,
+          action.owner,
+        ]),
+      ),
+    ),
     section("Advisor-review flags", list(model.advisorReviewFlags)),
     section("Excluded by default", list(ADVISOR_EXCLUSIONS)),
   ].join("");

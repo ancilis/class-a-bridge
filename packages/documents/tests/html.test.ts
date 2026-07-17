@@ -50,6 +50,22 @@ describe("human-readable reports", () => {
     }
   });
 
+  it("uses the advisor allowlist for the standalone advisor report", () => {
+    const project = createDocumentProject();
+    project.actions[0]!.sourceRefs = ["PRIVATE-SOURCE-REFERENCE"];
+    project.actions[0]!.nextRoute = "#/private/internal-route";
+    const report = generateHumanReport(project, "advisor-handoff", {
+      generatedAt: GENERATED_AT,
+    });
+
+    expect(report.html).toContain(
+      "=HYPERLINK(&quot;https://attacker.invalid&quot;,&quot;Review&quot;)",
+    );
+    expect(report.html).not.toContain("Collect the account lifecycle configuration.");
+    expect(report.html).not.toContain("PRIVATE-SOURCE-REFERENCE");
+    expect(report.html).not.toContain("#/private/internal-route");
+  });
+
   it("shows every mandatory catalog rule even when the project record has not been started", () => {
     const report = generateHumanReport(createDocumentProject(), "mandatory-requirements", {
       generatedAt: GENERATED_AT,
