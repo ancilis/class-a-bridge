@@ -74,6 +74,29 @@ describe("preparation package", () => {
     expect(checklist.providerSubmissionReminder).toContain("provider must submit");
   });
 
+  it("does not pass draft or provider-approval checks for tampered status-only approval", () => {
+    const project = createDocumentProject();
+    const requirement = project.requirements.find((item) => item.ruleId === "KSI-IAM-AAM")!;
+    requirement.status = "approved_by_provider";
+    const official = createOfficialDocuments(project, {
+      generatedAt: GENERATED_AT,
+      ...OFFICIAL_OPTIONS,
+    });
+    const checklist = createFinalReviewChecklist(
+      project,
+      summarizeValidation(official),
+      GENERATED_AT,
+    );
+
+    expect(checklist.missingApprovals).toContain("KSI-IAM-AAM");
+    expect(checklist.checks.find((check) => check.id === "provider-approvals")?.status).toBe(
+      "fail",
+    );
+    expect(checklist.checks.find((check) => check.id === "mandatory-drafts")?.detail).toContain(
+      "0 of",
+    );
+  });
+
   it("recalculates SOC 2 freshness from report dates instead of trusting a historical answer", () => {
     const project = createDocumentProject();
     project.eligibility.answers.push({

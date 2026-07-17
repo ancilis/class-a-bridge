@@ -307,6 +307,30 @@ export const RequirementStatusSchema = z.enum([
   "approved_by_provider",
 ]);
 
+const ProviderApprovalTimestampSchema = z.string().datetime({ offset: true });
+const providerApprovalCoreFields = [
+  "userResponse",
+  "implementationNarrative",
+  "verificationNarrative",
+  "validationNarrative",
+] as const;
+
+type ProviderApprovalCandidate = {
+  readonly status: string;
+  readonly providerApprovedBy?: string | undefined;
+  readonly providerApprovedAt?: string | undefined;
+  readonly userResponse: string;
+  readonly implementationNarrative: string;
+  readonly verificationNarrative: string;
+  readonly validationNarrative: string;
+};
+
+const hasProviderApprovalIntegrity = (requirement: ProviderApprovalCandidate): boolean =>
+  requirement.status === "approved_by_provider" &&
+  Boolean(requirement.providerApprovedBy?.trim()) &&
+  ProviderApprovalTimestampSchema.safeParse(requirement.providerApprovedAt).success &&
+  providerApprovalCoreFields.every((field) => requirement[field].trim().length > 0);
+
 const RequirementWorkSchema = z
   .object({
     ruleId: z.string(),
@@ -328,9 +352,36 @@ const RequirementWorkSchema = z
     exceptions: z.array(z.string()),
     seniorOfficialAcceptance: z.string().optional(),
     providerApprovedBy: z.string().optional(),
-    providerApprovedAt: z.string().optional(),
+    providerApprovedAt: ProviderApprovalTimestampSchema.optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((requirement, context) => {
+    if (requirement.status !== "approved_by_provider") return;
+    if (!requirement.providerApprovedBy?.trim()) {
+      context.addIssue({
+        code: "custom",
+        path: ["providerApprovedBy"],
+        message: "providerApprovedBy is required for provider-approved status.",
+      });
+    }
+    if (!ProviderApprovalTimestampSchema.safeParse(requirement.providerApprovedAt).success) {
+      context.addIssue({
+        code: "custom",
+        path: ["providerApprovedAt"],
+        message:
+          "providerApprovedAt must be a valid ISO 8601 date-time for provider-approved status.",
+      });
+    }
+    for (const field of providerApprovalCoreFields) {
+      if (requirement[field].trim().length === 0) {
+        context.addIssue({
+          code: "custom",
+          path: [field],
+          message: `${field} must be complete before provider approval.`,
+        });
+      }
+    }
+  });
 
 const EvidenceSchema = z
   .object({
@@ -515,6 +566,15 @@ export const BridgeProjectSchema = z
 export type BridgeProject = z.infer<typeof BridgeProjectSchema>;
 export type EvidenceItem = z.infer<typeof EvidenceSchema>;
 export type RequirementWork = z.infer<typeof RequirementWorkSchema>;
+
+/**
+ * Returns true only when status and the provider's approval record support an
+ * Implemented/provider-approved representation. Document generation calls this
+ * defensively because a typed project can still be mutated after validation.
+ */
+export function isProviderApprovedRequirement(requirement: RequirementWork): boolean {
+  return hasProviderApprovalIntegrity(requirement);
+}
 
 const id = () =>
   globalThis.crypto?.randomUUID?.() ?? `cab-${Date.now()}-${Math.random().toString(36).slice(2)}`;

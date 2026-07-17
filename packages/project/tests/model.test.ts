@@ -2,6 +2,25 @@ import { describe, expect, it } from "vitest";
 
 import { BridgeProjectSchema, createEmptyProject, migrateProject } from "../src/index";
 
+const requirementDraft = () => ({
+  ruleId: "KSI-IAM-AAM",
+  status: "approved_by_provider" as const,
+  reviewStatus: "approved" as const,
+  userResponse: "The provider uses centralized account-management workflows.",
+  implementationNarrative: "Lifecycle events trigger managed account changes.",
+  verificationNarrative: "The identity team reviews lifecycle events monthly.",
+  validationNarrative: "A reviewer samples completed lifecycle events quarterly.",
+  independentVerification: "",
+  independentValidation: "",
+  soc2ControlIds: [],
+  soc2PageReferences: [],
+  evidenceIds: [],
+  owner: "Identity engineering",
+  notes: "",
+  openQuestions: [],
+  exceptions: [],
+});
+
 describe("BridgeProject", () => {
   it("creates a strict, versioned local-first project", () => {
     const project = createEmptyProject("Northstar Federal", "Northstar Cloud");
@@ -67,5 +86,48 @@ describe("BridgeProject", () => {
     expect(BridgeProjectSchema.parse(project).snapshots[0]?.freshnessStatus).toBe(
       "needs_confirmation",
     );
+  });
+
+  it("rejects provider-approved status without a named approver and valid approval time", () => {
+    const project = createEmptyProject("Approval integrity", "Provider");
+    project.requirements.push(requirementDraft());
+
+    expect(() => BridgeProjectSchema.parse(project)).toThrow(/providerApprovedBy/iu);
+
+    project.requirements[0]!.providerApprovedBy = "   ";
+    project.requirements[0]!.providerApprovedAt = "2026-07-17T15:00:00.000Z";
+    expect(() => BridgeProjectSchema.parse(project)).toThrow(/providerApprovedBy/iu);
+
+    project.requirements[0]!.providerApprovedBy = "Provider representative";
+    project.requirements[0]!.providerApprovedAt = "not-a-date";
+    expect(() => BridgeProjectSchema.parse(project)).toThrow(/providerApprovedAt/iu);
+  });
+
+  it.each([
+    "userResponse",
+    "implementationNarrative",
+    "verificationNarrative",
+    "validationNarrative",
+  ] as const)("rejects provider-approved status with blank %s", (field) => {
+    const project = createEmptyProject("Approval integrity", "Provider");
+    project.requirements.push({
+      ...requirementDraft(),
+      providerApprovedBy: "Provider representative",
+      providerApprovedAt: "2026-07-17T15:00:00.000Z",
+      [field]: "   ",
+    });
+
+    expect(() => BridgeProjectSchema.parse(project)).toThrow(new RegExp(field, "iu"));
+  });
+
+  it("accepts provider approval only with complete core narratives and approval metadata", () => {
+    const project = createEmptyProject("Approval integrity", "Provider");
+    project.requirements.push({
+      ...requirementDraft(),
+      providerApprovedBy: "Provider representative",
+      providerApprovedAt: "2026-07-17T15:00:00.000Z",
+    });
+
+    expect(BridgeProjectSchema.parse(project).requirements[0]?.status).toBe("approved_by_provider");
   });
 });

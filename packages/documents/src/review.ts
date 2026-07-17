@@ -1,4 +1,4 @@
-import type { BridgeProject } from "@class-a-bridge/project";
+import { isProviderApprovedRequirement, type BridgeProject } from "@class-a-bridge/project";
 import { getRule, RULE_SELECTIONS } from "@class-a-bridge/rules";
 
 import {
@@ -160,11 +160,13 @@ export function createFinalReviewChecklist(
     ruleId,
     work: project.requirements.find((requirement) => requirement.ruleId === ruleId),
   }));
-  const completeDrafts = mandatory.filter(({ work }) =>
-    work ? ["complete_for_internal_review", "approved_by_provider"].includes(work.status) : false,
+  const completeDrafts = mandatory.filter(
+    ({ work }) =>
+      work?.status === "complete_for_internal_review" ||
+      (work ? isProviderApprovedRequirement(work) : false),
   );
   const missingApprovals = mandatory
-    .filter(({ work }) => work?.status !== "approved_by_provider")
+    .filter(({ work }) => !work || !isProviderApprovedRequirement(work))
     .map(({ ruleId }) => ruleId);
   const unresolvedPlaceholders = placeholders(project);
   const references = missingReferences(project);

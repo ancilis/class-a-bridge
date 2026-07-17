@@ -75,4 +75,16 @@ describe("human-readable reports", () => {
     expect(report.html).toContain("No project record");
     expect(report.html).toContain("2026.07.14.01");
   });
+
+  it("excludes tampered status-only records from the provider approval report", () => {
+    const project = createDocumentProject();
+    const requirement = project.requirements.find((item) => item.ruleId === "KSI-IAM-AAM")!;
+    requirement.status = "approved_by_provider";
+
+    const report = generateHumanReport(project, "provider-approval", {
+      generatedAt: GENERATED_AT,
+    });
+
+    expect(report.html).not.toContain("KSI-IAM-AAM");
+  });
 });

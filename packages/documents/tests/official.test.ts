@@ -66,4 +66,51 @@ describe("official-schema JSON documents", () => {
       ksiImplementationStatus: "Partially Implemented",
     });
   });
+
+  it("does not translate tampered status-only approval into an implemented assertion", () => {
+    const project = createDocumentProject();
+    const requirement = project.requirements.find((item) => item.ruleId === "KSI-IAM-AAM")!;
+    requirement.status = "approved_by_provider";
+    const result = createOfficialDocuments(project, {
+      generatedAt: GENERATED_AT,
+      ...OFFICIAL_OPTIONS,
+    });
+
+    expect(result.securityDecisionRecord.value.keySecurityIndicators[0]).toMatchObject({
+      ksiImplementationStatus: "Partially Implemented",
+    });
+  });
+
+  it("does not translate approval with an empty core response into implemented", () => {
+    const project = createDocumentProject();
+    const requirement = project.requirements.find((item) => item.ruleId === "KSI-IAM-AAM")!;
+    requirement.status = "approved_by_provider";
+    requirement.providerApprovedBy = "Provider representative";
+    requirement.providerApprovedAt = "2026-07-17T15:00:00.000Z";
+    requirement.userResponse = "";
+    const result = createOfficialDocuments(project, {
+      generatedAt: GENERATED_AT,
+      ...OFFICIAL_OPTIONS,
+    });
+
+    expect(result.securityDecisionRecord.value.keySecurityIndicators[0]).toMatchObject({
+      ksiImplementationStatus: "Partially Implemented",
+    });
+  });
+
+  it("emits implemented only for a complete provider approval record", () => {
+    const project = createDocumentProject();
+    const requirement = project.requirements.find((item) => item.ruleId === "KSI-IAM-AAM")!;
+    requirement.status = "approved_by_provider";
+    requirement.providerApprovedBy = "Provider representative";
+    requirement.providerApprovedAt = "2026-07-17T15:00:00.000Z";
+    const result = createOfficialDocuments(project, {
+      generatedAt: GENERATED_AT,
+      ...OFFICIAL_OPTIONS,
+    });
+
+    expect(result.securityDecisionRecord.value.keySecurityIndicators[0]).toMatchObject({
+      ksiImplementationStatus: "Implemented",
+    });
+  });
 });

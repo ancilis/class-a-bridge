@@ -1,4 +1,4 @@
-import { safeFilename } from "@class-a-bridge/project";
+import { isProviderApprovedRequirement, safeFilename } from "@class-a-bridge/project";
 import type { BridgeProject } from "@class-a-bridge/project";
 import { getRule, RULE_SELECTIONS } from "@class-a-bridge/rules";
 
@@ -91,8 +91,10 @@ const readinessBody = (project: BridgeProject) => {
   const mandatory = project.requirements.filter((requirement) =>
     (RULE_SELECTIONS.mandatory as readonly string[]).includes(requirement.ruleId),
   );
-  const complete = mandatory.filter((requirement) =>
-    ["complete_for_internal_review", "approved_by_provider"].includes(requirement.status),
+  const complete = mandatory.filter(
+    (requirement) =>
+      requirement.status === "complete_for_internal_review" ||
+      isProviderApprovedRequirement(requirement),
   ).length;
   const blockers = project.actions.filter(
     (action) =>
@@ -413,9 +415,7 @@ const advisorBody = (project: BridgeProject) =>
   ].join("");
 
 const providerApprovalBody = (project: BridgeProject) => {
-  const approved = project.requirements.filter(
-    (requirement) => requirement.status === "approved_by_provider",
-  );
+  const approved = project.requirements.filter(isProviderApprovedRequirement);
   return [
     callout(
       "Provider approval records internal acceptance of representations. It does not constitute FedRAMP approval or submission.",

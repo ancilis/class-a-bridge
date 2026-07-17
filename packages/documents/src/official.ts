@@ -1,4 +1,8 @@
-import type { BridgeProject, RequirementWork } from "@class-a-bridge/project";
+import {
+  isProviderApprovedRequirement,
+  type BridgeProject,
+  type RequirementWork,
+} from "@class-a-bridge/project";
 import { SCHEMA_MANIFEST, validateOfficialDocument } from "@class-a-bridge/schemas";
 
 import type {
@@ -15,7 +19,7 @@ import type {
 const encoder = new TextEncoder();
 
 const status = (requirement: RequirementWork) => {
-  if (requirement.status === "approved_by_provider") return "Implemented";
+  if (isProviderApprovedRequirement(requirement)) return "Implemented";
   if (requirement.status === "not_started" || requirement.status === "needs_information") {
     return "Not Implemented";
   }
