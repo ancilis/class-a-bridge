@@ -13,6 +13,9 @@ catalogs:
       specifier: 4.1.10
       version: 4.1.10
 
+overrides:
+  postcss: 8.5.19
+
 importers:
 
   .:
@@ -49,7 +52,7 @@ importers:
         version: 8.64.0(eslint@10.7.0)(typescript@6.0.3)
       vitest:
         specifier: 4.1.10
-        version: 4.1.10(@types/node@24.10.4)(esbuild@0.27.7)(jsdom@29.1.1)(tsx@4.21.0)
+        version: 4.1.10(@types/node@24.10.4)(jsdom@29.1.1)(vite@8.1.5(@types/node@24.10.4)(esbuild@0.27.7)(tsx@4.21.0))
 
   apps/bridge:
     dependencies:
@@ -113,7 +116,7 @@ importers:
         version: 8.1.5(@types/node@24.10.4)(esbuild@0.27.7)(tsx@4.21.0)
       vitest:
         specifier: 'catalog:'
-        version: 4.1.10(@types/node@24.10.4)(esbuild@0.27.7)(jsdom@29.1.1)(tsx@4.21.0)
+        version: 4.1.10(@types/node@24.10.4)(jsdom@29.1.1)(vite@8.1.5(@types/node@24.10.4)(esbuild@0.27.7)(tsx@4.21.0))
 
   apps/contact-api:
     devDependencies:
@@ -122,7 +125,7 @@ importers:
         version: 6.0.3
       vitest:
         specifier: 'catalog:'
-        version: 4.1.10(@types/node@24.10.4)(esbuild@0.27.7)(jsdom@29.1.1)(tsx@4.21.0)
+        version: 4.1.10(@types/node@24.10.4)(jsdom@29.1.1)(vite@8.1.5(@types/node@24.10.4)(esbuild@0.27.7)(tsx@4.21.0))
 
   apps/website:
     dependencies:
@@ -147,7 +150,7 @@ importers:
         version: 6.0.3
       vitest:
         specifier: 'catalog:'
-        version: 4.1.10(@types/node@24.10.4)(esbuild@0.27.7)(jsdom@29.1.1)(tsx@4.21.0)
+        version: 4.1.10(@types/node@24.10.4)(jsdom@29.1.1)(vite@8.1.5(@types/node@24.10.4)(esbuild@0.27.7)(tsx@4.21.0))
 
   packages/documents:
     dependencies:
@@ -169,7 +172,7 @@ importers:
         version: 6.0.3
       vitest:
         specifier: 'catalog:'
-        version: 4.1.10(@types/node@24.10.4)(esbuild@0.27.7)(jsdom@29.1.1)(tsx@4.21.0)
+        version: 4.1.10(@types/node@24.10.4)(jsdom@29.1.1)(vite@8.1.5(@types/node@24.10.4)(esbuild@0.27.7)(tsx@4.21.0))
 
   packages/project:
     dependencies:
@@ -188,7 +191,7 @@ importers:
         version: 6.0.3
       vitest:
         specifier: 'catalog:'
-        version: 4.1.10(@types/node@24.10.4)(esbuild@0.27.7)(jsdom@29.1.1)(tsx@4.21.0)
+        version: 4.1.10(@types/node@24.10.4)(jsdom@29.1.1)(vite@8.1.5(@types/node@24.10.4)(esbuild@0.27.7)(tsx@4.21.0))
 
   packages/rules:
     devDependencies:
@@ -200,16 +203,16 @@ importers:
         version: 6.0.3
       vitest:
         specifier: 'catalog:'
-        version: 4.1.10(@types/node@24.10.4)(esbuild@0.27.7)(jsdom@29.1.1)(tsx@4.21.0)
+        version: 4.1.10(@types/node@24.10.4)(jsdom@29.1.1)(vite@8.1.5(@types/node@24.10.4)(esbuild@0.27.7)(tsx@4.21.0))
 
   packages/schemas:
     dependencies:
       ajv:
-        specifier: 8.17.1
-        version: 8.17.1
+        specifier: 8.20.0
+        version: 8.20.0
       ajv-formats:
         specifier: 3.0.1
-        version: 3.0.1(ajv@8.17.1)
+        version: 3.0.1(ajv@8.20.0)
     devDependencies:
       tsx:
         specifier: 4.21.0
@@ -219,7 +222,7 @@ importers:
         version: 6.0.3
       vitest:
         specifier: 'catalog:'
-        version: 4.1.10(@types/node@24.10.4)(esbuild@0.27.7)(jsdom@29.1.1)(tsx@4.21.0)
+        version: 4.1.10(@types/node@24.10.4)(jsdom@29.1.1)(vite@8.1.5(@types/node@24.10.4)(esbuild@0.27.7)(tsx@4.21.0))
 
   packages/testing:
     dependencies:
@@ -235,7 +238,7 @@ importers:
         version: 6.0.3
       vitest:
         specifier: 'catalog:'
-        version: 4.1.10(@types/node@24.10.4)(esbuild@0.27.7)(jsdom@29.1.1)(tsx@4.21.0)
+        version: 4.1.10(@types/node@24.10.4)(jsdom@29.1.1)(vite@8.1.5(@types/node@24.10.4)(esbuild@0.27.7)(tsx@4.21.0))
 
   packages/ui:
     devDependencies:
@@ -265,7 +268,7 @@ importers:
         version: 6.0.3
       vitest:
         specifier: 'catalog:'
-        version: 4.1.10(@types/node@24.10.4)(esbuild@0.27.7)(jsdom@29.1.1)(tsx@4.21.0)
+        version: 4.1.10(@types/node@24.10.4)(jsdom@29.1.1)(vite@8.1.5(@types/node@24.10.4)(esbuild@0.27.7)(tsx@4.21.0))
 
 packages:
 
@@ -1194,8 +1197,8 @@ packages:
   ajv@6.15.0:
     resolution: {integrity: sha512-fgFx7Hfoq60ytK2c7DhnF8jIvzYgOMxfugjLOSMHjLIPgenqa7S7oaagATUq99mV6IYvN2tRmC0wnTYX6iPbMw==}
 
-  ajv@8.17.1:
-    resolution: {integrity: sha512-B/gBuNg5SiMTrPkC+A2+cW0RszwxYmn6VYxB/inlBStS5nx6xHIt/ehKRhIMhqusl7a8LjQoZnjCs5vhwxOQ1g==}
+  ajv@8.20.0:
+    resolution: {integrity: sha512-Thbli+OlOj+iMPYFBVBfJ3OmCAnaSyNn4M1vz9T6Gka5Jt9ba/HIR56joy65tY6kx/FCF5VXNB819Y7/GUrBGA==}
 
   ansi-regex@5.0.1:
     resolution: {integrity: sha512-quJQXlTSUGL2LH9SUXo8VwsY4soanhgo6LNSm84E1LBcE8s3O0wpdiRzyR9z/ZZJMlMWv37qOOb9pdJlMUEKFQ==}
@@ -1672,10 +1675,6 @@ packages:
     engines: {node: '>=18'}
     hasBin: true
 
-  postcss@8.4.31:
-    resolution: {integrity: sha512-PS08Iboia9mts/2ygV3eLpY5ghnUcfLV/EXTOW1E2qYxJKGGBUtNjN76FYHnMs36RmARn41bC0AZmn+rR0OVpQ==}
-    engines: {node: ^10 || ^12 || >=14}
-
   postcss@8.5.19:
     resolution: {integrity: sha512-Mz8SaolMd8nB+G13WkORcxQKHZ/NE4xXevtkJHVuG+guo9/wYKlIMTKAqGdEmYOXR2ijPjTYNHssizdaVSUNdQ==}
     engines: {node: ^10 || ^12 || >=14}
@@ -1915,6 +1914,7 @@ packages:
       '@vitest/ui': 4.1.10
       happy-dom: '*'
       jsdom: '*'
+      vite: ^6.0.0 || ^7.0.0 || ^8.0.0
     peerDependenciesMeta:
       '@edge-runtime/vm':
         optional: true
@@ -2666,9 +2666,9 @@ snapshots:
 
   acorn@8.17.0: {}
 
-  ajv-formats@3.0.1(ajv@8.17.1):
+  ajv-formats@3.0.1(ajv@8.20.0):
     optionalDependencies:
-      ajv: 8.17.1
+      ajv: 8.20.0
 
   ajv@6.15.0:
     dependencies:
@@ -2677,7 +2677,7 @@ snapshots:
       json-schema-traverse: 0.4.1
       uri-js: 4.4.1
 
-  ajv@8.17.1:
+  ajv@8.20.0:
     dependencies:
       fast-deep-equal: 3.1.3
       fast-uri: 3.1.3
@@ -3059,7 +3059,7 @@ snapshots:
       '@swc/helpers': 0.5.15
       baseline-browser-mapping: 2.10.43
       caniuse-lite: 1.0.30001806
-      postcss: 8.4.31
+      postcss: 8.5.19
       react: 19.2.7
       react-dom: 19.2.7(react@19.2.7)
       styled-jsx: 5.1.6(react@19.2.7)
@@ -3122,12 +3122,6 @@ snapshots:
       playwright-core: 1.61.1
     optionalDependencies:
       fsevents: 2.3.2
-
-  postcss@8.4.31:
-    dependencies:
-      nanoid: 3.3.16
-      picocolors: 1.1.1
-      source-map-js: 1.2.1
 
   postcss@8.5.19:
     dependencies:
@@ -3336,7 +3330,7 @@ snapshots:
       fsevents: 2.3.3
       tsx: 4.21.0
 
-  vitest@4.1.10(@types/node@24.10.4)(esbuild@0.27.7)(jsdom@29.1.1)(tsx@4.21.0):
+  vitest@4.1.10(@types/node@24.10.4)(jsdom@29.1.1)(vite@8.1.5(@types/node@24.10.4)(esbuild@0.27.7)(tsx@4.21.0)):
     dependencies:
       '@vitest/expect': 4.1.10
       '@vitest/mocker': 4.1.10(vite@8.1.5(@types/node@24.10.4)(esbuild@0.27.7)(tsx@4.21.0))
@@ -3362,18 +3356,7 @@ snapshots:
       '@types/node': 24.10.4
       jsdom: 29.1.1
     transitivePeerDependencies:
-      - '@vitejs/devtools'
-      - esbuild
-      - jiti
-      - less
       - msw
-      - sass
-      - sass-embedded
-      - stylus
-      - sugarss
-      - terser
-      - tsx
-      - yaml
 
   w3c-xmlserializer@5.0.0:
     dependencies:
