@@ -9,8 +9,13 @@
   "scripts": {
     "build": "tsc --noEmit",
     "lint": "eslint .",
-    "test": "vitest run --passWithNoTests",
+    "test": "vitest run",
     "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "fflate": "0.8.2",
+    "idb": "8.0.3",
+    "zod": "4.3.6"
   },
   "devDependencies": {
     "typescript": "catalog:",
