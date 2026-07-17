@@ -1,0 +1,21 @@
+{
+  "name": "@class-a-bridge/rules",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc --noEmit",
+    "lint": "eslint .",
+    "rules:compare": "tsx scripts/compare-official.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "tsx": "4.21.0",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

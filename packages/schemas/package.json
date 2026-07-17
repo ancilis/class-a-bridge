@@ -1,0 +1,26 @@
+{
+  "name": "@class-a-bridge/schemas",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "pnpm generate && tsc --noEmit",
+    "generate": "tsx scripts/generate-validators.ts",
+    "lint": "eslint .",
+    "schemas:verify": "vitest run tests/manifest.test.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "ajv": "8.17.1",
+    "ajv-formats": "3.0.1"
+  },
+  "devDependencies": {
+    "tsx": "4.21.0",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "name": "class-a-bridge",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Local-first FedRAMP 20x Class A preparation workspace maintained by Ancilis.",
+  "license": "Apache-2.0",
+  "packageManager": "pnpm@10.33.0",
+  "engines": {
+    "node": ">=24.0.0 <26",
+    "pnpm": "10.33.0"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev --parallel",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "turbo run lint",
+    "rules:compare": "pnpm --filter @class-a-bridge/rules rules:compare",
+    "schemas:verify": "pnpm --filter @class-a-bridge/schemas schemas:verify",
+    "test": "turbo run test",
+    "test:a11y": "turbo run test:a11y",
+    "test:e2e": "turbo run test:e2e",
+    "typecheck": "turbo run typecheck",
+    "verify": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@types/node": "24.10.4",
+    "eslint": "10.7.0",
+    "globals": "17.3.0",
+    "prettier": "3.9.5",
+    "turbo": "2.10.5",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.64.0",
+    "vitest": "4.1.10"
+  }
+}
