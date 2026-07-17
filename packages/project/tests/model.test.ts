@@ -47,4 +47,25 @@ describe("BridgeProject", () => {
       BridgeProjectSchema.parse(legacyShape).packageInputs.certificationPackageOverview.logoUrl,
     ).toBe("");
   });
+
+  it("records unresolved package freshness without inventing a fresh status", () => {
+    const project = createEmptyProject("Final review", "Provider");
+    project.snapshots.push({
+      id: "snapshot-1",
+      version: "1.0",
+      createdAt: "2026-07-17T00:00:00.000Z",
+      providerApprover: "Provider approver",
+      verificationDate: "2026-07-17",
+      validationDate: "2026-07-17",
+      projectHash: "a".repeat(64),
+      packageHash: "b".repeat(64),
+      freshnessStatus: "needs_confirmation",
+      unresolvedItems: ["Confirm the SOC 2 report date."],
+      immutable: true,
+    });
+
+    expect(BridgeProjectSchema.parse(project).snapshots[0]?.freshnessStatus).toBe(
+      "needs_confirmation",
+    );
+  });
 });

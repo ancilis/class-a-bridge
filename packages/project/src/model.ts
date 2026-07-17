@@ -442,7 +442,7 @@ const SnapshotSchema = z
     validationDate: z.string(),
     projectHash: z.string().regex(/^[a-f0-9]{64}$/u),
     packageHash: z.string().regex(/^[a-f0-9]{64}$/u),
-    freshnessStatus: z.enum(["fresh", "aging", "stale"]),
+    freshnessStatus: z.enum(["fresh", "aging", "stale", "needs_confirmation"]),
     unresolvedItems: z.array(z.string()),
     immutable: z.literal(true),
   })
