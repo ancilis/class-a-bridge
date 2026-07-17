@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { extractSoc2Candidates, validatePdfFile } from "../src/lib/pdf";
+import {
+  collectBoundedTextFragments,
+  extractSoc2Candidates,
+  validatePdfFile,
+} from "../src/lib/pdf";
 
 describe("local deterministic SOC 2 parsing", () => {
   it("finds candidates with page provenance and does not assert authority", () => {
@@ -58,5 +62,12 @@ describe("local deterministic SOC 2 parsing", () => {
     expect(
       validatePdfFile({ name: "report.pdf", size: 26 * 1024 * 1024, type: "application/pdf" }),
     ).toMatch(/25 MB/iu);
+  });
+
+  it("bounds decompressed PDF text before joining parser fragments", () => {
+    expect(collectBoundedTextFragments(["12345", "67890", "overflow"], 8)).toEqual({
+      text: "12345 67",
+      truncated: true,
+    });
   });
 });

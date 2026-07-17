@@ -22,6 +22,8 @@ export interface LocalPdfResult {
 }
 
 const MAX_PDF_BYTES = 25 * 1024 * 1024;
+const MAX_PDF_PAGES = 500;
+const MAX_EXTRACTED_TEXT_CHARACTERS = 10_000_000;
 // Removing embedded control characters prevents document text from changing display semantics.
 // eslint-disable-next-line no-control-regex
 const DOCUMENT_CONTROL_CHARACTERS = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/gu;
@@ -42,6 +44,39 @@ function normalizeText(input: string): string {
     .replaceAll(/\s+/gu, " ")
     .trim()
     .slice(0, 2_000_000);
+}
+
+export function collectBoundedTextFragments(
+  fragments: readonly string[],
+  maximumCharacters: number,
+): { readonly text: string; readonly truncated: boolean } {
+  const limit = Math.max(0, Math.floor(maximumCharacters));
+  const parts: string[] = [];
+  let used = 0;
+  let truncated = false;
+  for (const fragment of fragments) {
+    if (used >= limit) {
+      truncated = true;
+      break;
+    }
+    if (parts.length > 0) {
+      parts.push(" ");
+      used += 1;
+      if (used >= limit) {
+        truncated = true;
+        break;
+      }
+    }
+    const remaining = limit - used;
+    const selected = fragment.slice(0, remaining);
+    parts.push(selected);
+    used += selected.length;
+    if (selected.length < fragment.length) {
+      truncated = true;
+      break;
+    }
+  }
+  return { text: parts.join(""), truncated };
 }
 
 function snippet(text: string, index: number, length: number): string {
@@ -229,17 +264,29 @@ export async function parsePdfLocally(file: File): Promise<LocalPdfResult> {
     });
     const document = await task.promise;
     const pages: string[] = [];
-    for (let pageNumber = 1; pageNumber <= Math.min(document.numPages, 500); pageNumber += 1) {
+    let remainingTextCharacters = MAX_EXTRACTED_TEXT_CHARACTERS;
+    let safetyLimitReached = document.numPages > MAX_PDF_PAGES;
+    for (
+      let pageNumber = 1;
+      pageNumber <= Math.min(document.numPages, MAX_PDF_PAGES);
+      pageNumber += 1
+    ) {
       const page = await document.getPage(pageNumber);
       const content = await page.getTextContent({ disableNormalization: false });
-      pages.push(
-        normalizeText(
-          content.items
-            .map((item) => ("str" in item && typeof item.str === "string" ? item.str : ""))
-            .join(" "),
+      const collected = collectBoundedTextFragments(
+        content.items.map((item) =>
+          "str" in item && typeof item.str === "string" ? item.str : "",
         ),
+        remainingTextCharacters,
       );
+      const pageText = normalizeText(collected.text).slice(0, remainingTextCharacters);
+      pages.push(pageText);
+      remainingTextCharacters -= pageText.length;
       page.cleanup();
+      if (collected.truncated || remainingTextCharacters <= 0) {
+        safetyLimitReached = true;
+        break;
+      }
     }
     await document.cleanup();
     await task.destroy();
@@ -248,17 +295,22 @@ export async function parsePdfLocally(file: File): Promise<LocalPdfResult> {
     return {
       pages,
       candidates,
-      ...(!hasText
+      ...(safetyLimitReached
         ? {
             warning:
-              "No usable text was found. The report may be scanned or image-only; continue with manual entry.",
+              "Local extraction stopped at the PDF page or text safety limit. Review the extracted candidates and enter any remaining report details manually.",
           }
-        : candidates.length === 0
+        : !hasText
           ? {
               warning:
-                "Text was extracted, but no reliable metadata candidates were found. Continue with manual entry.",
+                "No usable text was found. The report may be scanned or image-only; continue with manual entry.",
             }
-          : {}),
+          : candidates.length === 0
+            ? {
+                warning:
+                  "Text was extracted, but no reliable metadata candidates were found. Continue with manual entry.",
+              }
+            : {}),
     };
   } catch (error) {
     const name = error instanceof Error ? error.name : "";
