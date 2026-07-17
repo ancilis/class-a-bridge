@@ -8,19 +8,13 @@ const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const defaultRoot = path.resolve(scriptDirectory, "..");
 const execFileAsync = promisify(execFile);
 
-const APP_HEADERS = `
-/app/*
-  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'none'; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'
-  Cross-Origin-Opener-Policy: same-origin
-  Cross-Origin-Resource-Policy: same-origin
-  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=(), browsing-topics=()
-  Referrer-Policy: no-referrer
-  X-Content-Type-Options: nosniff
-  X-Frame-Options: DENY
-
-/app/assets/*
-  Cache-Control: public, max-age=31536000, immutable
-`;
+function prefixHeaderPaths(source, prefix) {
+  return source
+    .trim()
+    .split(/\r?\n/u)
+    .map((line) => (line.startsWith("/") ? `${prefix}${line}` : line))
+    .join("\n");
+}
 
 async function requireFile(filePath, description) {
   const info = await stat(filePath).catch(() => undefined);
@@ -62,6 +56,7 @@ export async function assembleRelease({
   await requireFile(path.join(resolvedBridge, "index.html"), "Bridge production build");
   await requireFile(path.join(resolvedBridge, "manifest.webmanifest"), "PWA manifest");
   await requireFile(path.join(resolvedBridge, "sw.js"), "PWA service worker");
+  await requireFile(path.join(resolvedBridge, "_headers"), "Bridge security headers");
 
   const [websiteFiles, bridgeFiles] = await Promise.all([
     countFiles(resolvedWebsite),
@@ -72,6 +67,7 @@ export async function assembleRelease({
   await mkdir(resolvedDestination, { recursive: true });
   await cp(resolvedWebsite, resolvedDestination, { recursive: true });
   await cp(resolvedBridge, path.join(resolvedDestination, "app"), { recursive: true });
+  await rm(path.join(resolvedDestination, "app", "_headers"), { force: true });
 
   const downloadsDirectory = path.join(resolvedDestination, "downloads");
   const sourceArchivePath = path.join(downloadsDirectory, "class-a-bridge-1.0.0-source.tar.gz");
@@ -90,8 +86,14 @@ export async function assembleRelease({
   }
 
   const headersPath = path.join(resolvedDestination, "_headers");
-  const websiteHeaders = await readFile(headersPath, "utf8").catch(() => "");
-  await writeFile(headersPath, `${websiteHeaders.trimEnd()}\n${APP_HEADERS.trimStart()}`);
+  const [websiteHeaders, bridgeHeaders] = await Promise.all([
+    readFile(headersPath, "utf8").catch(() => ""),
+    readFile(path.join(resolvedBridge, "_headers"), "utf8"),
+  ]);
+  await writeFile(
+    headersPath,
+    `${websiteHeaders.trimEnd()}\n\n${prefixHeaderPaths(bridgeHeaders, "/app")}\n`,
+  );
   await writeFile(
     path.join(resolvedDestination, "release-manifest.json"),
     `${JSON.stringify(

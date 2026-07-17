@@ -8,7 +8,8 @@ test("the first-run path is operable by keyboard with a visible focus indicator"
 }) => {
   await openFirstRun(page);
   await page.keyboard.press("Tab");
-  await expect(page.getByRole("button", { name: /Start with my SOC 2 report/u })).toBeFocused();
+  const skipLink = page.getByRole("link", { name: "Skip to main content" });
+  await expect(skipLink).toBeFocused();
   const focusStyle = await page.evaluate(() => {
     const element = document.activeElement;
     if (!(element instanceof HTMLElement)) return { style: "none", width: "0px" };
@@ -18,6 +19,10 @@ test("the first-run path is operable by keyboard with a visible focus indicator"
   expect(focusStyle.style).not.toBe("none");
   expect(Number.parseFloat(focusStyle.width)).toBeGreaterThanOrEqual(2);
 
+  await page.keyboard.press("Enter");
+  await expect(page.locator("main#main-content")).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(page.getByRole("button", { name: /Start with my SOC 2 report/u })).toBeFocused();
   await page.keyboard.press("Tab");
   await expect(
     page.getByRole("button", { name: /Start without uploading a report/u }),

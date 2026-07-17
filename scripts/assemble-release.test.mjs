@@ -19,6 +19,27 @@ test("assembles the website and PWA into one static release", async () => {
     await writeFile(path.join(bridge, "index.html"), "workspace");
     await writeFile(path.join(bridge, "manifest.webmanifest"), "{}");
     await writeFile(path.join(bridge, "sw.js"), "// service worker");
+    await writeFile(
+      path.join(bridge, "_headers"),
+      `/*
+  Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self'; form-action 'none'; frame-ancestors 'none'
+
+/
+  Cache-Control: no-cache, no-store, must-revalidate
+
+/index.html
+  Cache-Control: no-cache, no-store, must-revalidate
+
+/sw.js
+  Cache-Control: no-cache, no-store, must-revalidate
+
+/manifest.webmanifest
+  Cache-Control: no-cache
+
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+`,
+    );
     await writeFile(path.join(bridge, "assets", "app.js"), "export {};");
 
     const result = await assembleRelease({
@@ -35,11 +56,23 @@ test("assembles the website and PWA into one static release", async () => {
       await readFile(path.join(destination, "downloads", "class-a-bridge-1.0.0-source.tar.gz")),
       Buffer.from([31, 139, 8, 0]),
     );
-    assert.match(await readFile(path.join(destination, "_headers"), "utf8"), /\/app\/\*/u);
-    assert.match(await readFile(path.join(destination, "_headers"), "utf8"), /connect-src 'none'/u);
+    const headers = await readFile(path.join(destination, "_headers"), "utf8");
+    assert.match(headers, /\/app\/\*/u);
+    assert.match(headers, /connect-src 'self'/u);
+    assert.doesNotMatch(headers, /style-src[^\n]*'unsafe-inline'/u);
+    assert.doesNotMatch(headers, /form-action 'self'/u);
+    assert.match(
+      headers,
+      /\/app\/index\.html\s+Cache-Control: no-cache, no-store, must-revalidate/u,
+    );
+    assert.match(
+      headers,
+      /\/app\/sw\.js\s+Cache-Control: no-cache, no-store, must-revalidate/u,
+    );
+    await assert.rejects(() => readFile(path.join(destination, "app", "_headers"), "utf8"));
     assert.equal(result.destination, destination);
     assert.equal(result.websiteFiles, 2);
-    assert.equal(result.bridgeFiles, 4);
+    assert.equal(result.bridgeFiles, 5);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

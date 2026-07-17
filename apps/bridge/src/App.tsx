@@ -22,6 +22,7 @@ import {
   type AnswerValue,
   type BridgeProject,
   type ProjectStore,
+  type ProjectSummary,
 } from "@class-a-bridge/project";
 import {
   CATALOG_MANIFEST,
@@ -50,6 +51,13 @@ import {
 } from "react";
 
 import { diagnosticReport, downloadBytes, downloadText } from "./lib/download";
+import {
+  collectBundleAttachments,
+  persistProjectWithAttachmentAtomically,
+  referencedLocalAttachments,
+  removeEvidenceCandidateLocally,
+  restoreImportedProjectAtomically,
+} from "./lib/backup";
 import { parsePdfLocally, validatePdfFile } from "./lib/pdf";
 import {
   answerEligibility,
@@ -57,6 +65,7 @@ import {
   evidenceFreshness,
   initializeProject,
   requirementMilestone,
+  soc2PackageFreshness,
 } from "./lib/workspace";
 
 type Route =
@@ -70,6 +79,12 @@ type Route =
   | "/package"
   | "/reports"
   | "/settings";
+
+type SaveState =
+  | { readonly status: "idle" | "saving" | "saved" }
+  | { readonly status: "error"; readonly message: string };
+
+const DEFAULT_STORE_FACTORY = createProjectStoreSafely;
 
 const NAVIGATION: readonly {
   readonly route: Route;
@@ -97,6 +112,100 @@ const statusLabel = (value: string) =>
   value.replaceAll("_", " ").replace(/^./u, (character) => character.toUpperCase());
 const routeFrom = (input: string): Route =>
   NAVIGATION.find(({ route }) => input.startsWith(route))?.route ?? "/overview";
+
+interface ValidationEditTarget {
+  readonly route: Route;
+  readonly id?: string;
+  readonly label: string;
+}
+
+export function validationEditTarget(
+  documentName: string,
+  pointer: string,
+): ValidationEditTarget {
+  if (documentName === "certification-package-overview") {
+    if (pointer.includes("/providerName"))
+      return { route: "/settings", id: "settings-organization-name", label: "Edit provider name" };
+    if (pointer.includes("/serviceName"))
+      return { route: "/settings", id: "settings-offering-name", label: "Edit offering name" };
+    if (pointer.includes("/serviceAcronym"))
+      return { route: "/settings", id: "settings-offering-acronym", label: "Edit acronym" };
+    if (pointer.includes("/serviceDescription"))
+      return {
+        route: "/settings",
+        id: "settings-offering-description",
+        label: "Edit offering description",
+      };
+    if (pointer.includes("/serviceType"))
+      return { route: "/settings", id: "settings-service-models", label: "Edit service models" };
+    if (pointer.includes("/trustCenter/url"))
+      return { route: "/settings", id: "settings-trust-center-url", label: "Edit trust center" };
+    if (pointer.includes("/fedRampPackageId"))
+      return { route: "/package", id: "package-cpo-id", label: "Edit package identifier" };
+    if (pointer.includes("/logo"))
+      return { route: "/package", id: "package-cpo-logo", label: "Edit logo URL" };
+    if (pointer.includes("/website"))
+      return { route: "/package", id: "package-cpo-website", label: "Edit offering website" };
+    if (pointer.includes("/deploymentModel"))
+      return {
+        route: "/package",
+        id: "package-cpo-deployment-model",
+        label: "Edit deployment model",
+      };
+    if (pointer.includes("/contactInformation"))
+      return {
+        route: "/package",
+        id: "package-cpo-contacts",
+        label: "Edit provider contacts",
+      };
+    return { route: "/package", id: "package-cpo-id", label: "Edit package overview" };
+  }
+  if (documentName === "security-decision-record") {
+    const port = /^\/portsAndProtocols\/(\d+)\/([^/]+)$/u.exec(pointer);
+    if (port)
+      return {
+        route: "/package",
+        id: `package-sdr-port-${port[1]}-${port[2]}`,
+        label: "Edit port or protocol",
+      };
+    if (pointer.includes("/fedRampRequirements") || pointer.includes("/keySecurityIndicators"))
+      return { route: "/requirements", label: "Open requirement record" };
+    return {
+      route: "/package",
+      id: "package-sdr-cpo-uri",
+      label: "Edit Security Decision Record",
+    };
+  }
+  if (pointer.includes("/reportPeriod/from"))
+    return { route: "/package", id: "package-ocr-report-from", label: "Edit report start" };
+  if (pointer.includes("/reportPeriod/to"))
+    return { route: "/package", id: "package-ocr-report-to", label: "Edit report end" };
+  if (pointer === "/reportPeriod")
+    return { route: "/package", id: "package-ocr-report-from", label: "Edit report period" };
+  if (pointer.includes("/planningHorizonThrough"))
+    return {
+      route: "/package",
+      id: "package-ocr-planning-through",
+      label: "Edit planning horizon",
+    };
+  if (pointer.includes("/acceptedVulnerabilities"))
+    return {
+      route: "/package",
+      id: "package-ocr-accepted-vulnerabilities",
+      label: "Edit accepted-vulnerability summary",
+    };
+  if (pointer.includes("/plannedCertificationDataChanges"))
+    return {
+      route: "/package",
+      id: "package-ocr-planned-changes",
+      label: "Edit planned certification changes",
+    };
+  return {
+    route: "/package",
+    id: "package-ocr-cpo-uri",
+    label: "Edit Ongoing Certification Report",
+  };
+}
 const toneFor = (value: string): "neutral" | "info" | "positive" | "warning" | "critical" => {
   if (/approved|complete|likely_fit$/u.test(value)) return "positive";
   if (/critical|blocker|not_currently|mismatch|invalid|stale|rejected/u.test(value))
@@ -123,6 +232,7 @@ function officialDocumentOptions(
       ...(cpo.fedRampPackageId ? { fedRampPackageId: cpo.fedRampPackageId } : {}),
       ...(cpo.ueiNumber ? { ueiNumber: cpo.ueiNumber } : {}),
       ...(cpo.website ? { website: cpo.website } : {}),
+      ...(cpo.logoUrl ? { logoUrl: cpo.logoUrl } : {}),
       ...(cpo.deploymentModel ? { deploymentModel: cpo.deploymentModel } : {}),
       ...(cpo.businessCategories.length > 0 ? { businessCategories: cpo.businessCategories } : {}),
       securityContact: contact(cpo.securityContact, "Security"),
@@ -170,75 +280,176 @@ function cloneProject(project: BridgeProject) {
   return structuredClone(project);
 }
 
+function localErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error && error.message.trim()
+    ? error.message.trim().slice(0, 240)
+    : fallback;
+}
+
 function FirstRun({
   onPdf,
   onManual,
   onSample,
+  savedProjects,
+  savedProjectsState,
+  savedProjectsError,
+  onOpenSaved,
+  onImport,
 }: {
   readonly onPdf: () => void;
   readonly onManual: () => void;
   readonly onSample: () => void;
+  readonly savedProjects: readonly ProjectSummary[];
+  readonly savedProjectsState: "loading" | "ready" | "error";
+  readonly savedProjectsError: string;
+  readonly onOpenSaved: (id: string) => Promise<void>;
+  readonly onImport: (file: File, password: string) => Promise<void>;
 }) {
+  const [password, setPassword] = useState("");
+  const [importState, setImportState] = useState<"idle" | "busy">("idle");
+  const [importMessage, setImportMessage] = useState("");
+  const importFile = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setImportState("busy");
+    setImportMessage("");
+    try {
+      await onImport(file, password);
+    } catch (caught) {
+      setImportMessage(
+        caught instanceof Error ? caught.message : "The backup could not be restored safely.",
+      );
+    } finally {
+      setImportState("idle");
+      event.target.value = "";
+    }
+  };
   return (
-    <main className="first-run">
-      <div className="first-run__brand">
-        <span className="brand-mark" aria-hidden="true">
-          A
-        </span>
-        <span>
-          CLASS A BRIDGE <small>BY ANCILIS</small>
-        </span>
-      </div>
-      <section className="first-run__hero" aria-labelledby="first-run-title">
-        <p className="eyebrow">Private, guided FedRAMP 20x preparation</p>
-        <h1 id="first-run-title">Turn your SOC 2 Type II into a clear Class A plan.</h1>
-        <p className="lede">
-          Start in your browser. You will receive a preliminary fit result after eight focused
-          questions, then a workspace for scope, evidence, requirements, and package preparation.
-        </p>
-        <div className="privacy-chip">
-          <span aria-hidden="true">●</span> No account. No SDK. No confidential document upload.
+    <>
+      <a className="skip-link" href="#main-content">
+        Skip to main content
+      </a>
+      <main className="first-run" id="main-content" tabIndex={-1}>
+        <div className="first-run__brand">
+          <span className="brand-mark" aria-hidden="true">
+            A
+          </span>
+          <span>
+            CLASS A BRIDGE <small>BY ANCILIS</small>
+          </span>
         </div>
-      </section>
-      <section className="start-paths" aria-label="Choose how to begin">
-        <button className="start-card start-card--primary" onClick={onPdf}>
-          <span className="start-card__icon" aria-hidden="true">
-            ↥
-          </span>
-          <strong>Start with my SOC 2 report</strong>
-          <span>
-            Choose a local PDF. Deterministic extraction runs only in this browser, and you confirm
-            every value.
-          </span>
-          <em>Choose local PDF →</em>
-        </button>
-        <button className="start-card" onClick={onManual}>
-          <span className="start-card__icon" aria-hidden="true">
-            ✎
-          </span>
-          <strong>Start without uploading a report</strong>
-          <span>
-            Answer the same guided questions and add report details manually whenever you are ready.
-          </span>
-          <em>Begin manually →</em>
-        </button>
-        <button className="start-card" onClick={onSample}>
-          <span className="start-card__icon" aria-hidden="true">
-            ◇
-          </span>
-          <strong>Explore a fictional sample workspace</strong>
-          <span>
-            See Acme Metrics with mixed progress, sample evidence, open issues, and generated
-            outputs.
-          </span>
-          <em>Open fictional sample →</em>
-        </button>
-      </section>
-      <footer className="first-run__footer">
-        <span>Open source · Local-first · Preparation support, not certification</span>
-        <a href="../security-and-privacy">Security and privacy</a>
-      </footer>
-    </main>
+        <section className="first-run__hero" aria-labelledby="first-run-title">
+          <p className="eyebrow">Private, guided FedRAMP 20x preparation</p>
+          <h1 id="first-run-title">Turn your SOC 2 Type II into a clear Class A plan.</h1>
+          <p className="lede">
+            Start in your browser. You will receive a preliminary fit result after eight focused
+            questions, then a workspace for scope, evidence, requirements, and package preparation.
+          </p>
+          <div className="privacy-chip">
+            <span aria-hidden="true">●</span> No account. No SDK. No confidential document upload.
+          </div>
+        </section>
+        <section className="start-paths" aria-label="Choose how to begin">
+          <button className="start-card start-card--primary" onClick={onPdf}>
+            <span className="start-card__icon" aria-hidden="true">
+              ↥
+            </span>
+            <strong>Start with my SOC 2 report</strong>
+            <span>
+              Choose a local PDF. Deterministic extraction runs only in this browser, and you
+              confirm every value.
+            </span>
+            <em>Choose local PDF →</em>
+          </button>
+          <button className="start-card" onClick={onManual}>
+            <span className="start-card__icon" aria-hidden="true">
+              ✎
+            </span>
+            <strong>Start without uploading a report</strong>
+            <span>
+              Answer the same guided questions and add report details manually whenever you are
+              ready.
+            </span>
+            <em>Begin manually →</em>
+          </button>
+          <button className="start-card" onClick={onSample}>
+            <span className="start-card__icon" aria-hidden="true">
+              ◇
+            </span>
+            <strong>Explore a fictional sample workspace</strong>
+            <span>
+              See Acme Metrics with mixed progress, sample evidence, open issues, and generated
+              outputs.
+            </span>
+            <em>Open fictional sample →</em>
+          </button>
+        </section>
+        <section className="first-run__resume" aria-labelledby="saved-projects-title">
+          <div>
+            <p className="eyebrow">Continue locally</p>
+            <h2 id="saved-projects-title">Saved projects on this browser</h2>
+            {savedProjectsState === "loading" && <p role="status">Checking browser storage…</p>}
+            {savedProjectsState === "error" && (
+              <div className="error-summary" role="alert">
+                <strong>Saved projects could not be listed.</strong>
+                <p>{savedProjectsError}</p>
+              </div>
+            )}
+            {savedProjectsState === "ready" && savedProjects.length === 0 && (
+              <p>No saved projects are stored in this browser yet.</p>
+            )}
+            {savedProjects.length > 0 && (
+              <div className="saved-projects">
+                {savedProjects.map((saved) => (
+                  <button
+                    className="saved-project"
+                    key={saved.id}
+                    aria-label={`Open saved project ${saved.name}`}
+                    onClick={() => void onOpenSaved(saved.id)}
+                  >
+                    <strong>{saved.name}</strong>
+                    <span>{saved.organization || "Organization not named"}</span>
+                    <small>Last changed {new Date(saved.updatedAt).toLocaleString()}</small>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="first-run__import">
+            <h2>Restore a portable backup</h2>
+            <p>
+              Import is available before creating a new project. The bundle is validated locally
+              before any project is opened.
+            </p>
+            <Field label="Backup password (encrypted bundles only)">
+              <input
+                type="password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+              />
+            </Field>
+            <Field label="Choose a Class A Bridge backup">
+              <input
+                type="file"
+                accept=".classabridge,.encrypted"
+                disabled={importState === "busy"}
+                onChange={(event) => void importFile(event)}
+              />
+            </Field>
+            {importMessage && (
+              <div className="error-summary" role="alert">
+                <strong>Backup import stopped safely.</strong>
+                <p>{importMessage}</p>
+              </div>
+            )}
+          </div>
+        </section>
+        <footer className="first-run__footer">
+          <span>Open source · Local-first · Preparation support, not certification</span>
+          <a href="../security-and-privacy">Security and privacy</a>
+        </footer>
+      </main>
+    </>
   );
 }
 
@@ -306,56 +517,61 @@ function PdfStart({
     }
   };
   return (
-    <main className="focused-page">
-      <button className="back-link" onClick={onCancel}>
-        ← Back
-      </button>
-      <Card title="Start with your SOC 2 report" eyebrow="Local document processing">
-        <Callout title="Your report is not uploaded" tone="positive">
-          <p>
-            The PDF is read by a parser bundled with this application. No report name, text,
-            metadata, or assessment answer is sent to Ancilis.
-          </p>
-        </Callout>
-        <div className="drop-zone">
-          <span className="drop-zone__icon" aria-hidden="true">
-            PDF
-          </span>
-          <h3>Choose a SOC 2 report from this device</h3>
-          <p>
-            PDF only, up to 25 MB. Scanned, encrypted, or unreadable reports can be entered
-            manually.
-          </p>
-          <label className="button button--primary">
-            {busy ? "Processing locally…" : "Choose PDF"}
-            <input
-              className="visually-hidden"
-              type="file"
-              accept="application/pdf,.pdf"
-              onChange={(event) => void handleFile(event)}
-              disabled={busy}
-            />
-          </label>
-        </div>
-        {error && (
-          <div className="error-summary" role="alert">
-            <strong>We could not use that file.</strong>
-            <p>{error}</p>
-            <Button variant="secondary" onClick={onManual}>
-              Continue with manual entry
-            </Button>
+    <>
+      <a className="skip-link" href="#main-content">
+        Skip to main content
+      </a>
+      <main className="focused-page" id="main-content" tabIndex={-1}>
+        <button className="back-link" onClick={onCancel}>
+          ← Back
+        </button>
+        <Card title="Start with your SOC 2 report" eyebrow="Local document processing">
+          <Callout title="Your report is not uploaded" tone="positive">
+            <p>
+              The PDF is read by a parser bundled with this application. No report name, text,
+              metadata, or assessment answer is sent to Ancilis.
+            </p>
+          </Callout>
+          <div className="drop-zone">
+            <span className="drop-zone__icon" aria-hidden="true">
+              PDF
+            </span>
+            <h3>Choose a SOC 2 report from this device</h3>
+            <p>
+              PDF only, up to 25 MB. Scanned, encrypted, or unreadable reports can be entered
+              manually.
+            </p>
+            <label className="button button--primary">
+              {busy ? "Processing locally…" : "Choose PDF"}
+              <input
+                className="visually-hidden"
+                type="file"
+                accept="application/pdf,.pdf"
+                onChange={(event) => void handleFile(event)}
+                disabled={busy}
+              />
+            </label>
           </div>
-        )}
-        <details>
-          <summary>What the local parser looks for</summary>
-          <p>
-            Report type, issuer, period, date, system name, Trust Services Criteria, control
-            identifiers, subservice organizations, treatment, exceptions, complementary controls,
-            and bridge-letter references. Every item remains unconfirmed until you review it.
-          </p>
-        </details>
-      </Card>
-    </main>
+          {error && (
+            <div className="error-summary" role="alert">
+              <strong>We could not use that file.</strong>
+              <p>{error}</p>
+              <Button variant="secondary" onClick={onManual}>
+                Continue with manual entry
+              </Button>
+            </div>
+          )}
+          <details>
+            <summary>What the local parser looks for</summary>
+            <p>
+              Report type, issuer, period, date, system name, Trust Services Criteria, control
+              identifiers, subservice organizations, treatment, exceptions, complementary controls,
+              and bridge-letter references. Every item remains unconfirmed until you review it.
+            </p>
+          </details>
+        </Card>
+      </main>
+    </>
   );
 }
 
@@ -377,103 +593,126 @@ function PdfReview({
       if (decision === "confirmed" || decision === "edited") {
         if (candidate.field === "SOC 2 report type" && /type\s+ii/iu.test(candidate.value))
           draft.soc2.confirmedType = "type_ii";
+        if (candidate.field === "Report issuer") draft.soc2.issuer = candidate.value;
+        if (candidate.field === "Report date") draft.soc2.reportDate = candidate.value;
+        if (candidate.field === "Report period") {
+          const [start, end] = candidate.value.split(" to ", 2);
+          if (start) draft.soc2.reportStart = start;
+          if (end) draft.soc2.reportEnd = end;
+        }
         if (candidate.field === "System or service name") draft.soc2.systemName = candidate.value;
         if (candidate.field === "Carve-out treatment") draft.soc2.treatment = "carve_out";
+        if (candidate.field === "Inclusive treatment") draft.soc2.treatment = "inclusive";
         if (candidate.field === "Trust Services Criteria")
           draft.soc2.trustServicesCriteria = [
             ...new Set([...draft.soc2.trustServicesCriteria, candidate.value]),
           ];
+        if (candidate.field === "Subservice organization")
+          draft.soc2.subserviceOrganizations = [
+            ...new Set([...draft.soc2.subserviceOrganizations, candidate.value]),
+          ];
+        if (candidate.field === "Complementary user-entity controls")
+          draft.soc2.complementaryUserEntityControls = [
+            ...new Set([...draft.soc2.complementaryUserEntityControls, candidate.value]),
+          ];
+        if (candidate.field === "Bridge or gap letter reference")
+          draft.soc2.bridgeLetterReference = candidate.value;
       }
     });
   const reviewed = project.soc2.extractionCandidates.filter(
     (item) => item.decision !== "unreviewed",
   ).length;
   return (
-    <main className="focused-page focused-page--wide">
-      <p className="eyebrow">Confirm local extraction</p>
-      <h1>Review every suggested report value.</h1>
-      <p className="lede">
-        Extracted text is not authoritative. Confirm, edit, or ignore each item; the tool never
-        completes a requirement from an extracted value.
-      </p>
-      <ProgressTrack
-        current={reviewed}
-        total={Math.max(project.soc2.extractionCandidates.length, 1)}
-        label="Extraction candidates reviewed"
-      />
-      {project.notes && (
-        <Callout title="Manual entry may be needed" tone="warning">
-          <p>{project.notes}</p>
-        </Callout>
-      )}
-      {project.soc2.extractionCandidates.length === 0 ? (
-        <EmptyState
-          title="No reliable candidates found"
-          action={<Button onClick={onContinue}>Continue manually</Button>}
-        >
-          <p>
-            The report may be scanned or use an unfamiliar format. Your project is preserved and the
-            manual path remains available.
-          </p>
-        </EmptyState>
-      ) : (
-        <div className="candidate-list">
-          {project.soc2.extractionCandidates.map((candidate) => (
-            <article className="candidate" key={candidate.id}>
-              <div className="candidate__meta">
-                <span>Page {candidate.page}</span>
-                <StatusPill
-                  tone={
-                    candidate.confidence === "high"
-                      ? "positive"
-                      : candidate.confidence === "medium"
-                        ? "info"
-                        : "warning"
-                  }
-                >
-                  {candidate.confidence} confidence
-                </StatusPill>
-                <StatusPill tone={toneFor(candidate.decision)}>
-                  {statusLabel(candidate.decision)}
-                </StatusPill>
-              </div>
-              <label>
-                <strong>{candidate.field}</strong>
-                <input
-                  value={candidate.value}
-                  onChange={(event) => decide(candidate.id, "edited", event.target.value)}
-                />
-              </label>
-              <blockquote>{candidate.snippet}</blockquote>
-              <p className="small">
-                Detected by: {candidate.detector}. Human confirmation is required.
-              </p>
-              <div className="button-row">
-                <Button onClick={() => decide(candidate.id, "confirmed")}>Confirm</Button>
-                <Button
-                  variant="secondary"
-                  onClick={() => decide(candidate.id, "edited", candidate.value)}
-                >
-                  Mark edited
-                </Button>
-                <Button variant="quiet" onClick={() => decide(candidate.id, "ignored")}>
-                  Ignore
-                </Button>
-              </div>
-            </article>
-          ))}
+    <>
+      <a className="skip-link" href="#main-content">
+        Skip to main content
+      </a>
+      <main className="focused-page focused-page--wide" id="main-content" tabIndex={-1}>
+        <p className="eyebrow">Confirm local extraction</p>
+        <h1>Review every suggested report value.</h1>
+        <p className="lede">
+          Extracted text is not authoritative. Confirm, edit, or ignore each item; the tool never
+          completes a requirement from an extracted value.
+        </p>
+        <ProgressTrack
+          current={reviewed}
+          total={Math.max(project.soc2.extractionCandidates.length, 1)}
+          label="Extraction candidates reviewed"
+        />
+        {project.notes && (
+          <Callout title="Manual entry may be needed" tone="warning">
+            <p>{project.notes}</p>
+          </Callout>
+        )}
+        {project.soc2.extractionCandidates.length === 0 ? (
+          <EmptyState
+            title="No reliable candidates found"
+            action={<Button onClick={onContinue}>Continue manually</Button>}
+          >
+            <p>
+              The report may be scanned or use an unfamiliar format. Your project is preserved and
+              the manual path remains available.
+            </p>
+          </EmptyState>
+        ) : (
+          <div className="candidate-list">
+            {project.soc2.extractionCandidates.map((candidate) => (
+              <article className="candidate" key={candidate.id}>
+                <div className="candidate__meta">
+                  <span>Page {candidate.page}</span>
+                  <StatusPill
+                    tone={
+                      candidate.confidence === "high"
+                        ? "positive"
+                        : candidate.confidence === "medium"
+                          ? "info"
+                          : "warning"
+                    }
+                  >
+                    {candidate.confidence} confidence
+                  </StatusPill>
+                  <StatusPill tone={toneFor(candidate.decision)}>
+                    {statusLabel(candidate.decision)}
+                  </StatusPill>
+                </div>
+                <label>
+                  <strong>{candidate.field}</strong>
+                  <input
+                    value={candidate.value}
+                    onChange={(event) => decide(candidate.id, "edited", event.target.value)}
+                  />
+                </label>
+                <blockquote>{candidate.snippet}</blockquote>
+                <p className="small">
+                  Detected by: {candidate.detector}. Human confirmation is required.
+                </p>
+                <div className="button-row">
+                  <Button onClick={() => decide(candidate.id, "confirmed")}>Confirm</Button>
+                  <Button
+                    variant="secondary"
+                    onClick={() => decide(candidate.id, "edited", candidate.value)}
+                  >
+                    Mark edited
+                  </Button>
+                  <Button variant="quiet" onClick={() => decide(candidate.id, "ignored")}>
+                    Ignore
+                  </Button>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+        <div className="sticky-action">
+          <div>
+            <strong>
+              {reviewed} of {project.soc2.extractionCandidates.length} reviewed
+            </strong>
+            <p>You can revisit every item under SOC 2 materials.</p>
+          </div>
+          <Button onClick={onContinue}>Continue to fit assessment</Button>
         </div>
-      )}
-      <div className="sticky-action">
-        <div>
-          <strong>
-            {reviewed} of {project.soc2.extractionCandidates.length} reviewed
-          </strong>
-          <p>You can revisit every item under SOC 2 materials.</p>
-        </div>
-        <Button onClick={onContinue}>Continue to fit assessment</Button>
-      </div>
-    </main>
+      </main>
+    </>
   );
 }
 
@@ -484,6 +723,13 @@ function Shell({
   update,
   store,
   onClose,
+  onRestore,
+  saveState,
+  online,
+  updateAvailable,
+  onApplyUpdate,
+  restoreMessage,
+  onDismissRestoreMessage,
 }: {
   readonly project: BridgeProject;
   readonly route: Route;
@@ -491,7 +737,18 @@ function Shell({
   readonly update: (recipe: (draft: BridgeProject) => void) => void;
   readonly store: ProjectStore;
   readonly onClose: () => void;
+  readonly onRestore: (file: File, password: string) => Promise<void>;
+  readonly saveState: SaveState;
+  readonly online: boolean;
+  readonly updateAvailable: boolean;
+  readonly onApplyUpdate: () => void;
+  readonly restoreMessage: string;
+  readonly onDismissRestoreMessage: () => void;
 }) {
+  const mainRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    mainRef.current?.focus();
+  }, [route]);
   const screens: Record<Route, ReactNode> = {
     "/overview": <Overview project={project} navigate={setRoute} />,
     "/eligibility": <Eligibility project={project} update={update} />,
@@ -500,12 +757,24 @@ function Shell({
     "/requirements": <Requirements project={project} update={update} />,
     "/evidence": <Evidence project={project} update={update} store={store} />,
     "/action-plan": <ActionPlan project={project} update={update} navigate={setRoute} />,
-    "/package": <Package project={project} update={update} />,
+    "/package": <Package project={project} update={update} store={store} navigate={setRoute} />,
     "/reports": <Reports project={project} />,
-    "/settings": <Settings project={project} update={update} store={store} onClose={onClose} />,
+    "/settings": (
+      <Settings
+        project={project}
+        update={update}
+        store={store}
+        saveState={saveState}
+        onClose={onClose}
+        onRestore={onRestore}
+      />
+    ),
   };
   return (
     <div className="app-shell">
+      <a className="skip-link" href="#main-content">
+        Skip to main content
+      </a>
       <aside className="sidebar">
         <button className="brand" onClick={() => setRoute("/overview")}>
           <span className="brand-mark" aria-hidden="true">
@@ -547,12 +816,57 @@ function Shell({
             </span>
           </div>
         </header>
+        <div className="workspace-state">
+          <div className="connection-state" role="status" aria-label="Connection status">
+            <span aria-hidden="true">{online ? "●" : "○"}</span>
+            {online ? "Online — local workspace ready" : "Offline — workspace remains available"}
+          </div>
+          {saveState.status === "error" ? (
+            <div className="save-state save-state--error" role="alert">
+              <strong>Local save failed:</strong> {saveState.message}. Export a backup before
+              closing this tab.
+            </div>
+          ) : (
+            <div className="save-state" role="status" aria-label="Local save status">
+              {saveState.status === "saving"
+                ? "Saving locally…"
+                : saveState.status === "saved"
+                  ? "Saved locally"
+                  : "Local save will begin after the first change"}
+            </div>
+          )}
+          {updateAvailable && (
+            <div className="update-state" role="status">
+              <span>A Class A Bridge update is ready.</span>
+              <Button
+                variant="secondary"
+                onClick={onApplyUpdate}
+                disabled={saveState.status === "saving" || saveState.status === "error"}
+              >
+                Apply update
+              </Button>
+            </div>
+          )}
+        </div>
         {project.metadata.isSample && (
           <div className="sample-banner" role="note">
             Fictional demonstration — not an actual certification package.
           </div>
         )}
-        <main className="screen" id="main-content">
+        {restoreMessage && (
+          <div className="toast" role="status" aria-label="Backup restore status">
+            <span>{restoreMessage}</span>
+            <button
+              className="toast__dismiss"
+              type="button"
+              aria-label="Dismiss backup restore status"
+              onClick={onDismissRestoreMessage}
+            >
+              ×
+            </button>
+          </div>
+        )}
+        <main className="screen" id="main-content" ref={mainRef} tabIndex={-1}>
           {screens[route]}
         </main>
       </div>
@@ -594,6 +908,7 @@ function Overview({
   const result = project.eligibility.result;
   const openActions = project.actions.filter((item) => item.status !== "done");
   const evidenceReview = project.evidence.filter((item) => item.reviewStatus !== "reviewed").length;
+  const soc2Freshness = soc2PackageFreshness(project);
   return (
     <>
       <PageHeading
@@ -620,18 +935,10 @@ function Overview({
           </Button>
         </Card>
         <Card title="SOC 2 freshness">
-          <StatusPill
-            tone={
-              project.eligibility.answers.find((item) => item.questionId === "soc2_fresh")
-                ?.value === "yes"
-                ? "positive"
-                : "warning"
-            }
-          >
-            {project.eligibility.answers.find((item) => item.questionId === "soc2_fresh")?.value ===
-            "yes"
+          <StatusPill tone={toneFor(soc2Freshness)}>
+            {soc2Freshness === "fresh"
               ? "Confirmed within window"
-              : "Needs confirmation"}
+              : statusLabel(soc2Freshness)}
           </StatusPill>
           <p>
             {project.soc2.reportEnd
@@ -858,6 +1165,92 @@ function Eligibility({
           ))}
         </div>
       </Card>
+      <Card
+        title="Application prerequisites and follow-up confirmation"
+        eyebrow="Shown after the eight-question result"
+      >
+        <p>
+          These follow-up items refine the action plan without delaying the preliminary result. “Not
+          sure” remains an acceptable answer and creates a confirmation task.
+        </p>
+        <div className="form-grid">
+          <Field label="Will the offering handle federal customer data?">
+            <select
+              value={project.offering.handlesFederalData}
+              onChange={(event) =>
+                update((draft) => {
+                  draft.offering.handlesFederalData = event.target
+                    .value as BridgeProject["offering"]["handlesFederalData"];
+                })
+              }
+            >
+              <option value="not_sure">Not sure</option>
+              <option value="yes">Yes</option>
+              <option value="no">No</option>
+            </select>
+          </Field>
+          <Field label="Marketplace listing status">
+            <select
+              value={project.organization.marketplaceStatus}
+              onChange={(event) =>
+                update((draft) => {
+                  draft.organization.marketplaceStatus = event.target
+                    .value as BridgeProject["organization"]["marketplaceStatus"];
+                })
+              }
+            >
+              <option value="not_started">Not started</option>
+              <option value="preparing">Preparing</option>
+              <option value="listed">Listed</option>
+              <option value="not_sure">Not sure</option>
+            </select>
+          </Field>
+          <Field label="Accountable executive">
+            <input
+              value={project.organization.accountableExecutive ?? ""}
+              onChange={(event) =>
+                update((draft) => {
+                  draft.organization.accountableExecutive = event.target.value || undefined;
+                })
+              }
+            />
+          </Field>
+          <Field label="Trust center or equivalent sharing URL">
+            <input
+              type="url"
+              value={project.organization.trustCenterUrl ?? ""}
+              onChange={(event) =>
+                update((draft) => {
+                  draft.organization.trustCenterUrl = event.target.value || undefined;
+                })
+              }
+            />
+          </Field>
+          {project.materials
+            .filter((material) => material.kind === "bridge_letter")
+            .map((material) => (
+              <Field label="Bridge or gap letter status" key={material.id}>
+                <select
+                  value={material.status}
+                  onChange={(event) =>
+                    update((draft) => {
+                      const item = draft.materials.find(
+                        (candidate) => candidate.id === material.id,
+                      );
+                      if (item) item.status = event.target.value as typeof item.status;
+                    })
+                  }
+                >
+                  <option value="needs_confirmation">Needs confirmation</option>
+                  <option value="present">Present</option>
+                  <option value="missing">Needed and missing</option>
+                  <option value="expiring">Present but expiring</option>
+                  <option value="not_applicable">Not applicable with rationale</option>
+                </select>
+              </Field>
+            ))}
+        </div>
+      </Card>
       <Card title="Decision provenance">
         {result?.findings.map((finding) => (
           <details key={finding.id} className="finding">
@@ -909,6 +1302,11 @@ function Scope({
   const [description, setDescription] = useState("");
   const [kind, setKind] =
     useState<BridgeProject["scope"]["resources"][number]["kind"]>("component");
+  const [relationshipFrom, setRelationshipFrom] = useState(project.scope.resources[0]?.id ?? "");
+  const [relationshipTo, setRelationshipTo] = useState(project.scope.resources[1]?.id ?? "");
+  const [relationshipKind, setRelationshipKind] =
+    useState<BridgeProject["scope"]["relationships"][number]["kind"]>("sends_data");
+  const [relationshipDescription, setRelationshipDescription] = useState("");
   const add = (event: FormEvent) => {
     event.preventDefault();
     if (!name.trim()) return;
@@ -931,7 +1329,29 @@ function Scope({
     setName("");
     setDescription("");
   };
+  const addRelationship = (event: FormEvent) => {
+    event.preventDefault();
+    if (!relationshipFrom || !relationshipTo || relationshipFrom === relationshipTo) return;
+    update((draft) => {
+      draft.scope.relationships.push({
+        id: `relationship-${crypto.randomUUID()}`,
+        fromId: relationshipFrom,
+        toId: relationshipTo,
+        kind: relationshipKind,
+        description: relationshipDescription.trim(),
+      });
+      const from = draft.scope.resources.find((resource) => resource.id === relationshipFrom);
+      const to = draft.scope.resources.find((resource) => resource.id === relationshipTo);
+      if (from && to && !relationshipDescription.trim())
+        draft.scope.questions.push(
+          `Confirm how ${from.name} ${statusLabel(relationshipKind).toLowerCase()} ${to.name}.`,
+        );
+    });
+    setRelationshipDescription("");
+  };
   const included = project.scope.resources.filter((item) => item.included);
+  const resourceName = (id: string) =>
+    project.scope.resources.find((resource) => resource.id === id)?.name ?? "Unknown resource";
   return (
     <>
       <PageHeading
@@ -1063,6 +1483,107 @@ function Scope({
           )}
         </Card>
       </div>
+      <Card title="Scope relationships" eyebrow="Simple data-flow and dependency builder">
+        <p>
+          Connect inventory items to explain how data moves, identity is used, logs are collected,
+          deployments occur, or one service depends on another. A technical diagram is optional.
+        </p>
+        <form
+          className="relationship-form"
+          aria-label="Add a scope relationship"
+          onSubmit={addRelationship}
+        >
+          <Field label="From resource">
+            <select
+              value={relationshipFrom}
+              onChange={(event) => setRelationshipFrom(event.target.value)}
+            >
+              <option value="">Choose a resource</option>
+              {project.scope.resources.map((resource) => (
+                <option key={resource.id} value={resource.id}>
+                  {resource.name}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Relationship">
+            <select
+              value={relationshipKind}
+              onChange={(event) =>
+                setRelationshipKind(event.target.value as typeof relationshipKind)
+              }
+            >
+              {["sends_data", "authenticates", "logs_to", "deploys_to", "depends_on"].map(
+                (value) => (
+                  <option key={value} value={value}>
+                    {statusLabel(value)}
+                  </option>
+                ),
+              )}
+            </select>
+          </Field>
+          <Field label="To resource">
+            <select
+              value={relationshipTo}
+              onChange={(event) => setRelationshipTo(event.target.value)}
+            >
+              <option value="">Choose a resource</option>
+              {project.scope.resources.map((resource) => (
+                <option key={resource.id} value={resource.id}>
+                  {resource.name}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Relationship description">
+            <input
+              value={relationshipDescription}
+              onChange={(event) => setRelationshipDescription(event.target.value)}
+              placeholder="What moves or depends on this connection?"
+            />
+          </Field>
+          <Button
+            type="submit"
+            disabled={!relationshipFrom || !relationshipTo || relationshipFrom === relationshipTo}
+          >
+            Add relationship
+          </Button>
+        </form>
+        {project.scope.relationships.length === 0 ? (
+          <p className="empty-copy">No relationships recorded yet.</p>
+        ) : (
+          <div className="relationship-list">
+            {project.scope.relationships.map((relationship) => (
+              <article
+                key={relationship.id}
+                aria-label={`${resourceName(relationship.fromId)} ${statusLabel(
+                  relationship.kind,
+                ).toLowerCase()} ${resourceName(relationship.toId)} relationship`}
+              >
+                <div>
+                  <strong>
+                    {resourceName(relationship.fromId)} → {resourceName(relationship.toId)}
+                  </strong>
+                  <span>{statusLabel(relationship.kind)}</span>
+                  <p>{relationship.description || "Description needs technical confirmation."}</p>
+                </div>
+                <Button
+                  variant="quiet"
+                  onClick={() =>
+                    update((draft) => {
+                      draft.scope.relationships = draft.scope.relationships.filter(
+                        (candidate) => candidate.id !== relationship.id,
+                      );
+                    })
+                  }
+                >
+                  Remove relationship
+                </Button>
+              </article>
+            ))}
+          </div>
+        )}
+      </Card>
       <Card title="Generated scope summaries">
         <div className="form-grid">
           <Field
@@ -1119,6 +1640,87 @@ function Soc2Materials({
   const [controlId, setControlId] = useState(project.soc2.controls[0]?.id ?? "");
   const [ruleId, setRuleId] = useState<string>(RULE_SELECTIONS.mandatory[0]);
   const [page, setPage] = useState("1");
+  const [newControlId, setNewControlId] = useState("");
+  const [newControlTitle, setNewControlTitle] = useState("");
+  const [newControlPages, setNewControlPages] = useState("");
+  const [newControlCriteria, setNewControlCriteria] = useState("");
+  const [newControlTest, setNewControlTest] = useState("");
+  const [newControlResult, setNewControlResult] = useState("");
+  const [newControlExcerpt, setNewControlExcerpt] = useState("");
+  const [newControlExceptionId, setNewControlExceptionId] = useState("");
+  const [controlError, setControlError] = useState("");
+  const [exceptionTitle, setExceptionTitle] = useState("");
+  const [exceptionDescription, setExceptionDescription] = useState("");
+  const [exceptionPages, setExceptionPages] = useState("");
+  const [exceptionMateriality, setExceptionMateriality] = useState<
+    "minor" | "material" | "not_sure"
+  >("not_sure");
+  const lines = (value: string) => [
+    ...new Set(
+      value
+        .split(/\r?\n|,/u)
+        .map((item) => item.trim())
+        .filter(Boolean),
+    ),
+  ];
+  const pages = (value: string) => [
+    ...new Set(
+      value
+        .split(/[^0-9]+/u)
+        .map(Number)
+        .filter((item) => Number.isInteger(item) && item > 0),
+    ),
+  ];
+  const addControl = (event: FormEvent) => {
+    event.preventDefault();
+    const identifier = newControlId.trim();
+    if (!identifier || !newControlTitle.trim()) return;
+    if (project.soc2.controls.some((control) => control.id === identifier)) {
+      setControlError(
+        "That control identifier already exists. Remove it or use a distinct identifier.",
+      );
+      return;
+    }
+    update((draft) =>
+      draft.soc2.controls.push({
+        id: identifier,
+        title: newControlTitle.trim(),
+        trustServicesCriteria: lines(newControlCriteria),
+        reportPages: pages(newControlPages),
+        auditorTest: newControlTest.trim(),
+        auditorResult: newControlResult.trim(),
+        exceptionIds: newControlExceptionId ? [newControlExceptionId] : [],
+        excerpt: newControlExcerpt.trim(),
+      }),
+    );
+    setControlId(identifier);
+    setNewControlId("");
+    setNewControlTitle("");
+    setNewControlPages("");
+    setNewControlCriteria("");
+    setNewControlTest("");
+    setNewControlResult("");
+    setNewControlExcerpt("");
+    setNewControlExceptionId("");
+    setControlError("");
+  };
+  const addException = (event: FormEvent) => {
+    event.preventDefault();
+    if (!exceptionTitle.trim() || !exceptionDescription.trim()) return;
+    update((draft) =>
+      draft.soc2.exceptions.push({
+        id: `exception-${crypto.randomUUID()}`,
+        title: exceptionTitle.trim(),
+        description: exceptionDescription.trim(),
+        materiality: exceptionMateriality,
+        pages: pages(exceptionPages),
+      }),
+    );
+    setExceptionTitle("");
+    setExceptionDescription("");
+    setExceptionPages("");
+    setExceptionMateriality("not_sure");
+  };
   const addMapping = (event: FormEvent) => {
     event.preventDefault();
     if (!controlId || !ruleId) return;
@@ -1218,6 +1820,89 @@ function Soc2Materials({
           </Field>
         </div>
       </Card>
+      <Card title="Report scope and reliance context" eyebrow="Plain-language manual entry">
+        <p>
+          Record the report context that may affect scope or reliance. These entries organize the
+          record; they do not determine whether a third party or control is acceptable for Class A.
+        </p>
+        <div className="form-grid">
+          <Field label="Trust Services Criteria (one per line)">
+            <textarea
+              rows={4}
+              value={project.soc2.trustServicesCriteria.join("\n")}
+              onChange={(event) =>
+                update((draft) => {
+                  draft.soc2.trustServicesCriteria = event.target.value.split(/\r?\n/u);
+                })
+              }
+              onBlur={(event) =>
+                update((draft) => {
+                  draft.soc2.trustServicesCriteria = lines(event.target.value);
+                })
+              }
+              placeholder={"Security\nAvailability"}
+            />
+          </Field>
+          <Field label="Subservice-organization treatment">
+            <select
+              value={project.soc2.treatment}
+              onChange={(event) =>
+                update((draft) => {
+                  draft.soc2.treatment = event.target.value as BridgeProject["soc2"]["treatment"];
+                })
+              }
+            >
+              <option value="not_sure">Not sure</option>
+              <option value="inclusive">Inclusive</option>
+              <option value="carve_out">Carve-out</option>
+              <option value="mixed">Mixed</option>
+            </select>
+          </Field>
+          <Field label="Subservice organizations (one per line)">
+            <textarea
+              rows={4}
+              value={project.soc2.subserviceOrganizations.join("\n")}
+              onChange={(event) =>
+                update((draft) => {
+                  draft.soc2.subserviceOrganizations = event.target.value.split(/\r?\n/u);
+                })
+              }
+              onBlur={(event) =>
+                update((draft) => {
+                  draft.soc2.subserviceOrganizations = lines(event.target.value);
+                })
+              }
+            />
+          </Field>
+          <Field label="Complementary user-entity controls (one per line)">
+            <textarea
+              rows={4}
+              value={project.soc2.complementaryUserEntityControls.join("\n")}
+              onChange={(event) =>
+                update((draft) => {
+                  draft.soc2.complementaryUserEntityControls = event.target.value.split(/\r?\n/u);
+                })
+              }
+              onBlur={(event) =>
+                update((draft) => {
+                  draft.soc2.complementaryUserEntityControls = lines(event.target.value);
+                })
+              }
+            />
+          </Field>
+          <Field label="Bridge or gap letter reference">
+            <input
+              value={project.soc2.bridgeLetterReference ?? ""}
+              onChange={(event) =>
+                update((draft) => {
+                  draft.soc2.bridgeLetterReference = event.target.value || undefined;
+                })
+              }
+              placeholder="Date, document title, or local reference"
+            />
+          </Field>
+        </div>
+      </Card>
       <Card title="External assessment materials">
         <div className="materials-list">
           {project.materials.map((material) => (
@@ -1266,8 +1951,193 @@ function Soc2Materials({
           </div>
         </Card>
       )}
+      <Card title="SOC 2 controls and exceptions" eyebrow="Manual records remain reviewable">
+        <details open={project.soc2.controls.length === 0}>
+          <summary>Add or review SOC 2 controls</summary>
+          <form className="form-grid" aria-label="Add a SOC 2 control" onSubmit={addControl}>
+            <Field label="Control identifier">
+              <input
+                required
+                value={newControlId}
+                onChange={(event) => setNewControlId(event.target.value)}
+                placeholder="CC6.1"
+              />
+            </Field>
+            <Field label="Control title">
+              <input
+                required
+                value={newControlTitle}
+                onChange={(event) => setNewControlTitle(event.target.value)}
+                placeholder="Access authorization"
+              />
+            </Field>
+            <Field label="Report pages" hint="Separate page numbers with commas.">
+              <input
+                value={newControlPages}
+                onChange={(event) => setNewControlPages(event.target.value)}
+                inputMode="numeric"
+                placeholder="42, 43"
+              />
+            </Field>
+            <Field label="Trust Services Criteria" hint="Separate entries with commas.">
+              <input
+                value={newControlCriteria}
+                onChange={(event) => setNewControlCriteria(event.target.value)}
+                placeholder="Security, Availability"
+              />
+            </Field>
+            <Field label="Auditor test">
+              <textarea
+                rows={3}
+                value={newControlTest}
+                onChange={(event) => setNewControlTest(event.target.value)}
+              />
+            </Field>
+            <Field label="Auditor result">
+              <textarea
+                rows={3}
+                value={newControlResult}
+                onChange={(event) => setNewControlResult(event.target.value)}
+              />
+            </Field>
+            <Field label="Relevant excerpt">
+              <textarea
+                rows={3}
+                value={newControlExcerpt}
+                onChange={(event) => setNewControlExcerpt(event.target.value)}
+              />
+            </Field>
+            <Field label="Related auditor exception">
+              <select
+                value={newControlExceptionId}
+                onChange={(event) => setNewControlExceptionId(event.target.value)}
+              >
+                <option value="">None recorded</option>
+                {project.soc2.exceptions.map((exception) => (
+                  <option key={exception.id} value={exception.id}>
+                    {exception.title}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <div className="button-row form-grid__full">
+              <Button type="submit">Add SOC 2 control</Button>
+            </div>
+          </form>
+          {controlError && (
+            <div className="error-summary" role="alert">
+              <strong>Control not added.</strong>
+              <p>{controlError}</p>
+            </div>
+          )}
+          <div className="record-list">
+            {project.soc2.controls.map((control) => (
+              <article key={control.id}>
+                <div>
+                  <strong>
+                    {control.id} — {control.title}
+                  </strong>
+                  <p>
+                    {control.reportPages.length > 0
+                      ? `Pages ${control.reportPages.join(", ")}`
+                      : "Report pages need confirmation"}
+                  </p>
+                </div>
+                <Button
+                  variant="quiet"
+                  onClick={() => {
+                    update((draft) => {
+                      draft.soc2.controls = draft.soc2.controls.filter(
+                        (candidate) => candidate.id !== control.id,
+                      );
+                      draft.mappings = draft.mappings.filter(
+                        (mapping) => mapping.soc2ControlId !== control.id,
+                      );
+                    });
+                    if (controlId === control.id) setControlId("");
+                  }}
+                >
+                  Remove control and its mappings
+                </Button>
+              </article>
+            ))}
+          </div>
+        </details>
+        <details open={project.soc2.exceptions.length === 0}>
+          <summary>Record auditor exceptions</summary>
+          <form className="form-grid" aria-label="Add an auditor exception" onSubmit={addException}>
+            <Field label="Exception title">
+              <input
+                required
+                value={exceptionTitle}
+                onChange={(event) => setExceptionTitle(event.target.value)}
+              />
+            </Field>
+            <Field label="Materiality">
+              <select
+                value={exceptionMateriality}
+                onChange={(event) =>
+                  setExceptionMateriality(event.target.value as typeof exceptionMateriality)
+                }
+              >
+                <option value="not_sure">Not sure</option>
+                <option value="minor">Minor</option>
+                <option value="material">Material</option>
+              </select>
+            </Field>
+            <Field label="Exception description">
+              <textarea
+                required
+                rows={3}
+                value={exceptionDescription}
+                onChange={(event) => setExceptionDescription(event.target.value)}
+              />
+            </Field>
+            <Field label="Exception report pages">
+              <input
+                value={exceptionPages}
+                onChange={(event) => setExceptionPages(event.target.value)}
+                inputMode="numeric"
+                placeholder="67"
+              />
+            </Field>
+            <div className="button-row form-grid__full">
+              <Button type="submit">Add auditor exception</Button>
+            </div>
+          </form>
+          <div className="record-list">
+            {project.soc2.exceptions.map((exception) => (
+              <article key={exception.id}>
+                <div>
+                  <strong>{exception.title}</strong>
+                  <p>{exception.description}</p>
+                  <StatusPill tone={exception.materiality === "material" ? "critical" : "warning"}>
+                    {statusLabel(exception.materiality)} materiality
+                  </StatusPill>
+                </div>
+                <Button
+                  variant="quiet"
+                  onClick={() =>
+                    update((draft) => {
+                      draft.soc2.exceptions = draft.soc2.exceptions.filter(
+                        (candidate) => candidate.id !== exception.id,
+                      );
+                      for (const control of draft.soc2.controls)
+                        control.exceptionIds = control.exceptionIds.filter(
+                          (id) => id !== exception.id,
+                        );
+                    })
+                  }
+                >
+                  Remove exception
+                </Button>
+              </article>
+            ))}
+          </div>
+        </details>
+      </Card>
       <Card title="SOC 2-to-Class A mappings">
-        <form className="mapping-form" onSubmit={addMapping}>
+        <form className="mapping-form" aria-label="Add a SOC 2 mapping" onSubmit={addMapping}>
           <Field label="SOC 2 control">
             <select value={controlId} onChange={(event) => setControlId(event.target.value)}>
               <option value="">Choose a control</option>
@@ -1312,38 +2182,129 @@ function Soc2Materials({
         )}
         <div className="mapping-list">
           {project.mappings.map((mapping) => (
-            <article key={mapping.id}>
-              <div>
+            <article
+              key={mapping.id}
+              aria-label={`${mapping.soc2ControlId} to ${mapping.classARuleId} mapping`}
+            >
+              <div className="mapping-list__header">
                 <strong>
                   {mapping.soc2ControlId} → {mapping.classARuleId}
                 </strong>
                 <span>Page {mapping.reportPage}</span>
               </div>
-              <select
-                aria-label={`Coverage for ${mapping.id}`}
-                value={mapping.coverage}
-                onChange={(event) =>
-                  update((draft) => {
-                    const item = draft.mappings.find((candidate) => candidate.id === mapping.id);
-                    if (item) item.coverage = event.target.value as typeof item.coverage;
-                  })
-                }
-              >
-                {[
-                  "likely_covered",
-                  "partially_covered",
-                  "supporting_evidence_only",
-                  "fedramp_specific_work_required",
-                  "scope_mismatch",
-                  "no_relevant_mapping",
-                  "needs_human_review",
-                ].map((value) => (
-                  <option value={value} key={value}>
-                    {statusLabel(value)}
-                  </option>
-                ))}
-              </select>
-              <p>{mapping.reason}</p>
+              <div className="form-grid">
+                <Field label="Coverage classification">
+                  <select
+                    aria-label={`Coverage for ${mapping.id}`}
+                    value={mapping.coverage}
+                    onChange={(event) =>
+                      update((draft) => {
+                        const item = draft.mappings.find(
+                          (candidate) => candidate.id === mapping.id,
+                        );
+                        if (item) item.coverage = event.target.value as typeof item.coverage;
+                      })
+                    }
+                  >
+                    {[
+                      "likely_covered",
+                      "partially_covered",
+                      "supporting_evidence_only",
+                      "fedramp_specific_work_required",
+                      "scope_mismatch",
+                      "no_relevant_mapping",
+                      "needs_human_review",
+                    ].map((value) => (
+                      <option value={value} key={value}>
+                        {statusLabel(value)}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="Reason for the mapping">
+                  <textarea
+                    rows={3}
+                    value={mapping.reason}
+                    onChange={(event) =>
+                      update((draft) => {
+                        const item = draft.mappings.find(
+                          (candidate) => candidate.id === mapping.id,
+                        );
+                        if (item) item.reason = event.target.value;
+                      })
+                    }
+                  />
+                </Field>
+                <Field label="Relevant report excerpt">
+                  <textarea
+                    rows={3}
+                    value={mapping.excerpt}
+                    onChange={(event) =>
+                      update((draft) => {
+                        const item = draft.mappings.find(
+                          (candidate) => candidate.id === mapping.id,
+                        );
+                        if (item) item.excerpt = event.target.value;
+                      })
+                    }
+                  />
+                </Field>
+                <Field label="Gap description">
+                  <textarea
+                    rows={3}
+                    value={mapping.gapDescription}
+                    onChange={(event) =>
+                      update((draft) => {
+                        const item = draft.mappings.find(
+                          (candidate) => candidate.id === mapping.id,
+                        );
+                        if (item) item.gapDescription = event.target.value;
+                      })
+                    }
+                  />
+                </Field>
+                <Field label="Additional evidence needed">
+                  <textarea
+                    rows={3}
+                    value={mapping.additionalEvidenceNeeded}
+                    onChange={(event) =>
+                      update((draft) => {
+                        const item = draft.mappings.find(
+                          (candidate) => candidate.id === mapping.id,
+                        );
+                        if (item) item.additionalEvidenceNeeded = event.target.value;
+                      })
+                    }
+                  />
+                </Field>
+                <Field label="Reviewer">
+                  <input
+                    value={mapping.reviewer ?? ""}
+                    onChange={(event) =>
+                      update((draft) => {
+                        const item = draft.mappings.find(
+                          (candidate) => candidate.id === mapping.id,
+                        );
+                        if (item) item.reviewer = event.target.value || undefined;
+                      })
+                    }
+                  />
+                </Field>
+                <Field label="Review date">
+                  <input
+                    type="date"
+                    value={mapping.reviewDate ?? ""}
+                    onChange={(event) =>
+                      update((draft) => {
+                        const item = draft.mappings.find(
+                          (candidate) => candidate.id === mapping.id,
+                        );
+                        if (item) item.reviewDate = event.target.value || undefined;
+                      })
+                    }
+                  />
+                </Field>
+              </div>
               <label>
                 <input
                   type="checkbox"
@@ -1357,6 +2318,18 @@ function Soc2Materials({
                 />{" "}
                 Mapping confirmed by a person
               </label>
+              <Button
+                variant="quiet"
+                onClick={() =>
+                  update((draft) => {
+                    draft.mappings = draft.mappings.filter(
+                      (candidate) => candidate.id !== mapping.id,
+                    );
+                  })
+                }
+              >
+                Remove mapping
+              </Button>
             </article>
           ))}
         </div>
@@ -1374,6 +2347,7 @@ function Requirements({
 }) {
   const [filter, setFilter] = useState("mandatory");
   const [search, setSearch] = useState("");
+  const [approvalAttested, setApprovalAttested] = useState(false);
   const [selected, setSelected] = useState(
     project.requirements.find((item) =>
       (RULE_SELECTIONS.mandatory as readonly string[]).includes(item.ruleId),
@@ -1402,6 +2376,19 @@ function Requirements({
       const item = draft.requirements.find((candidate) => candidate.ruleId === selected);
       if (item) recipe(item);
     });
+  useEffect(() => setApprovalAttested(false), [selected]);
+  const approvalLocked = requirement?.status === "approved_by_provider";
+  const approvalReady = Boolean(
+    requirement &&
+    requirement.reviewStatus === "approved" &&
+    requirement.userResponse.trim() &&
+    requirement.implementationNarrative.trim() &&
+    requirement.verificationNarrative.trim() &&
+    requirement.validationNarrative.trim() &&
+    requirement.providerApprovedBy?.trim() &&
+    requirement.providerApprovedAt &&
+    approvalAttested,
+  );
   return (
     <>
       <PageHeading
@@ -1450,7 +2437,7 @@ function Requirements({
             ))}
           </div>
         </aside>
-        <section className="requirement-detail">
+        <section className="requirement-detail" aria-label="Requirement record">
           {!requirement || !official ? (
             <EmptyState title="Choose a requirement">
               <p>Select a rule to open its guided workspace.</p>
@@ -1476,6 +2463,7 @@ function Requirements({
                   hint="A mapping or attachment never changes this automatically."
                 >
                   <select
+                    disabled={approvalLocked}
                     value={requirement.status}
                     onChange={(event) =>
                       change((item) => {
@@ -1493,14 +2481,17 @@ function Requirements({
                       "complete_for_internal_review",
                       "approved_by_provider",
                     ].map((value) => (
-                      <option value={value} key={value}>
-                        {statusLabel(value)}
+                      <option value={value} key={value} disabled={value === "approved_by_provider"}>
+                        {value === "approved_by_provider"
+                          ? "Approved by provider — use provider attestation below"
+                          : statusLabel(value)}
                       </option>
                     ))}
                   </select>
                 </Field>
                 <Field label="Review status">
                   <select
+                    disabled={approvalLocked}
                     value={requirement.reviewStatus}
                     onChange={(event) =>
                       change((item) => {
@@ -1555,6 +2546,25 @@ function Requirements({
                       <ListOrEmpty items={ksi.weaknesses} />
                     </div>
                   </div>
+                  <div className="three-column ksi-steps">
+                    <div>
+                      <strong>Implementation evidence to describe</strong>
+                      <ListOrEmpty items={ksi.implementationSteps} />
+                    </div>
+                    <div>
+                      <strong>How to verify</strong>
+                      <ListOrEmpty items={ksi.verificationSteps} />
+                    </div>
+                    <div>
+                      <strong>How to validate</strong>
+                      <ListOrEmpty items={ksi.validationSteps} />
+                    </div>
+                  </div>
+                  <details>
+                    <summary>Common evidence candidates</summary>
+                    <ListOrEmpty items={guidance?.evidenceExamples ?? []} />
+                    <p className="small">Evidence remains a candidate until a person reviews it.</p>
+                  </details>
                   <details>
                     <summary>Suggested narrative structure and remaining uncertainty</summary>
                     <p>{ksi.narrativeSections.join(" → ")}</p>
@@ -1565,6 +2575,7 @@ function Requirements({
               <div className="narrative-stack">
                 <Field label="Provider response">
                   <textarea
+                    disabled={approvalLocked}
                     rows={4}
                     value={requirement.userResponse}
                     onChange={(event) =>
@@ -1576,6 +2587,7 @@ function Requirements({
                 </Field>
                 <Field label="Implementation explanation">
                   <textarea
+                    disabled={approvalLocked}
                     rows={5}
                     value={requirement.implementationNarrative}
                     onChange={(event) =>
@@ -1587,6 +2599,7 @@ function Requirements({
                 </Field>
                 <Field label="Verification explanation">
                   <textarea
+                    disabled={approvalLocked}
                     rows={4}
                     value={requirement.verificationNarrative}
                     onChange={(event) =>
@@ -1598,6 +2611,7 @@ function Requirements({
                 </Field>
                 <Field label="Validation explanation">
                   <textarea
+                    disabled={approvalLocked}
                     rows={4}
                     value={requirement.validationNarrative}
                     onChange={(event) =>
@@ -1634,6 +2648,107 @@ function Requirements({
                   </>
                 )}
               </div>
+              <Card title="References, questions, and exceptions">
+                <div className="form-grid">
+                  <Field label="SOC 2 page references" hint="Separate page numbers with commas.">
+                    <input
+                      key={`${selected}-pages`}
+                      defaultValue={requirement.soc2PageReferences.join(", ")}
+                      onBlur={(event) =>
+                        change((item) => {
+                          item.soc2PageReferences = [
+                            ...new Set(
+                              event.target.value
+                                .split(/[^0-9]+/u)
+                                .map(Number)
+                                .filter((page) => Number.isInteger(page) && page > 0),
+                            ),
+                          ];
+                        })
+                      }
+                    />
+                  </Field>
+                  <Field label="Notes">
+                    <textarea
+                      rows={3}
+                      value={requirement.notes}
+                      onChange={(event) =>
+                        change((item) => {
+                          item.notes = event.target.value;
+                        })
+                      }
+                    />
+                  </Field>
+                  <Field label="Open questions (one per line)">
+                    <textarea
+                      rows={3}
+                      value={requirement.openQuestions.join("\n")}
+                      onChange={(event) =>
+                        change((item) => {
+                          item.openQuestions = event.target.value.split(/\r?\n/u);
+                        })
+                      }
+                      onBlur={(event) =>
+                        change((item) => {
+                          item.openQuestions = event.target.value
+                            .split(/\r?\n/u)
+                            .map((value) => value.trim())
+                            .filter(Boolean);
+                        })
+                      }
+                    />
+                  </Field>
+                  <Field label="Exceptions (one per line)">
+                    <textarea
+                      rows={3}
+                      value={requirement.exceptions.join("\n")}
+                      onChange={(event) =>
+                        change((item) => {
+                          item.exceptions = event.target.value.split(/\r?\n/u);
+                        })
+                      }
+                      onBlur={(event) =>
+                        change((item) => {
+                          item.exceptions = event.target.value
+                            .split(/\r?\n/u)
+                            .map((value) => value.trim())
+                            .filter(Boolean);
+                        })
+                      }
+                    />
+                  </Field>
+                  <Field label="Senior-official acceptance (when applicable)">
+                    <textarea
+                      rows={3}
+                      value={requirement.seniorOfficialAcceptance ?? ""}
+                      onChange={(event) =>
+                        change((item) => {
+                          item.seniorOfficialAcceptance = event.target.value || undefined;
+                        })
+                      }
+                    />
+                  </Field>
+                </div>
+                <fieldset className="checkbox-grid">
+                  <legend>Related SOC 2 controls</legend>
+                  {project.soc2.controls.map((control) => (
+                    <label key={control.id}>
+                      <input
+                        type="checkbox"
+                        checked={requirement.soc2ControlIds.includes(control.id)}
+                        onChange={(event) =>
+                          change((item) => {
+                            item.soc2ControlIds = event.target.checked
+                              ? [...new Set([...item.soc2ControlIds, control.id])]
+                              : item.soc2ControlIds.filter((id) => id !== control.id);
+                          })
+                        }
+                      />
+                      {control.id} — {control.title}
+                    </label>
+                  ))}
+                </fieldset>
+              </Card>
               <Card title="Linked evidence candidates">
                 <div className="checkbox-grid">
                   {project.evidence.map((evidence) => (
@@ -1655,6 +2770,86 @@ function Requirements({
                 </div>
                 {project.evidence.length === 0 && (
                   <p>No evidence candidates have been added yet.</p>
+                )}
+              </Card>
+              <Card title="Provider approval" eyebrow="Explicit attestation required">
+                <p>
+                  Provider approval is an internal representation by your company. It does not
+                  indicate FedRAMP approval, acceptance, or certification.
+                </p>
+                <div className="form-grid">
+                  <Field label="Provider approver">
+                    <input
+                      disabled={approvalLocked}
+                      value={requirement.providerApprovedBy ?? ""}
+                      onChange={(event) =>
+                        change((item) => {
+                          item.providerApprovedBy = event.target.value || undefined;
+                        })
+                      }
+                    />
+                  </Field>
+                  <Field label="Provider approval date and time">
+                    <input
+                      disabled={approvalLocked}
+                      type="datetime-local"
+                      value={requirement.providerApprovedAt?.slice(0, 16) ?? ""}
+                      onChange={(event) =>
+                        change((item) => {
+                          item.providerApprovedAt = event.target.value
+                            ? new Date(event.target.value).toISOString()
+                            : undefined;
+                        })
+                      }
+                    />
+                  </Field>
+                </div>
+                {approvalLocked ? (
+                  <div className="button-row">
+                    <StatusPill tone="positive">Approved by provider</StatusPill>
+                    <Button
+                      variant="secondary"
+                      onClick={() => {
+                        change((item) => {
+                          item.status = "complete_for_internal_review";
+                          item.providerApprovedBy = undefined;
+                          item.providerApprovedAt = undefined;
+                        });
+                        setApprovalAttested(false);
+                      }}
+                    >
+                      Reopen and remove provider approval
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    <label className="checkbox-row">
+                      <input
+                        type="checkbox"
+                        checked={approvalAttested}
+                        onChange={(event) => setApprovalAttested(event.target.checked)}
+                      />
+                      I attest that the named provider approver reviewed the response,
+                      implementation, verification, validation, evidence references, and open
+                      exceptions recorded here.
+                    </label>
+                    <Button
+                      onClick={() =>
+                        change((item) => {
+                          item.status = "approved_by_provider";
+                        })
+                      }
+                      disabled={!approvalReady}
+                    >
+                      Record provider approval
+                    </Button>
+                    {!approvalReady && (
+                      <p className="small">
+                        Complete all four narratives, set review status to Approved, name the
+                        provider approver, add the approval date, and confirm the attestation.
+                      </p>
+                    )}
+                  </>
                 )}
               </Card>
               <details className="official-details">
@@ -1698,56 +2893,144 @@ function Evidence({
   readonly store: ProjectStore;
 }) {
   const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [evidenceKind, setEvidenceKind] =
+    useState<BridgeProject["evidence"][number]["kind"]>("external_reference");
+  const [sourceSystem, setSourceSystem] = useState("");
   const [owner, setOwner] = useState("");
+  const [collectedAt, setCollectedAt] = useState(new Date().toISOString().slice(0, 10));
+  const [relevantPeriod, setRelevantPeriod] = useState("");
+  const [reviewDate, setReviewDate] = useState("");
+  const [sensitivity, setSensitivity] =
+    useState<BridgeProject["evidence"][number]["sensitivity"]>("confidential");
+  const [notes, setNotes] = useState("");
+  const [externalUrl, setExternalUrl] = useState("");
+  const [relatedRequirementIds, setRelatedRequirementIds] = useState<ReadonlySet<string>>(
+    new Set(),
+  );
+  const [relatedSoc2ControlIds, setRelatedSoc2ControlIds] = useState<ReadonlySet<string>>(
+    new Set(),
+  );
   const [file, setFile] = useState<File>();
   const [error, setError] = useState("");
+  const [removingEvidenceId, setRemovingEvidenceId] = useState("");
   const add = async (event: FormEvent) => {
     event.preventDefault();
     if (!title.trim()) return;
     setError("");
     try {
       let attachmentId: string | undefined;
-      let hash = "0".repeat(64);
-      let kind: BridgeProject["evidence"][number]["kind"] = "external_reference";
+      let attachmentBytes: Uint8Array | undefined;
+      let kind = evidenceKind;
+      let validatedExternalUrl: string | undefined;
+      if (externalUrl.trim()) {
+        const url = new URL(externalUrl.trim());
+        if (!/^https?:$/u.test(url.protocol))
+          throw new Error("External evidence references must use an HTTPS or HTTP URL.");
+        validatedExternalUrl = url.toString();
+      }
+      let hash = await sha256Hex(
+        new TextEncoder().encode(
+          validatedExternalUrl ?? `${title.trim()}|${sourceSystem.trim()}`,
+        ),
+      );
       if (file) {
         if (file.size > 25 * 1024 * 1024)
           throw new Error("Evidence files must be 25 MB or smaller.");
         const bytes = new Uint8Array(await file.arrayBuffer());
         hash = await sha256Hex(bytes);
         attachmentId = `evidence-${crypto.randomUUID()}`;
-        kind = file.type.startsWith("image/")
-          ? "screenshot"
-          : file.name.toLowerCase().endsWith(".csv")
-            ? "csv"
-            : "file";
-        await store.putAttachment(attachmentId, bytes, project.metadata.id);
+        attachmentBytes = bytes;
+        if (evidenceKind === "external_reference")
+          kind = file.type.startsWith("image/")
+            ? "screenshot"
+            : file.name.toLowerCase().endsWith(".csv")
+              ? "csv"
+              : "file";
       }
-      update((draft) =>
-        draft.evidence.push({
-          id: `evidence-${crypto.randomUUID()}`,
-          title: title.trim(),
-          description: file
+      const evidenceRecord: BridgeProject["evidence"][number] = {
+        id: `evidence-${crypto.randomUUID()}`,
+        title: title.trim(),
+        description:
+          description.trim() ||
+          (file
             ? `Local file: ${safeFilename(file.name)}`
-            : "Manually recorded evidence reference.",
-          kind,
-          owner: owner.trim() || "Unassigned",
-          collectedAt: new Date().toISOString().slice(0, 10),
-          relatedRequirementIds: [],
-          relatedSoc2ControlIds: [],
-          sha256: hash,
-          sensitivity: "confidential",
-          notes: "Evidence candidate; sufficiency has not been determined.",
-          reviewStatus: "candidate",
-          ...(attachmentId ? { attachmentId } : {}),
-        }),
-      );
+            : "Manually recorded evidence reference."),
+        kind,
+        ...(sourceSystem.trim() ? { sourceSystem: sourceSystem.trim() } : {}),
+        owner: owner.trim() || "Unassigned",
+        collectedAt,
+        ...(relevantPeriod.trim() ? { relevantPeriod: relevantPeriod.trim() } : {}),
+        ...(reviewDate ? { reviewDate } : {}),
+        relatedRequirementIds: [...relatedRequirementIds],
+        relatedSoc2ControlIds: [...relatedSoc2ControlIds],
+        sha256: hash,
+        sensitivity,
+        notes: notes.trim() || "Evidence candidate; sufficiency has not been determined.",
+        reviewStatus: "candidate",
+        ...(attachmentId ? { attachmentId } : {}),
+        ...(validatedExternalUrl ? { externalUrl: validatedExternalUrl } : {}),
+      };
+      if (attachmentId && attachmentBytes) {
+        const nextProject = cloneProject(project);
+        nextProject.evidence.push(evidenceRecord);
+        nextProject.metadata.updatedAt = new Date().toISOString();
+        nextProject.actions = deriveActions(nextProject);
+        await persistProjectWithAttachmentAtomically(store, nextProject, {
+          id: attachmentId,
+          bytes: attachmentBytes,
+        });
+      }
+      update((draft) => draft.evidence.push(evidenceRecord));
       setTitle("");
+      setDescription("");
+      setEvidenceKind("external_reference");
+      setSourceSystem("");
       setOwner("");
+      setCollectedAt(new Date().toISOString().slice(0, 10));
+      setRelevantPeriod("");
+      setReviewDate("");
+      setSensitivity("confidential");
+      setNotes("");
+      setExternalUrl("");
+      setRelatedRequirementIds(new Set());
+      setRelatedSoc2ControlIds(new Set());
       setFile(undefined);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Evidence could not be stored locally.");
     }
   };
+  const remove = async (item: BridgeProject["evidence"][number]) => {
+    setError("");
+    setRemovingEvidenceId(item.id);
+    try {
+      await removeEvidenceCandidateLocally(store, project, item.id);
+      update((draft) => {
+        draft.evidence = draft.evidence.filter((candidate) => candidate.id !== item.id);
+        for (const requirement of draft.requirements) {
+          requirement.evidenceIds = requirement.evidenceIds.filter(
+            (evidenceId) => evidenceId !== item.id,
+          );
+        }
+      });
+    } catch (caught) {
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "The evidence candidate and its local attachment could not be removed safely.",
+      );
+    } finally {
+      setRemovingEvidenceId("");
+    }
+  };
+  const changeEvidence = (
+    evidenceId: string,
+    recipe: (item: BridgeProject["evidence"][number]) => void,
+  ) =>
+    update((draft) => {
+      const item = draft.evidence.find((candidate) => candidate.id === evidenceId);
+      if (item) recipe(item);
+    });
   return (
     <>
       <PageHeading
@@ -1757,12 +3040,96 @@ function Evidence({
       />
       <div className="two-column two-column--sidebar">
         <Card title="Add an evidence candidate">
-          <form onSubmit={(event) => void add(event)} className="form-stack">
+          <form
+            onSubmit={(event) => void add(event)}
+            className="form-stack"
+            aria-label="Add an evidence candidate"
+          >
             <Field label="Title">
               <input value={title} onChange={(event) => setTitle(event.target.value)} required />
             </Field>
+            <Field label="Description">
+              <textarea
+                rows={3}
+                value={description}
+                onChange={(event) => setDescription(event.target.value)}
+              />
+            </Field>
+            <Field label="Evidence type">
+              <select
+                value={evidenceKind}
+                onChange={(event) => setEvidenceKind(event.target.value as typeof evidenceKind)}
+              >
+                {[
+                  "external_reference",
+                  "file",
+                  "screenshot",
+                  "report",
+                  "policy",
+                  "ticket",
+                  "csv",
+                  "url",
+                ].map((value) => (
+                  <option key={value} value={value}>
+                    {statusLabel(value)}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Source system">
+              <input
+                value={sourceSystem}
+                onChange={(event) => setSourceSystem(event.target.value)}
+                placeholder="Trust center, ticketing system, or repository"
+              />
+            </Field>
             <Field label="Owner">
               <input value={owner} onChange={(event) => setOwner(event.target.value)} />
+            </Field>
+            <Field label="Collection date">
+              <input
+                required
+                type="date"
+                value={collectedAt}
+                onChange={(event) => setCollectedAt(event.target.value)}
+              />
+            </Field>
+            <Field label="Relevant period">
+              <input
+                value={relevantPeriod}
+                onChange={(event) => setRelevantPeriod(event.target.value)}
+                placeholder="2026 Q2 or July 1–September 30"
+              />
+            </Field>
+            <Field label="Review or expiration date">
+              <input
+                type="date"
+                value={reviewDate}
+                onChange={(event) => setReviewDate(event.target.value)}
+              />
+            </Field>
+            <Field label="Sensitivity">
+              <select
+                value={sensitivity}
+                onChange={(event) => setSensitivity(event.target.value as typeof sensitivity)}
+              >
+                {["public", "internal", "confidential", "restricted"].map((value) => (
+                  <option key={value} value={value}>
+                    {statusLabel(value)}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="External URL (optional)">
+              <input
+                type="url"
+                value={externalUrl}
+                onChange={(event) => setExternalUrl(event.target.value)}
+                placeholder="https://"
+              />
+            </Field>
+            <Field label="Notes">
+              <textarea rows={3} value={notes} onChange={(event) => setNotes(event.target.value)} />
             </Field>
             <Field
               label="Local file (optional)"
@@ -1778,6 +3145,54 @@ function Evidence({
                 onChange={(event) => setFile(event.target.files?.[0])}
               />
             </Field>
+            <details>
+              <summary>Relate to Class A requirements</summary>
+              <fieldset className="checkbox-grid evidence-relations">
+                <legend className="visually-hidden">Related Class A requirements</legend>
+                {project.requirements.map((requirement) => (
+                  <label key={requirement.ruleId}>
+                    <input
+                      type="checkbox"
+                      aria-label={`Relate to ${requirement.ruleId}`}
+                      checked={relatedRequirementIds.has(requirement.ruleId)}
+                      onChange={(event) =>
+                        setRelatedRequirementIds((current) => {
+                          const next = new Set(current);
+                          if (event.target.checked) next.add(requirement.ruleId);
+                          else next.delete(requirement.ruleId);
+                          return next;
+                        })
+                      }
+                    />
+                    {requirement.ruleId}
+                  </label>
+                ))}
+              </fieldset>
+            </details>
+            <details>
+              <summary>Relate to SOC 2 controls</summary>
+              <fieldset className="checkbox-grid evidence-relations">
+                <legend className="visually-hidden">Related SOC 2 controls</legend>
+                {project.soc2.controls.map((control) => (
+                  <label key={control.id}>
+                    <input
+                      type="checkbox"
+                      aria-label={`Relate to ${control.id}`}
+                      checked={relatedSoc2ControlIds.has(control.id)}
+                      onChange={(event) =>
+                        setRelatedSoc2ControlIds((current) => {
+                          const next = new Set(current);
+                          if (event.target.checked) next.add(control.id);
+                          else next.delete(control.id);
+                          return next;
+                        })
+                      }
+                    />
+                    {control.id} — {control.title}
+                  </label>
+                ))}
+              </fieldset>
+            </details>
             {error && (
               <p className="field__error" role="alert">
                 {error}
@@ -1800,7 +3215,7 @@ function Evidence({
           ) : (
             <div className="evidence-list">
               {project.evidence.map((item) => (
-                <article key={item.id}>
+                <article key={item.id} aria-label={`Evidence candidate ${item.title}`}>
                   <div className="evidence-list__heading">
                     <div>
                       <span className="resource-kind">{statusLabel(item.kind)}</span>
@@ -1821,6 +3236,18 @@ function Evidence({
                       <dd>{item.collectedAt}</dd>
                     </div>
                     <div>
+                      <dt>Source</dt>
+                      <dd>{item.sourceSystem ?? "Not recorded"}</dd>
+                    </div>
+                    <div>
+                      <dt>Relevant period</dt>
+                      <dd>{item.relevantPeriod ?? "Needs confirmation"}</dd>
+                    </div>
+                    <div>
+                      <dt>Review date</dt>
+                      <dd>{item.reviewDate ?? "Not scheduled"}</dd>
+                    </div>
+                    <div>
                       <dt>SHA-256</dt>
                       <dd>
                         <code>{item.sha256.slice(0, 16)}…</code>
@@ -1828,9 +3255,216 @@ function Evidence({
                     </div>
                     <div>
                       <dt>Sensitivity</dt>
-                      <dd>{item.sensitivity}</dd>
+                      <dd>{statusLabel(item.sensitivity)}</dd>
                     </div>
                   </dl>
+                  <details className="evidence-editor">
+                    <summary aria-label={`Edit evidence metadata for ${item.title}`}>
+                      Edit evidence metadata
+                    </summary>
+                    <div className="form-grid">
+                      <Field label="Title">
+                        <input
+                          disabled={!item.attachmentId}
+                          value={item.title}
+                          onChange={(event) =>
+                            changeEvidence(item.id, (evidence) => {
+                              evidence.title = event.target.value;
+                            })
+                          }
+                        />
+                      </Field>
+                      <Field label="Description">
+                        <textarea
+                          rows={3}
+                          value={item.description}
+                          onChange={(event) =>
+                            changeEvidence(item.id, (evidence) => {
+                              evidence.description = event.target.value;
+                            })
+                          }
+                        />
+                      </Field>
+                      <Field label="Evidence type">
+                        <select
+                          value={item.kind}
+                          onChange={(event) =>
+                            changeEvidence(item.id, (evidence) => {
+                              evidence.kind = event.target.value as typeof evidence.kind;
+                            })
+                          }
+                        >
+                          {[
+                            "external_reference",
+                            "file",
+                            "screenshot",
+                            "report",
+                            "policy",
+                            "ticket",
+                            "csv",
+                            "url",
+                          ].map((value) => (
+                            <option key={value} value={value}>
+                              {statusLabel(value)}
+                            </option>
+                          ))}
+                        </select>
+                      </Field>
+                      <Field label="Source system">
+                        <input
+                          disabled={!item.attachmentId}
+                          value={item.sourceSystem ?? ""}
+                          onChange={(event) =>
+                            changeEvidence(item.id, (evidence) => {
+                              evidence.sourceSystem = event.target.value || undefined;
+                            })
+                          }
+                        />
+                      </Field>
+                      <Field label="Owner">
+                        <input
+                          value={item.owner}
+                          onChange={(event) =>
+                            changeEvidence(item.id, (evidence) => {
+                              evidence.owner = event.target.value;
+                            })
+                          }
+                        />
+                      </Field>
+                      <Field label="Collection date">
+                        <input
+                          type="date"
+                          value={item.collectedAt}
+                          onChange={(event) =>
+                            changeEvidence(item.id, (evidence) => {
+                              evidence.collectedAt = event.target.value;
+                            })
+                          }
+                        />
+                      </Field>
+                      <Field label="Relevant period">
+                        <input
+                          value={item.relevantPeriod ?? ""}
+                          onChange={(event) =>
+                            changeEvidence(item.id, (evidence) => {
+                              evidence.relevantPeriod = event.target.value || undefined;
+                            })
+                          }
+                        />
+                      </Field>
+                      <Field label="Review or expiration date">
+                        <input
+                          type="date"
+                          value={item.reviewDate ?? ""}
+                          onChange={(event) =>
+                            changeEvidence(item.id, (evidence) => {
+                              evidence.reviewDate = event.target.value || undefined;
+                            })
+                          }
+                        />
+                      </Field>
+                      <Field label="Sensitivity">
+                        <select
+                          value={item.sensitivity}
+                          onChange={(event) =>
+                            changeEvidence(item.id, (evidence) => {
+                              evidence.sensitivity = event.target
+                                .value as typeof evidence.sensitivity;
+                            })
+                          }
+                        >
+                          {["public", "internal", "confidential", "restricted"].map((value) => (
+                            <option key={value} value={value}>
+                              {statusLabel(value)}
+                            </option>
+                          ))}
+                        </select>
+                      </Field>
+                      <Field label="External URL (optional)">
+                        <input
+                          disabled={!item.attachmentId}
+                          type="url"
+                          value={item.externalUrl ?? ""}
+                          onChange={(event) =>
+                            changeEvidence(item.id, (evidence) => {
+                              evidence.externalUrl = event.target.value || undefined;
+                            })
+                          }
+                        />
+                      </Field>
+                      {!item.attachmentId && (
+                        <p className="small form-grid__full">
+                          Title, source system, and URL identify this external reference and remain
+                          locked so its SHA-256 stays reproducible. Remove and add a new candidate
+                          to change that identity.
+                        </p>
+                      )}
+                      <Field label="Notes">
+                        <textarea
+                          rows={3}
+                          value={item.notes}
+                          onChange={(event) =>
+                            changeEvidence(item.id, (evidence) => {
+                              evidence.notes = event.target.value;
+                            })
+                          }
+                        />
+                      </Field>
+                    </div>
+                    <details>
+                      <summary>Related Class A requirements</summary>
+                      <fieldset className="checkbox-grid evidence-relations">
+                        <legend className="visually-hidden">Related Class A requirements</legend>
+                        {project.requirements.map((requirement) => (
+                          <label key={requirement.ruleId}>
+                            <input
+                              type="checkbox"
+                              checked={item.relatedRequirementIds.includes(requirement.ruleId)}
+                              onChange={(event) =>
+                                changeEvidence(item.id, (evidence) => {
+                                  evidence.relatedRequirementIds = event.target.checked
+                                    ? [
+                                        ...new Set([
+                                          ...evidence.relatedRequirementIds,
+                                          requirement.ruleId,
+                                        ]),
+                                      ]
+                                    : evidence.relatedRequirementIds.filter(
+                                        (id) => id !== requirement.ruleId,
+                                      );
+                                })
+                              }
+                            />
+                            {requirement.ruleId}
+                          </label>
+                        ))}
+                      </fieldset>
+                    </details>
+                    <details>
+                      <summary>Related SOC 2 controls</summary>
+                      <fieldset className="checkbox-grid evidence-relations">
+                        <legend className="visually-hidden">Related SOC 2 controls</legend>
+                        {project.soc2.controls.map((control) => (
+                          <label key={control.id}>
+                            <input
+                              type="checkbox"
+                              checked={item.relatedSoc2ControlIds.includes(control.id)}
+                              onChange={(event) =>
+                                changeEvidence(item.id, (evidence) => {
+                                  evidence.relatedSoc2ControlIds = event.target.checked
+                                    ? [...new Set([...evidence.relatedSoc2ControlIds, control.id])]
+                                    : evidence.relatedSoc2ControlIds.filter(
+                                        (id) => id !== control.id,
+                                      );
+                                })
+                              }
+                            />
+                            {control.id} — {control.title}
+                          </label>
+                        ))}
+                      </fieldset>
+                    </details>
+                  </details>
                   <div className="button-row">
                     <select
                       aria-label={`Review status for ${item.title}`}
@@ -1853,15 +3487,10 @@ function Evidence({
                     </select>
                     <Button
                       variant="quiet"
-                      onClick={() =>
-                        update((draft) => {
-                          draft.evidence = draft.evidence.filter(
-                            (candidate) => candidate.id !== item.id,
-                          );
-                        })
-                      }
+                      disabled={removingEvidenceId === item.id}
+                      onClick={() => void remove(item)}
                     >
-                      Remove
+                      {removingEvidenceId === item.id ? "Removing…" : "Remove"}
                     </Button>
                   </div>
                 </article>
@@ -2005,28 +3634,61 @@ function ActionPlan({
 function Package({
   project,
   update,
+  store,
+  navigate,
 }: {
   readonly project: BridgeProject;
-  readonly update: (recipe: (draft: BridgeProject) => void) => void;
+  readonly update: (recipe: (draft: BridgeProject) => void, updatedAt?: string) => void;
+  readonly store: ProjectStore;
+  readonly navigate: (route: Route) => void;
 }) {
   const [packageResult, setPackageResult] =
     useState<Awaited<ReturnType<typeof generatePreparationPackage>>>();
+  const [packageResultProjectUpdatedAt, setPackageResultProjectUpdatedAt] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [approver, setApprover] = useState(project.organization.accountableExecutive ?? "");
   const [version, setVersion] = useState("1.0");
+  const [selectedAttachmentIds, setSelectedAttachmentIds] = useState<ReadonlySet<string>>(
+    new Set(),
+  );
+  const attachmentReferences = referencedLocalAttachments(project);
+  const packageResultIsStale =
+    Boolean(packageResult) && packageResultProjectUpdatedAt !== project.metadata.updatedAt;
   const cpo = project.packageInputs.certificationPackageOverview;
   const sdr = project.packageInputs.securityDecisionRecord;
   const ocr = project.packageInputs.ongoingCertificationReport;
+  const openValidationTarget = (documentName: string, pointer: string) => {
+    const target = validationEditTarget(documentName, pointer);
+    navigate(target.route);
+    globalThis.setTimeout(() => {
+      if (!target.id) return;
+      const element = document.getElementById(target.id);
+      const disclosure = element?.closest("details");
+      if (disclosure) disclosure.open = true;
+      element?.focus();
+      element?.scrollIntoView?.({ block: "center", behavior: "smooth" });
+    }, 0);
+  };
+  const selectedPackageAttachments = async () =>
+    (await collectBundleAttachments(project, store, selectedAttachmentIds)).map((attachment) => ({
+      attachmentId: attachment.id,
+      fileName: attachment.fileName,
+      bytes: attachment.bytes,
+      userApproved: true as const,
+    }));
   const generate = async () => {
     setBusy(true);
     setError("");
     try {
+      const selectedAttachments = await selectedPackageAttachments();
       const result = await generatePreparationPackage(project, {
         packageVersion: version,
         officialDocuments: officialDocumentOptions(project),
+        selectedAttachments,
       });
       setPackageResult(result);
+      setPackageResultProjectUpdatedAt(project.metadata.updatedAt);
       downloadBytes(result.bytes, result.fileName, result.mimeType);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Package generation failed locally.");
@@ -2040,13 +3702,16 @@ function Package({
       return;
     }
     setBusy(true);
+    setError("");
     try {
-      const result =
-        packageResult ??
-        (await generatePreparationPackage(project, {
-          packageVersion: version,
-          officialDocuments: officialDocumentOptions(project),
-        }));
+      // Finalization always regenerates from the current project. A prior on-screen validation
+      // result may predate edits made after the user downloaded the last package.
+      const selectedAttachments = await selectedPackageAttachments();
+      const result = await generatePreparationPackage(project, {
+        packageVersion: version,
+        officialDocuments: officialDocumentOptions(project),
+        selectedAttachments,
+      });
       const projectHash = await sha256Hex(
         new TextEncoder().encode(JSON.stringify(BridgeProjectSchema.parse(project))),
       );
@@ -2062,8 +3727,9 @@ function Package({
           document.issues.map((issue) => `${document.name}: ${issue.pointer}`),
         ),
       ];
+      const finalizedAt = new Date().toISOString();
       update((draft) => {
-        const now = new Date().toISOString();
+        const now = finalizedAt;
         draft.snapshots.push({
           id: `snapshot-${crypto.randomUUID()}`,
           version,
@@ -2073,11 +3739,7 @@ function Package({
           validationDate: now.slice(0, 10),
           projectHash,
           packageHash: result.sha256,
-          freshnessStatus:
-            draft.soc2.reportEnd &&
-            Date.now() - new Date(draft.soc2.reportEnd).getTime() > 365 * 86_400_000
-              ? "stale"
-              : "fresh",
+          freshnessStatus: soc2PackageFreshness(draft, new Date(now)),
           unresolvedItems: unresolved,
           immutable: true,
         });
@@ -2091,8 +3753,9 @@ function Package({
           scope: "Internal package snapshot; provider must review and submit its own application.",
           notes: "This record does not represent FedRAMP approval or acceptance.",
         });
-      });
+      }, finalizedAt);
       setPackageResult(result);
+      setPackageResultProjectUpdatedAt(finalizedAt);
     } catch (caught) {
       setError(
         caught instanceof Error ? caught.message : "Final-review snapshot could not be created.",
@@ -2119,6 +3782,44 @@ function Package({
           <p>{error}</p>
         </div>
       )}
+      <Card title="Optional package attachments" eyebrow="Explicit consent required">
+        <p>
+          The package excludes the original SOC 2 report and evidence files by default. Select only
+          attachments your provider approver intends to place in this generated ZIP.
+        </p>
+        {attachmentReferences.length === 0 ? (
+          <p className="empty-copy">
+            No locally stored attachments are referenced by this project.
+          </p>
+        ) : (
+          <fieldset className="attachment-selector">
+            <legend>Attachments approved for this package export</legend>
+            {attachmentReferences.map((reference) => (
+              <label className="checkbox-row" key={reference.id}>
+                <input
+                  type="checkbox"
+                  disabled={!store.supportsAttachments}
+                  checked={selectedAttachmentIds.has(reference.id)}
+                  onChange={(event) => {
+                    setSelectedAttachmentIds((current) => {
+                      const next = new Set(current);
+                      if (event.target.checked) next.add(reference.id);
+                      else next.delete(reference.id);
+                      return next;
+                    });
+                    setPackageResult(undefined);
+                    setPackageResultProjectUpdatedAt("");
+                  }}
+                />
+                <span>
+                  <strong>{reference.label}</strong>
+                  <small>{statusLabel(reference.sensitivity)} · excluded until selected</small>
+                </span>
+              </label>
+            ))}
+          </fieldset>
+        )}
+      </Card>
       <Card title="Official JSON document inputs" eyebrow="Progressive disclosure">
         <p>
           These fields feed the pinned Certification Package Overview, Security Decision Record, and
@@ -2130,6 +3831,7 @@ function Package({
           <div className="form-grid">
             <Field label="FedRAMP package identifier">
               <input
+                id="package-cpo-id"
                 value={cpo.fedRampPackageId}
                 onChange={(event) =>
                   update((draft) => {
@@ -2141,6 +3843,7 @@ function Package({
             </Field>
             <Field label="Unique Entity Identifier (UEI)">
               <input
+                id="package-cpo-uei"
                 value={cpo.ueiNumber}
                 onChange={(event) =>
                   update((draft) => {
@@ -2151,6 +3854,7 @@ function Package({
             </Field>
             <Field label="Offering website">
               <input
+                id="package-cpo-website"
                 type="url"
                 value={cpo.website}
                 onChange={(event) =>
@@ -2160,8 +3864,21 @@ function Package({
                 }
               />
             </Field>
+            <Field label="Provider logo URL">
+              <input
+                id="package-cpo-logo"
+                type="url"
+                value={cpo.logoUrl}
+                onChange={(event) =>
+                  update((draft) => {
+                    draft.packageInputs.certificationPackageOverview.logoUrl = event.target.value;
+                  })
+                }
+              />
+            </Field>
             <Field label="Deployment model">
               <select
+                id="package-cpo-deployment-model"
                 value={cpo.deploymentModel}
                 onChange={(event) =>
                   update((draft) => {
@@ -2184,47 +3901,136 @@ function Package({
                 ))}
               </select>
             </Field>
-            <Field label="Security contact name">
+            <fieldset className="contact-inputs" id="package-cpo-contacts" tabIndex={-1}>
+              <legend>Security and sales contacts</legend>
+              <div className="form-grid">
+                <Field label="Security contact name">
+                  <input
+                    id="package-cpo-security-name"
+                    value={cpo.securityContact.name}
+                    onChange={(event) =>
+                      update((draft) => {
+                        draft.packageInputs.certificationPackageOverview.securityContact.name =
+                          event.target.value;
+                      })
+                    }
+                  />
+                </Field>
+                <Field label="Security contact email">
+                  <input
+                    id="package-cpo-security-email"
+                    type="email"
+                    value={cpo.securityContact.email}
+                    onChange={(event) =>
+                      update((draft) => {
+                        draft.packageInputs.certificationPackageOverview.securityContact.email =
+                          event.target.value;
+                      })
+                    }
+                  />
+                </Field>
+                <Field label="Security contact phone">
+                  <input
+                    id="package-cpo-security-phone"
+                    type="tel"
+                    value={cpo.securityContact.phone}
+                    onChange={(event) =>
+                      update((draft) => {
+                        draft.packageInputs.certificationPackageOverview.securityContact.phone =
+                          event.target.value;
+                      })
+                    }
+                    placeholder="202-555-0123"
+                  />
+                </Field>
+                <Field label="Sales contact name">
+                  <input
+                    id="package-cpo-sales-name"
+                    value={cpo.salesContact.name}
+                    onChange={(event) =>
+                      update((draft) => {
+                        draft.packageInputs.certificationPackageOverview.salesContact.name =
+                          event.target.value;
+                      })
+                    }
+                  />
+                </Field>
+                <Field label="Sales contact email">
+                  <input
+                    id="package-cpo-sales-email"
+                    type="email"
+                    value={cpo.salesContact.email}
+                    onChange={(event) =>
+                      update((draft) => {
+                        draft.packageInputs.certificationPackageOverview.salesContact.email =
+                          event.target.value;
+                      })
+                    }
+                  />
+                </Field>
+                <Field label="Sales contact phone">
+                  <input
+                    id="package-cpo-sales-phone"
+                    type="tel"
+                    value={cpo.salesContact.phone}
+                    onChange={(event) =>
+                      update((draft) => {
+                        draft.packageInputs.certificationPackageOverview.salesContact.phone =
+                          event.target.value;
+                      })
+                    }
+                    placeholder="202-555-0123"
+                  />
+                </Field>
+              </div>
+            </fieldset>
+            <Field label="Business categories (comma separated)">
               <input
-                value={cpo.securityContact.name}
+                id="package-cpo-business-categories"
+                value={cpo.businessCategories.join(",")}
                 onChange={(event) =>
                   update((draft) => {
-                    draft.packageInputs.certificationPackageOverview.securityContact.name =
-                      event.target.value;
+                    draft.packageInputs.certificationPackageOverview.businessCategories =
+                      event.target.value.split(",");
+                  })
+                }
+                onBlur={(event) =>
+                  update((draft) => {
+                    draft.packageInputs.certificationPackageOverview.businessCategories = [
+                      ...new Set(
+                        event.target.value
+                          .split(",")
+                          .map((value) => value.trim())
+                          .filter(Boolean),
+                      ),
+                    ];
+                  })
+                }
+                placeholder="Analytics, Data Management"
+              />
+            </Field>
+            <label className="checkbox-row">
+              <input
+                id="package-cpo-trust-authentication"
+                type="checkbox"
+                checked={cpo.trustCenterAuthenticationRequired}
+                onChange={(event) =>
+                  update((draft) => {
+                    draft.packageInputs.certificationPackageOverview.trustCenterAuthenticationRequired =
+                      event.target.checked;
                   })
                 }
               />
-            </Field>
-            <Field label="Security contact email">
-              <input
-                type="email"
-                value={cpo.securityContact.email}
+              Trust center requires authentication
+            </label>
+            <Field label="Trust center access instructions">
+              <textarea
+                id="package-cpo-trust-instructions"
+                rows={3}
+                value={cpo.trustCenterAccessInstructions}
                 onChange={(event) =>
                   update((draft) => {
-                    draft.packageInputs.certificationPackageOverview.securityContact.email =
-                      event.target.value;
-                  })
-                }
-              />
-            </Field>
-            <Field label="Sales contact name">
-              <input
-                value={cpo.salesContact.name}
-                onChange={(event) =>
-                  update((draft) => {
-                    draft.packageInputs.certificationPackageOverview.salesContact.name =
-                      event.target.value;
-                  })
-                }
-              />
-            </Field>
-            <Field label="Sales contact email">
-              <input
-                type="email"
-                value={cpo.salesContact.email}
-                onChange={(event) =>
-                  update((draft) => {
-                    draft.packageInputs.certificationPackageOverview.salesContact.email =
+                    draft.packageInputs.certificationPackageOverview.trustCenterAccessInstructions =
                       event.target.value;
                   })
                 }
@@ -2232,6 +4038,7 @@ function Package({
             </Field>
             <Field label="Next Ongoing Certification Report date">
               <input
+                id="package-cpo-next-ocr-date"
                 type="date"
                 value={cpo.nextOngoingCertificationReportDate}
                 onChange={(event) =>
@@ -2248,6 +4055,7 @@ function Package({
           <summary>Security Decision Record fields</summary>
           <Field label="Certification Package Overview URI">
             <input
+              id="package-sdr-cpo-uri"
               value={sdr.certificationPackageOverviewUri}
               onChange={(event) =>
                 update((draft) => {
@@ -2257,10 +4065,11 @@ function Package({
               }
             />
           </Field>
-          {sdr.portsAndProtocols.map((port) => (
+          {sdr.portsAndProtocols.map((port, portIndex) => (
             <div className="form-grid port-row" key={port.id}>
               <Field label="Service">
                 <input
+                  id={`package-sdr-port-${portIndex}-serviceName`}
                   value={port.serviceName}
                   onChange={(event) =>
                     update((draft) => {
@@ -2275,6 +4084,7 @@ function Package({
               </Field>
               <Field label="Port">
                 <input
+                  id={`package-sdr-port-${portIndex}-portNumber`}
                   value={port.portNumber}
                   onChange={(event) =>
                     update((draft) => {
@@ -2289,6 +4099,7 @@ function Package({
               </Field>
               <Field label="Transport">
                 <input
+                  id={`package-sdr-port-${portIndex}-transportProtocol`}
                   value={port.transportProtocol}
                   onChange={(event) =>
                     update((draft) => {
@@ -2303,6 +4114,7 @@ function Package({
               </Field>
               <Field label="Encryption">
                 <input
+                  id={`package-sdr-port-${portIndex}-encryption`}
                   value={port.encryption}
                   onChange={(event) =>
                     update((draft) => {
@@ -2317,6 +4129,7 @@ function Package({
               </Field>
               <Field label="Purpose">
                 <input
+                  id={`package-sdr-port-${portIndex}-purpose`}
                   value={port.purpose}
                   onChange={(event) =>
                     update((draft) => {
@@ -2367,6 +4180,7 @@ function Package({
           <div className="form-grid">
             <Field label="Certification Package Overview URI">
               <input
+                id="package-ocr-cpo-uri"
                 value={ocr.certificationPackageOverviewUri}
                 onChange={(event) =>
                   update((draft) => {
@@ -2378,6 +4192,7 @@ function Package({
             </Field>
             <Field label="Report period start">
               <input
+                id="package-ocr-report-from"
                 type="date"
                 value={ocr.reportFrom}
                 onChange={(event) =>
@@ -2389,6 +4204,7 @@ function Package({
             </Field>
             <Field label="Report period end">
               <input
+                id="package-ocr-report-to"
                 type="date"
                 value={ocr.reportTo}
                 onChange={(event) =>
@@ -2400,6 +4216,7 @@ function Package({
             </Field>
             <Field label="Planning horizon through">
               <input
+                id="package-ocr-planning-through"
                 type="date"
                 value={ocr.planningHorizonThrough}
                 onChange={(event) =>
@@ -2412,12 +4229,29 @@ function Package({
             </Field>
             <Field label="Accepted-vulnerability summary">
               <textarea
+                id="package-ocr-accepted-vulnerabilities"
                 rows={3}
                 value={ocr.acceptedVulnerabilitiesSummary}
                 onChange={(event) =>
                   update((draft) => {
                     draft.packageInputs.ongoingCertificationReport.acceptedVulnerabilitiesSummary =
                       event.target.value;
+                  })
+                }
+              />
+            </Field>
+            <Field label="Planned certification-data changes (one per line)">
+              <textarea
+                id="package-ocr-planned-changes"
+                rows={4}
+                value={ocr.plannedChanges.join("\n")}
+                onChange={(event) =>
+                  update((draft) => {
+                    draft.packageInputs.ongoingCertificationReport.plannedChanges =
+                      event.target.value
+                        .split(/\r?\n/u)
+                        .map((value) => value.trim())
+                        .filter(Boolean);
                   })
                 }
               />
@@ -2436,14 +4270,22 @@ function Package({
         <Card title="JSON validation">
           <StatusPill
             tone={
-              packageResult ? (packageResult.validation.valid ? "positive" : "critical") : "neutral"
+              packageResultIsStale
+                ? "warning"
+                : packageResult
+                  ? packageResult.validation.valid
+                    ? "positive"
+                    : "critical"
+                  : "neutral"
             }
           >
-            {packageResult
-              ? packageResult.validation.valid
-                ? "Structurally valid"
-                : "Errors to resolve"
-              : "Not run"}
+            {packageResultIsStale
+              ? "Regenerate required"
+              : packageResult
+                ? packageResult.validation.valid
+                  ? "Structurally valid"
+                  : "Errors to resolve"
+                : "Not run"}
           </StatusPill>
           <p>
             Schema validity is structural. It does not establish accuracy, completeness, approval,
@@ -2465,6 +4307,16 @@ function Package({
           <p>Freshness is rechecked when a final-review snapshot is created.</p>
         </Card>
       </div>
+      {packageResultIsStale && (
+        <div
+          className="callout callout--warning package-freshness-notice"
+          role="status"
+          aria-label="Package result freshness"
+        >
+          <strong>Project changed since this validation ran.</strong> Regenerate the package before
+          relying on these results. Final review always regenerates from the current record.
+        </div>
+      )}
       {packageResult && (
         <Card title="JSON validation results">
           <p>
@@ -2493,9 +4345,14 @@ function Package({
                           Expected: {issue.expected}. Current: {JSON.stringify(issue.current)}.
                         </span>
                         <br />
-                        <span>
-                          How to resolve: {issue.resolution} · Edit: {issue.route}
-                        </span>
+                        <span>How to resolve: {issue.resolution}</span>
+                        <br />
+                        <Button
+                          variant="quiet"
+                          onClick={() => openValidationTarget(document.name, issue.pointer)}
+                        >
+                          {validationEditTarget(document.name, issue.pointer).label}
+                        </Button>
                       </li>
                     ))}
                   </ul>
@@ -2603,12 +4460,16 @@ function Settings({
   project,
   update,
   store,
+  saveState,
   onClose,
+  onRestore,
 }: {
   readonly project: BridgeProject;
   readonly update: (recipe: (draft: BridgeProject) => void) => void;
   readonly store: ProjectStore;
+  readonly saveState: SaveState;
   readonly onClose: () => void;
+  readonly onRestore: (file: File, password: string) => Promise<void>;
 }) {
   const [size, setSize] = useState<number>();
   const [quota, setQuota] = useState<number>();
@@ -2616,6 +4477,11 @@ function Settings({
   const [importPassword, setImportPassword] = useState("");
   const [message, setMessage] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [selectedAttachmentIds, setSelectedAttachmentIds] = useState<ReadonlySet<string>>(
+    new Set(),
+  );
+  const attachmentReferences = referencedLocalAttachments(project);
   useEffect(() => {
     void Promise.all([store.estimateOwnedBytes(), browserStorageEstimate()]).then(
       ([owned, estimate]) => {
@@ -2625,24 +4491,36 @@ function Settings({
     );
   }, [store, project.metadata.updatedAt]);
   const standard = async () => {
-    const bundle = await exportProjectBundle(project);
-    downloadBytes(
-      bundle,
-      `${safeFilename(project.metadata.name)}.classabridge`,
-      "application/vnd.class-a-bridge+zip",
-    );
-    setMessage("Standard project backup created without attachments.");
+    try {
+      const attachments = await collectBundleAttachments(project, store, selectedAttachmentIds);
+      const bundle = await exportProjectBundle(project, { attachments });
+      downloadBytes(
+        bundle,
+        `${safeFilename(project.metadata.name)}.classabridge`,
+        "application/vnd.class-a-bridge+zip",
+      );
+      setMessage(
+        attachments.length === 0
+          ? "Standard project backup created without attachments."
+          : `Standard project backup created with ${attachments.length} explicitly selected attachment(s).`,
+      );
+    } catch (caught) {
+      setMessage(caught instanceof Error ? caught.message : "Standard export failed safely.");
+    }
   };
   const protectedExport = async () => {
     try {
-      const bundle = await exportProjectBundle(project);
+      const attachments = await collectBundleAttachments(project, store, selectedAttachmentIds);
+      const bundle = await exportProjectBundle(project, { attachments });
       const encrypted = await encryptBundle(bundle, password);
       downloadBytes(
         encrypted,
         `${safeFilename(project.metadata.name)}.classabridge.encrypted`,
         "application/vnd.class-a-bridge+encrypted",
       );
-      setMessage("Password-protected backup created. The password is not stored.");
+      setMessage(
+        `Password-protected backup created with ${attachments.length} selected attachment(s). The password is not stored.`,
+      );
     } catch (caught) {
       setMessage(caught instanceof Error ? caught.message : "Encrypted export failed.");
     }
@@ -2658,13 +4536,8 @@ function Settings({
     const file = event.target.files?.[0];
     if (!file) return;
     try {
-      let bytes: Uint8Array = new Uint8Array(await file.arrayBuffer());
-      if (file.name.endsWith(".encrypted")) bytes = await decryptBundle(bytes, importPassword);
-      const restored = await importProjectBundle(bytes);
-      update((draft) => Object.assign(draft, restored.project));
-      for (const [id, attachment] of restored.attachments)
-        await store.putAttachment(id, attachment, restored.project.metadata.id);
-      setMessage(`Restored “${restored.project.metadata.name}” after schema and hash validation.`);
+      await onRestore(file, importPassword);
+      setMessage("Backup restored after schema, integrity, and storage checks.");
     } catch (caught) {
       setMessage(
         caught instanceof Error
@@ -2673,6 +4546,27 @@ function Settings({
       );
     } finally {
       event.target.value = "";
+    }
+  };
+  const deleteLocalData = async (allProjects: boolean) => {
+    if (saveState.status === "saving" || deleting) return;
+    setDeleting(true);
+    setMessage("");
+    try {
+      if (allProjects) await store.deleteAll();
+      else await store.delete(project.metadata.id);
+      onClose();
+    } catch (caught) {
+      setMessage(
+        localErrorMessage(
+          caught,
+          allProjects
+            ? "All local data could not be deleted. Nothing is being reported remotely."
+            : "This project could not be deleted from browser storage.",
+        ),
+      );
+    } finally {
+      setDeleting(false);
     }
   };
   return (
@@ -2685,8 +4579,19 @@ function Settings({
       <div className="two-column">
         <Card title="Organization and offering">
           <div className="form-stack">
+            <Field label="Project name">
+              <input
+                value={project.metadata.name}
+                onChange={(event) =>
+                  update((draft) => {
+                    draft.metadata.name = event.target.value;
+                  })
+                }
+              />
+            </Field>
             <Field label="Organization">
               <input
+                id="settings-organization-name"
                 value={project.organization.name}
                 onChange={(event) =>
                   update((draft) => {
@@ -2695,12 +4600,163 @@ function Settings({
                 }
               />
             </Field>
+            <Field label="Organization website">
+              <input
+                id="settings-organization-website"
+                type="url"
+                value={project.organization.website ?? ""}
+                onChange={(event) =>
+                  update((draft) => {
+                    draft.organization.website = event.target.value || undefined;
+                  })
+                }
+              />
+            </Field>
+            <Field label="GRC owner">
+              <input
+                value={project.organization.grcOwner ?? ""}
+                onChange={(event) =>
+                  update((draft) => {
+                    draft.organization.grcOwner = event.target.value || undefined;
+                  })
+                }
+              />
+            </Field>
+            <Field label="Trust center URL">
+              <input
+                id="settings-trust-center-url"
+                type="url"
+                value={project.organization.trustCenterUrl ?? ""}
+                onChange={(event) =>
+                  update((draft) => {
+                    draft.organization.trustCenterUrl = event.target.value || undefined;
+                  })
+                }
+              />
+            </Field>
+            <Field label="Marketplace listing status">
+              <select
+                value={project.organization.marketplaceStatus}
+                onChange={(event) =>
+                  update((draft) => {
+                    draft.organization.marketplaceStatus = event.target
+                      .value as BridgeProject["organization"]["marketplaceStatus"];
+                  })
+                }
+              >
+                <option value="not_started">Not started</option>
+                <option value="preparing">Preparing</option>
+                <option value="listed">Listed</option>
+                <option value="not_sure">Not sure</option>
+              </select>
+            </Field>
             <Field label="Cloud service offering">
               <input
+                id="settings-offering-name"
                 value={project.offering.name}
                 onChange={(event) =>
                   update((draft) => {
                     draft.offering.name = event.target.value;
+                  })
+                }
+              />
+            </Field>
+            <Field label="Offering acronym">
+              <input
+                id="settings-offering-acronym"
+                value={project.offering.acronym ?? ""}
+                onChange={(event) =>
+                  update((draft) => {
+                    draft.offering.acronym = event.target.value || undefined;
+                  })
+                }
+              />
+            </Field>
+            <Field label="Offering description">
+              <textarea
+                id="settings-offering-description"
+                rows={4}
+                value={project.offering.description}
+                onChange={(event) =>
+                  update((draft) => {
+                    draft.offering.description = event.target.value;
+                  })
+                }
+              />
+            </Field>
+            <fieldset className="checkbox-grid" id="settings-service-models" tabIndex={-1}>
+              <legend>Cloud service models</legend>
+              {[
+                ["SaaS", "Software as a Service (SaaS)"],
+                ["PaaS", "Platform as a Service (PaaS)"],
+                ["IaaS", "Infrastructure as a Service (IaaS)"],
+              ].map(([value, label]) => (
+                <label key={value}>
+                  <input
+                    type="checkbox"
+                    checked={project.offering.serviceModels.includes(
+                      value as BridgeProject["offering"]["serviceModels"][number],
+                    )}
+                    onChange={(event) =>
+                      update((draft) => {
+                        const model = value as BridgeProject["offering"]["serviceModels"][number];
+                        draft.offering.serviceModels = event.target.checked
+                          ? [...new Set([...draft.offering.serviceModels, model])]
+                          : draft.offering.serviceModels.filter((candidate) => candidate !== model);
+                      })
+                    }
+                  />
+                  {label}
+                </label>
+              ))}
+            </fieldset>
+            <Field label="Deployment model">
+              <select
+                id="settings-deployment-model"
+                value={project.offering.deploymentModel}
+                onChange={(event) =>
+                  update((draft) => {
+                    draft.offering.deploymentModel = event.target.value;
+                  })
+                }
+              >
+                <option value="">Choose a deployment model</option>
+                {[
+                  "Public Cloud",
+                  "Government-Only Cloud",
+                  "Hybrid Cloud",
+                  "Community Cloud",
+                  "Government Community Cloud",
+                ].map((value) => (
+                  <option key={value} value={value}>
+                    {value}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Handles federal customer data">
+              <select
+                value={project.offering.handlesFederalData}
+                onChange={(event) =>
+                  update((draft) => {
+                    draft.offering.handlesFederalData = event.target
+                      .value as BridgeProject["offering"]["handlesFederalData"];
+                  })
+                }
+              >
+                <option value="not_sure">Not sure</option>
+                <option value="yes">Yes</option>
+                <option value="no">No</option>
+              </select>
+            </Field>
+            <Field label="Offering website">
+              <input
+                id="settings-offering-website"
+                type="url"
+                value={project.offering.website ?? ""}
+                onChange={(event) =>
+                  update((draft) => {
+                    draft.offering.website = event.target.value || undefined;
                   })
                 }
               />
@@ -2770,20 +4826,56 @@ function Settings({
         </Card>
       </div>
       <Card title="Portable project backups">
+        {attachmentReferences.length > 0 && (
+          <fieldset className="attachment-selector">
+            <legend>Optional sensitive attachments</legend>
+            <p>
+              Nothing is selected by default. Select only files that should travel in this backup.
+              The original SOC 2 report remains excluded unless you choose it here.
+            </p>
+            {!store.supportsAttachments && (
+              <p className="small">
+                This storage fallback cannot retain binary attachments, so referenced files cannot
+                be added from this browser session.
+              </p>
+            )}
+            {attachmentReferences.map((reference) => (
+              <label className="checkbox-row" key={reference.id}>
+                <input
+                  type="checkbox"
+                  disabled={!store.supportsAttachments}
+                  checked={selectedAttachmentIds.has(reference.id)}
+                  onChange={(event) =>
+                    setSelectedAttachmentIds((current) => {
+                      const next = new Set(current);
+                      if (event.target.checked) next.add(reference.id);
+                      else next.delete(reference.id);
+                      return next;
+                    })
+                  }
+                />
+                <span>
+                  <strong>{reference.label}</strong>
+                  <small>{statusLabel(reference.sensitivity)} · included only in this export</small>
+                </span>
+              </label>
+            ))}
+          </fieldset>
+        )}
         <div className="export-grid">
           <div>
             <h3>Standard project export</h3>
             <p>
               Project JSON, manifest, hashes, versions, migrations, and generated-output metadata.
-              Attachments are omitted by default.
+              Attachments are omitted unless selected above.
             </p>
             <Button onClick={() => void standard()}>Export .classabridge</Button>
           </div>
           <div>
             <h3>Password-protected export</h3>
             <p>
-              Encrypts the standard bundle with AES-256-GCM and a password-derived key in this
-              browser.
+              Encrypts the bundle and any attachments selected above with AES-256-GCM and a
+              password-derived key in this browser.
             </p>
             <input
               type="password"
@@ -2826,7 +4918,8 @@ function Settings({
         </div>
         <p className="small">
           The file is checked for path safety, size, compression ratio, schema version, declared
-          hashes, and supported migrations before replacing this project.
+          hashes, and supported migrations before the restored project becomes active. Failed
+          attachment writes are rolled back.
         </p>
       </Card>
       <Card title="Privacy and diagnostics">
@@ -2866,14 +4959,19 @@ function Settings({
           <div className="button-row">
             <Button
               variant="danger"
-              onClick={() => void store.delete(project.metadata.id).then(onClose)}
+              disabled={saveState.status === "saving" || deleting}
+              onClick={() => void deleteLocalData(false)}
             >
-              Delete this project now
+              {deleting ? "Deleting local data…" : "Delete this project now"}
             </Button>
             <Button variant="secondary" onClick={() => setConfirmDelete(false)}>
               Cancel
             </Button>
-            <Button variant="danger" onClick={() => void store.deleteAll().then(onClose)}>
+            <Button
+              variant="danger"
+              disabled={saveState.status === "saving" || deleting}
+              onClick={() => void deleteLocalData(true)}
+            >
               Delete all Class A Bridge local data
             </Button>
           </div>
@@ -2910,7 +5008,11 @@ function ListOrEmpty({
   );
 }
 
-export function App() {
+export interface AppProps {
+  readonly storeFactory?: () => Promise<ProjectStore>;
+}
+
+export function App({ storeFactory = DEFAULT_STORE_FACTORY }: AppProps = {}) {
   const [mode, setMode] = useState<"first" | "pdf" | "pdf-review" | "workspace">(() =>
     requestedStart === "report"
       ? "pdf"
@@ -2929,62 +5031,200 @@ export function App() {
     requestedStart === "manual" ? "/eligibility" : "/overview",
   );
   const [store, setStore] = useState<ProjectStore>(() => createProjectStore());
+  const [savedProjects, setSavedProjects] = useState<readonly ProjectSummary[]>([]);
+  const [savedProjectsState, setSavedProjectsState] = useState<"loading" | "ready" | "error">(
+    "loading",
+  );
+  const [savedProjectsError, setSavedProjectsError] = useState("");
+  const [saveState, setSaveState] = useState<SaveState>({ status: "idle" });
+  const [restoreMessage, setRestoreMessage] = useState("");
+  const [online, setOnline] = useState(() =>
+    typeof navigator === "undefined" ? true : navigator.onLine,
+  );
+  const [updateRegistration, setUpdateRegistration] = useState<ServiceWorkerRegistration>();
   const saveSequence = useRef(0);
+  const updateRequested = useRef(false);
+  const reloadingForUpdate = useRef(false);
 
   useEffect(() => {
-    void createProjectStoreSafely().then(setStore);
-  }, []);
+    let cancelled = false;
+    setSavedProjectsState("loading");
+    setSavedProjectsError("");
+    void storeFactory()
+      .then(async (nextStore) => {
+        const summaries = await nextStore.list();
+        if (cancelled) return;
+        setStore(nextStore);
+        setSavedProjects(summaries);
+        setSavedProjectsState("ready");
+      })
+      .catch((error: unknown) => {
+        if (cancelled) return;
+        setSavedProjectsError(
+          localErrorMessage(error, "Browser storage could not be opened safely."),
+        );
+        setSavedProjectsState("error");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [storeFactory]);
   useEffect(() => {
     if (!project || mode !== "workspace") return;
     const sequence = ++saveSequence.current;
+    setSaveState({ status: "saving" });
     const timer = setTimeout(() => {
       const next = cloneProject(project);
       next.metadata.lastLocalSaveAt = new Date().toISOString();
       void store
         .save(next)
         .then(() => {
-          if (sequence === saveSequence.current)
+          if (sequence === saveSequence.current) {
             setProject((current) => (current?.metadata.id === next.metadata.id ? next : current));
+            setSaveState({ status: "saved" });
+          }
         })
-        .catch(() => undefined);
+        .catch((error: unknown) => {
+          if (sequence === saveSequence.current) {
+            setSaveState({
+              status: "error",
+              message: localErrorMessage(error, "browser storage rejected the write"),
+            });
+          }
+        });
     }, 250);
     return () => clearTimeout(timer);
   }, [project?.metadata.updatedAt, mode, store]);
   useEffect(() => {
-    if ("serviceWorker" in navigator && import.meta.env.PROD)
-      void navigator.serviceWorker.register("./sw.js");
+    const handleOnline = () => setOnline(true);
+    const handleOffline = () => setOnline(false);
+    globalThis.addEventListener("online", handleOnline);
+    globalThis.addEventListener("offline", handleOffline);
+    return () => {
+      globalThis.removeEventListener("online", handleOnline);
+      globalThis.removeEventListener("offline", handleOffline);
+    };
+  }, []);
+  useEffect(() => {
+    if (!("serviceWorker" in navigator) || !import.meta.env.PROD) return;
+    let disposed = false;
+    let registration: ServiceWorkerRegistration | undefined;
+    const showWaitingUpdate = () => {
+      if (!disposed && registration?.waiting && navigator.serviceWorker.controller)
+        setUpdateRegistration(registration);
+    };
+    const handleControllerChange = () => {
+      if (updateRequested.current && !reloadingForUpdate.current) {
+        reloadingForUpdate.current = true;
+        globalThis.location.reload();
+      }
+    };
+    navigator.serviceWorker.addEventListener("controllerchange", handleControllerChange);
+    void navigator.serviceWorker.register("./sw.js").then((nextRegistration) => {
+      if (disposed) return;
+      registration = nextRegistration;
+      showWaitingUpdate();
+      nextRegistration.addEventListener("updatefound", () => {
+        const worker = nextRegistration.installing;
+        worker?.addEventListener("statechange", () => {
+          if (worker.state === "installed") showWaitingUpdate();
+        });
+      });
+    });
+    return () => {
+      disposed = true;
+      navigator.serviceWorker.removeEventListener("controllerchange", handleControllerChange);
+    };
   }, []);
 
-  const update = (recipe: (draft: BridgeProject) => void) =>
+  const update = (recipe: (draft: BridgeProject) => void, updatedAt = new Date().toISOString()) =>
     setProject((current) => {
       if (!current) return current;
       const draft = cloneProject(current);
       recipe(draft);
-      draft.metadata.updatedAt = new Date().toISOString();
+      draft.metadata.updatedAt = updatedAt;
       draft.actions = deriveActions(draft);
       return draft;
     });
   const enter = (next: BridgeProject, nextRoute: Route) => {
+    setRestoreMessage("");
     setProject(cloneProject(next));
     setRoute(nextRoute);
     setMode("workspace");
     window.scrollTo({ top: 0 });
   };
-  if (mode === "first")
-    return (
-      <FirstRun
-        onPdf={() => setMode("pdf")}
-        onManual={() => enter(initializeProject(), "/eligibility")}
-        onSample={() => enter(cloneProject(ACME_METRICS_PROJECT), "/overview")}
-      />
+  const refreshSavedProjects = async () => {
+    try {
+      setSavedProjects(await store.list());
+      setSavedProjectsState("ready");
+      setSavedProjectsError("");
+    } catch (error) {
+      setSavedProjectsError(localErrorMessage(error, "Saved projects could not be listed."));
+      setSavedProjectsState("error");
+    }
+  };
+  const openSavedProject = async (id: string) => {
+    try {
+      const saved = await store.load(id);
+      if (!saved) throw new Error("That saved project is no longer available in browser storage.");
+      if (
+        saved.soc2.extractionCandidates.some((candidate) => candidate.decision === "unreviewed")
+      ) {
+        setRestoreMessage("");
+        setProject(cloneProject(saved));
+        setMode("pdf-review");
+        window.scrollTo({ top: 0 });
+        return;
+      }
+      enter(saved, "/overview");
+    } catch (error) {
+      setSavedProjectsError(localErrorMessage(error, "The saved project could not be opened."));
+      setSavedProjectsState("error");
+    }
+  };
+  const restoreFile = async (file: File, password: string) => {
+    let bytes: Uint8Array = new Uint8Array(await file.arrayBuffer());
+    if (file.name.toLowerCase().endsWith(".encrypted"))
+      bytes = await decryptBundle(bytes, password);
+    const imported = await importProjectBundle(bytes);
+    const omittedAttachmentCount = store.supportsAttachments ? 0 : imported.attachments.size;
+    const restored = await restoreImportedProjectAtomically(store, imported);
+    enter(restored, "/overview");
+    setRestoreMessage(
+      omittedAttachmentCount > 0
+        ? `Restored “${restored.metadata.name}” after schema and integrity checks. This browser fallback restored the project record but could not retain ${omittedAttachmentCount} bundled attachment${omittedAttachmentCount === 1 ? "" : "s"}.`
+        : `Restored “${restored.metadata.name}” after schema, integrity, and storage checks.`,
     );
+    await refreshSavedProjects();
+  };
+  const firstRun = (
+    <FirstRun
+      onPdf={() => setMode("pdf")}
+      onManual={() => enter(initializeProject(), "/eligibility")}
+      onSample={() => enter(cloneProject(ACME_METRICS_PROJECT), "/overview")}
+      savedProjects={savedProjects}
+      savedProjectsState={savedProjectsState}
+      savedProjectsError={savedProjectsError}
+      onOpenSaved={openSavedProject}
+      onImport={restoreFile}
+    />
+  );
+  if (mode === "first") return firstRun;
   if (mode === "pdf")
     return (
       <PdfStart
         onCancel={() => setMode("first")}
         onManual={() => enter(initializeProject(), "/eligibility")}
         onProject={async (next, attachment) => {
-          await store.putAttachment(attachment.id, attachment.bytes, next.metadata.id);
+          if (!store.supportsAttachments) {
+            next.notes = [
+              next.notes,
+              "This browser storage fallback retained the extracted metadata but not the original PDF bytes.",
+            ]
+              .filter(Boolean)
+              .join(" ");
+          }
+          await persistProjectWithAttachmentAtomically(store, next, attachment);
           setProject(next);
           setMode("pdf-review");
         }}
@@ -3001,14 +5241,7 @@ export function App() {
         }}
       />
     );
-  if (!project)
-    return (
-      <FirstRun
-        onPdf={() => setMode("pdf")}
-        onManual={() => enter(initializeProject(), "/eligibility")}
-        onSample={() => enter(cloneProject(ACME_METRICS_PROJECT), "/overview")}
-      />
-    );
+  if (!project) return firstRun;
   return (
     <Shell
       project={project}
@@ -3019,9 +5252,24 @@ export function App() {
       }}
       update={update}
       store={store}
+      saveState={saveState}
+      online={online}
+      updateAvailable={Boolean(updateRegistration?.waiting)}
+      restoreMessage={restoreMessage}
+      onDismissRestoreMessage={() => setRestoreMessage("")}
+      onApplyUpdate={() => {
+        if (saveState.status === "saving" || saveState.status === "error") return;
+        const waiting = updateRegistration?.waiting;
+        if (!waiting) return;
+        updateRequested.current = true;
+        waiting.postMessage({ type: "SKIP_WAITING" });
+      }}
+      onRestore={restoreFile}
       onClose={() => {
+        setRestoreMessage("");
         setProject(undefined);
         setMode("first");
+        void refreshSavedProjects();
       }}
     />
   );

@@ -31,14 +31,12 @@ test("a project exports, deletes, imports, and restores the original record", as
     page.getByRole("heading", { level: 1, name: /Turn your SOC 2 Type II/u }),
   ).toBeVisible();
 
-  // Import is currently reachable only after creating a temporary project.
-  await page.getByRole("button", { name: /Start without uploading a report/u }).click();
-  await navigateTo(page, "Project settings");
-  await fieldControl(page, "Choose backup").setInputFiles(backupPath);
+  await fieldControl(page, "Choose a Class A Bridge backup").setInputFiles(backupPath);
 
-  await expect(page.getByRole("status")).toContainText(
+  await expect(page.getByRole("status", { name: "Backup restore status" })).toContainText(
     "Restored “Acme Metrics Class A preparation”",
   );
+  await navigateTo(page, "Project settings");
   await expect(fieldControl(page, "Organization")).toHaveValue("Acme Metrics restoration canary");
   await expect(fieldControl(page, "Cloud service offering")).toHaveValue(
     "Acme Metrics Restored Cloud",

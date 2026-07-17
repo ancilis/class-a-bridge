@@ -259,3 +259,39 @@ export function evidenceFreshness(
   if (days <= 30) return "due_soon";
   return "current";
 }
+
+export function soc2PackageFreshness(
+  project: BridgeProject,
+  reference = new Date(),
+): BridgeProject["snapshots"][number]["freshnessStatus"] {
+  const freshnessAnswer = project.eligibility.answers.find(
+    (answer) => answer.questionId === "soc2_fresh",
+  );
+  if (freshnessAnswer?.value === "no") return "stale";
+
+  const referenceTimestamp = reference.getTime();
+  if (!Number.isFinite(referenceTimestamp)) return "needs_confirmation";
+  const referenceDate = reference.toISOString().slice(0, 10);
+  if (project.evidence.some((item) => item.reviewDate && item.reviewDate < referenceDate)) {
+    return "stale";
+  }
+
+  const sourceDate = project.soc2.reportDate?.trim() || project.soc2.reportEnd?.trim();
+  if (!sourceDate) return "needs_confirmation";
+  const timestamp = Date.parse(sourceDate);
+  if (!Number.isFinite(timestamp) || timestamp > referenceTimestamp) return "needs_confirmation";
+  const ageDays = (referenceTimestamp - timestamp) / 86_400_000;
+  if (ageDays >= 365) return "stale";
+  if (ageDays >= 335) return "aging";
+  if (!freshnessAnswer || freshnessAnswer.value !== "yes") return "needs_confirmation";
+  const agingThrough = new Date(referenceTimestamp + 30 * 86_400_000).toISOString().slice(0, 10);
+  if (
+    project.evidence.some(
+      (item) =>
+        item.reviewDate && item.reviewDate >= referenceDate && item.reviewDate <= agingThrough,
+    )
+  ) {
+    return "aging";
+  }
+  return "fresh";
+}
