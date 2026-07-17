@@ -28,6 +28,10 @@ describe("service worker release safety", () => {
     expect(source).toMatch(/await cache\.put\(/u);
   });
 
+  it("matches same-origin precache entries across static-host Vary headers", () => {
+    expect(source).toMatch(/cache\.match\(event\.request, \{ ignoreVary: true \}\)/u);
+  });
+
   it("does not activate an update while local changes are saving or failed", () => {
     expect(appSource).toMatch(
       /disabled=\{saveState\.status === "saving" \|\| saveState\.status === "error"\}/u,
