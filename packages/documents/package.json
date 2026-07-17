@@ -9,8 +9,14 @@
   "scripts": {
     "build": "tsc --noEmit",
     "lint": "eslint .",
-    "test": "vitest run --passWithNoTests",
+    "test": "vitest run",
     "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@class-a-bridge/project": "workspace:*",
+    "@class-a-bridge/rules": "workspace:*",
+    "@class-a-bridge/schemas": "workspace:*",
+    "fflate": "0.8.2"
   },
   "devDependencies": {
     "typescript": "catalog:",
