@@ -3,6 +3,7 @@ import {
   sha256Hex,
   type BridgeProject,
   type BundleAttachment,
+  type BundleGeneratedOutput,
   type ImportedProjectBundle,
   type ProjectStore,
 } from "@class-a-bridge/project";
@@ -73,6 +74,69 @@ export async function collectBundleAttachments(
   return attachments;
 }
 
+export interface ReferencedGeneratedOutput {
+  readonly id: string;
+  readonly fileName: string;
+  readonly label: string;
+  readonly sha256: string;
+  readonly inline: boolean;
+}
+
+export function referencedGeneratedOutputs(
+  project: BridgeProject,
+): readonly ReferencedGeneratedOutput[] {
+  const references: ReferencedGeneratedOutput[] = [];
+  const seen = new Set<string>();
+  for (const output of project.generatedOutputs) {
+    if (seen.has(output.id)) {
+      throw new Error(`Generated output identifier “${output.id}” is not unique.`);
+    }
+    seen.add(output.id);
+    const extension = `.${output.format}`;
+    const safeTitle = safeFilename(output.title, "class-a-bridge-output").slice(0, 170);
+    references.push({
+      id: output.id,
+      fileName: safeTitle.toLowerCase().endsWith(extension)
+        ? safeTitle
+        : `${safeTitle}${extension}`,
+      label: `Generated output — ${output.title}`,
+      sha256: output.sha256,
+      inline: output.content !== undefined,
+    });
+  }
+  return references;
+}
+
+export async function collectBundleGeneratedOutputs(
+  project: BridgeProject,
+  store: ProjectStore,
+  selectedIds: ReadonlySet<string>,
+): Promise<readonly BundleGeneratedOutput[]> {
+  const outputsById = new Map(project.generatedOutputs.map((output) => [output.id, output]));
+  const outputs: BundleGeneratedOutput[] = [];
+  for (const reference of referencedGeneratedOutputs(project)) {
+    if (!selectedIds.has(reference.id)) continue;
+    const output = outputsById.get(reference.id)!;
+    const bytes =
+      output.content === undefined
+        ? await store.getAttachment(reference.id)
+        : new TextEncoder().encode(output.content);
+    if (!bytes) {
+      throw new Error(
+        `Selected generated output “${reference.label}” is unavailable in this browser storage backend.`,
+      );
+    }
+    const actualHash = await sha256Hex(bytes);
+    if (actualHash.toLowerCase() !== reference.sha256.toLowerCase()) {
+      throw new Error(
+        `Selected generated output “${reference.label}” failed its integrity check because its bytes do not match the project-record SHA-256 hash.`,
+      );
+    }
+    outputs.push({ id: reference.id, fileName: reference.fileName, bytes });
+  }
+  return outputs;
+}
+
 export async function persistProjectWithAttachmentAtomically(
   store: ProjectStore,
   project: BridgeProject,
@@ -110,6 +174,42 @@ export async function persistProjectWithAttachmentAtomically(
     throw error;
   }
   return true;
+}
+
+export async function persistProjectWithGeneratedOutputAtomically(
+  store: ProjectStore,
+  project: BridgeProject,
+  generatedOutput: { readonly id: string; readonly bytes: Uint8Array },
+): Promise<boolean> {
+  const matching = project.generatedOutputs.filter((output) => output.id === generatedOutput.id);
+  if (matching.length !== 1) {
+    throw new Error(
+      `Generated output identifier “${generatedOutput.id}” must have exactly one project record before its bytes can be retained.`,
+    );
+  }
+  const actualHash = await sha256Hex(generatedOutput.bytes);
+  if (actualHash.toLowerCase() !== matching[0]!.sha256.toLowerCase()) {
+    throw new Error(
+      `Generated output “${matching[0]!.title}” failed its integrity check because its bytes do not match the project-record SHA-256 hash.`,
+    );
+  }
+
+  if (store.supportsAttachments) {
+    const [previousProject, previousBytes] = await Promise.all([
+      store.load(project.metadata.id),
+      store.getAttachment(generatedOutput.id),
+    ]);
+    if (
+      previousBytes &&
+      !previousProject?.generatedOutputs.some((output) => output.id === generatedOutput.id)
+    ) {
+      throw new Error(
+        `Generated output identifier “${generatedOutput.id}” conflicts with unrelated local data.`,
+      );
+    }
+  }
+
+  return persistProjectWithAttachmentAtomically(store, project, generatedOutput);
 }
 
 export async function removeEvidenceCandidateLocally(
@@ -156,6 +256,38 @@ export async function removeEvidenceCandidateLocally(
   return next;
 }
 
+function projectLocalByteIds(project: BridgeProject): ReadonlySet<string> {
+  const ids = new Set<string>();
+  if (project.soc2.sourceReport) ids.add(project.soc2.sourceReport.attachmentId);
+  for (const evidence of project.evidence) {
+    if (evidence.attachmentId) ids.add(evidence.attachmentId);
+  }
+  for (const material of project.materials) {
+    if (material.attachmentId) ids.add(material.attachmentId);
+  }
+  for (const output of project.generatedOutputs) ids.add(output.id);
+  return ids;
+}
+
+function projectExpectedLocalByteHashes(
+  project: BridgeProject,
+): ReadonlyMap<string, ReadonlySet<string>> {
+  const expected = new Map<string, Set<string>>();
+  const add = (id: string, hash: string) => {
+    const hashes = expected.get(id) ?? new Set<string>();
+    hashes.add(hash.toLowerCase());
+    expected.set(id, hashes);
+  };
+  if (project.soc2.sourceReport) {
+    add(project.soc2.sourceReport.attachmentId, project.soc2.sourceReport.sha256);
+  }
+  for (const evidence of project.evidence) {
+    if (evidence.attachmentId) add(evidence.attachmentId, evidence.sha256);
+  }
+  for (const output of project.generatedOutputs) add(output.id, output.sha256);
+  return expected;
+}
+
 export async function restoreImportedProjectAtomically(
   store: ProjectStore,
   imported: ImportedProjectBundle,
@@ -178,36 +310,69 @@ export async function restoreImportedProjectAtomically(
     }
     return structuredClone(imported.project);
   }
-  const previousIds = previousProject
-    ? new Set(referencedLocalAttachments(previousProject).map(({ id }) => id))
-    : new Set<string>();
-  const previousAttachments = new Map<string, Uint8Array | undefined>();
 
-  for (const id of imported.attachments.keys()) {
-    const previous = await store.getAttachment(id);
-    if (previous && !previousIds.has(id)) {
+  const importedBytes = new Map<string, Uint8Array>();
+  for (const [id, bytes] of imported.attachments) importedBytes.set(id, bytes);
+  for (const [id, bytes] of imported.generatedOutputs) {
+    if (importedBytes.has(id)) {
+      throw new Error(`The backup reuses logical identifier “${id}” for multiple local files.`);
+    }
+    const output = imported.project.generatedOutputs.find((candidate) => candidate.id === id);
+    if (!output || (await sha256Hex(bytes)).toLowerCase() !== output.sha256.toLowerCase()) {
       throw new Error(
-        `The backup attachment identifier “${id}” conflicts with unrelated local data. Import stopped safely.`,
+        `The backup generated output “${id}” failed its project-record integrity check.`,
       );
     }
-    previousAttachments.set(id, previous);
+    importedBytes.set(id, bytes);
+  }
+
+  const previousIds = previousProject ? projectLocalByteIds(previousProject) : new Set<string>();
+  const incomingIds = projectLocalByteIds(imported.project);
+  const incomingExpectedHashes = projectExpectedLocalByteHashes(imported.project);
+  const staleIds = new Set([...previousIds].filter((id) => !incomingIds.has(id)));
+
+  // A backup can intentionally omit a referenced file. Retain a prior local copy only when
+  // its bytes still match the incoming record; otherwise remove the stale copy after save.
+  for (const id of incomingIds) {
+    if (importedBytes.has(id)) continue;
+    const expectedHashes = incomingExpectedHashes.get(id);
+    if (!expectedHashes?.size) continue;
+    const existing = await store.getAttachment(id);
+    if (!existing) continue;
+    const actualHash = (await sha256Hex(existing)).toLowerCase();
+    if ([...expectedHashes].some((expectedHash) => expectedHash !== actualHash)) {
+      staleIds.add(id);
+    }
+  }
+
+  const touchedIds = new Set([...importedBytes.keys(), ...staleIds]);
+  const previousBytes = new Map<string, Uint8Array | undefined>();
+  for (const id of touchedIds) {
+    const previous = await store.getAttachment(id);
+    if (importedBytes.has(id) && previous && !previousIds.has(id)) {
+      throw new Error(
+        `The backup local-file identifier “${id}” conflicts with unrelated local data. Import stopped safely.`,
+      );
+    }
+    previousBytes.set(id, previous);
   }
 
   try {
-    for (const [id, bytes] of imported.attachments) {
+    for (const [id, bytes] of importedBytes) {
       await store.putAttachment(id, bytes, imported.project.metadata.id);
     }
     await store.save(imported.project);
+    for (const id of staleIds) await store.deleteAttachment(id);
   } catch (error) {
     try {
       if (previousProject) {
         await store.save(previousProject);
-        for (const [id, previous] of previousAttachments) {
+        for (const [id, previous] of previousBytes) {
           if (previous) await store.putAttachment(id, previous, previousProject.metadata.id);
           else await store.deleteAttachment(id);
         }
       } else {
-        for (const id of imported.attachments.keys()) await store.deleteAttachment(id);
+        for (const id of touchedIds) await store.deleteAttachment(id);
         await store.delete(imported.project.metadata.id);
       }
     } catch {

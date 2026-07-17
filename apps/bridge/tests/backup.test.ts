@@ -10,8 +10,11 @@ import { describe, expect, it } from "vitest";
 
 import {
   collectBundleAttachments,
+  collectBundleGeneratedOutputs,
   persistProjectWithAttachmentAtomically,
+  persistProjectWithGeneratedOutputAtomically,
   referencedLocalAttachments,
+  referencedGeneratedOutputs,
   removeEvidenceCandidateLocally,
   restoreImportedProjectAtomically,
 } from "../src/lib/backup";
@@ -97,15 +100,205 @@ describe("local project backup orchestration", () => {
       sha256: await sha256Hex(new Uint8Array([1, 2, 3])),
     };
     const store = new MemoryProjectStore();
+    await store.putAttachment("tampered-source", new Uint8Array([9, 9, 9]), project.metadata.id);
+
+    await expect(
+      collectBundleAttachments(project, store, new Set(["tampered-source"])),
+    ).rejects.toThrow(/integrity.*hash/iu);
+  });
+
+  it("enumerates and verifies inline and locally stored generated outputs", async () => {
+    const project = structuredClone(ACME_METRICS_PROJECT);
+    project.generatedOutputs = [];
+    const inlineContent = "<h1>Internal readiness summary</h1>";
+    const storedBytes = new Uint8Array([80, 75, 3, 4]);
+    project.generatedOutputs.push(
+      {
+        id: "output-inline",
+        kind: "readiness_report",
+        title: "Readiness summary",
+        format: "html",
+        generatedAt: "2026-07-17T12:00:00.000Z",
+        sha256: await sha256Hex(new TextEncoder().encode(inlineContent)),
+        content: inlineContent,
+        validationStatus: "not_applicable",
+        validationIssues: [],
+      },
+      {
+        id: "output-package",
+        kind: "preparation_package",
+        title: "Preparation package 1.0",
+        format: "zip",
+        generatedAt: "2026-07-17T12:00:00.000Z",
+        sha256: await sha256Hex(storedBytes),
+        validationStatus: "valid",
+        validationIssues: [],
+      },
+    );
+    const store = new MemoryProjectStore();
+    await store.putAttachment("output-package", storedBytes, project.metadata.id);
+
+    expect(referencedGeneratedOutputs(project)).toEqual([
+      expect.objectContaining({
+        id: "output-inline",
+        fileName: "Readiness summary.html",
+        inline: true,
+      }),
+      expect.objectContaining({
+        id: "output-package",
+        fileName: "Preparation package 1.0.zip",
+        inline: false,
+      }),
+    ]);
+
+    const selected = await collectBundleGeneratedOutputs(
+      project,
+      store,
+      new Set(["output-inline", "output-package"]),
+    );
+    expect(selected).toEqual([
+      expect.objectContaining({
+        id: "output-inline",
+        bytes: new TextEncoder().encode(inlineContent),
+      }),
+      expect.objectContaining({ id: "output-package", bytes: storedBytes }),
+    ]);
+  });
+
+  it("keeps every fictional sample output internally hash-consistent", async () => {
+    const store = new MemoryProjectStore();
+    const selectedIds = new Set(ACME_METRICS_PROJECT.generatedOutputs.map(({ id }) => id));
+
+    await expect(
+      collectBundleGeneratedOutputs(ACME_METRICS_PROJECT, store, selectedIds),
+    ).resolves.toHaveLength(ACME_METRICS_PROJECT.generatedOutputs.length);
+  });
+
+  it("rejects generated output bytes or inline content that do not match recorded hashes", async () => {
+    const project = structuredClone(ACME_METRICS_PROJECT);
+    project.generatedOutputs = [
+      {
+        id: "output-inline-tampered",
+        kind: "readiness_report",
+        title: "Readiness summary",
+        format: "html",
+        generatedAt: "2026-07-17T12:00:00.000Z",
+        sha256: await sha256Hex(new TextEncoder().encode("expected")),
+        content: "changed",
+        validationStatus: "not_applicable",
+        validationIssues: [],
+      },
+      {
+        id: "output-stored-tampered",
+        kind: "preparation_package",
+        title: "Preparation package",
+        format: "zip",
+        generatedAt: "2026-07-17T12:00:00.000Z",
+        sha256: await sha256Hex(new Uint8Array([1, 2, 3])),
+        validationStatus: "valid",
+        validationIssues: [],
+      },
+    ];
+    const store = new MemoryProjectStore();
     await store.putAttachment(
-      "tampered-source",
+      "output-stored-tampered",
       new Uint8Array([9, 9, 9]),
       project.metadata.id,
     );
 
     await expect(
-      collectBundleAttachments(project, store, new Set(["tampered-source"])),
+      collectBundleGeneratedOutputs(project, store, new Set(["output-inline-tampered"])),
     ).rejects.toThrow(/integrity.*hash/iu);
+    await expect(
+      collectBundleGeneratedOutputs(project, store, new Set(["output-stored-tampered"])),
+    ).rejects.toThrow(/integrity.*hash/iu);
+  });
+
+  it("persists generated output bytes and project metadata as one rollback-safe operation", async () => {
+    const store = new MemoryProjectStore();
+    const project = structuredClone(ACME_METRICS_PROJECT);
+    project.metadata.id = "generated-output-project";
+    project.generatedOutputs = [];
+    const bytes = new Uint8Array([80, 75, 3, 4]);
+    project.generatedOutputs.push({
+      id: "generated-package",
+      kind: "preparation_package",
+      title: "Preparation package",
+      format: "zip",
+      generatedAt: "2026-07-17T12:00:00.000Z",
+      sha256: await sha256Hex(bytes),
+      validationStatus: "valid",
+      validationIssues: [],
+    });
+
+    await expect(
+      persistProjectWithGeneratedOutputAtomically(store, project, {
+        id: "generated-package",
+        bytes,
+      }),
+    ).resolves.toBe(true);
+    expect((await store.load(project.metadata.id))?.generatedOutputs[0]?.id).toBe(
+      "generated-package",
+    );
+    expect(await store.getAttachment("generated-package")).toEqual(bytes);
+  });
+
+  it("does not persist generated output bytes that fail the project-record hash", async () => {
+    const store = new MemoryProjectStore();
+    const project = structuredClone(ACME_METRICS_PROJECT);
+    project.metadata.id = "generated-output-mismatch";
+    project.generatedOutputs = [
+      {
+        id: "generated-package",
+        kind: "preparation_package",
+        title: "Preparation package",
+        format: "zip",
+        generatedAt: "2026-07-17T12:00:00.000Z",
+        sha256: await sha256Hex(new Uint8Array([1, 2, 3])),
+        validationStatus: "valid",
+        validationIssues: [],
+      },
+    ];
+
+    await expect(
+      persistProjectWithGeneratedOutputAtomically(store, project, {
+        id: "generated-package",
+        bytes: new Uint8Array([9, 9, 9]),
+      }),
+    ).rejects.toThrow(/integrity.*hash/iu);
+    expect(await store.load(project.metadata.id)).toBeUndefined();
+    expect(await store.getAttachment("generated-package")).toBeUndefined();
+  });
+
+  it("preserves generated-output metadata without claiming byte retention in localStorage", async () => {
+    const storage = globalThis.localStorage;
+    storage.clear();
+    const store: ProjectStore = new LocalStorageProjectStore(storage);
+    const project = structuredClone(ACME_METRICS_PROJECT);
+    project.metadata.id = "generated-output-fallback";
+    project.generatedOutputs = [];
+    const bytes = new Uint8Array([80, 75, 3, 4]);
+    project.generatedOutputs.push({
+      id: "fallback-package",
+      kind: "preparation_package",
+      title: "Preparation package",
+      format: "zip",
+      generatedAt: "2026-07-17T12:00:00.000Z",
+      sha256: await sha256Hex(bytes),
+      validationStatus: "valid",
+      validationIssues: [],
+    });
+
+    await expect(
+      persistProjectWithGeneratedOutputAtomically(store, project, {
+        id: "fallback-package",
+        bytes,
+      }),
+    ).resolves.toBe(false);
+    expect((await store.load(project.metadata.id))?.generatedOutputs[0]?.id).toBe(
+      "fallback-package",
+    );
+    expect(await store.getAttachment("fallback-package")).toBeUndefined();
   });
 
   it("removes an evidence record, its requirement references, and its owned local bytes", async () => {
@@ -152,9 +345,9 @@ describe("local project backup orchestration", () => {
     );
     store.fail = true;
 
-    await expect(
-      removeEvidenceCandidateLocally(store, project, evidence.id),
-    ).rejects.toThrow(/simulated attachment deletion failure/iu);
+    await expect(removeEvidenceCandidateLocally(store, project, evidence.id)).rejects.toThrow(
+      /simulated attachment deletion failure/iu,
+    );
     expect((await store.load(project.metadata.id))?.evidence).toContainEqual(
       expect.objectContaining({ id: evidence.id }),
     );
@@ -208,6 +401,149 @@ describe("local project backup orchestration", () => {
     expect(await store.getAttachment("incoming-second")).toBeUndefined();
   });
 
+  it("restores imported generated output bytes alongside project metadata", async () => {
+    const store = new MemoryProjectStore();
+    const incoming = structuredClone(ACME_METRICS_PROJECT);
+    incoming.metadata.id = "generated-output-restore";
+    incoming.generatedOutputs = [];
+    const bytes = new Uint8Array([80, 75, 3, 4]);
+    incoming.generatedOutputs.push({
+      id: "restored-package",
+      kind: "preparation_package",
+      title: "Preparation package",
+      format: "zip",
+      generatedAt: "2026-07-17T12:00:00.000Z",
+      sha256: await sha256Hex(bytes),
+      validationStatus: "valid",
+      validationIssues: [],
+    });
+    const imported = {
+      project: incoming,
+      manifest: {},
+      attachments: new Map(),
+      generatedOutputs: new Map([["restored-package", bytes]]),
+    } as unknown as ImportedProjectBundle;
+
+    const restored = await restoreImportedProjectAtomically(store, imported);
+
+    expect(restored.generatedOutputs[0]?.id).toBe("restored-package");
+    expect(await store.getAttachment("restored-package")).toEqual(bytes);
+  });
+
+  it("rejects a generated output restore that would overwrite unrelated local bytes", async () => {
+    const store = new MemoryProjectStore();
+    await store.putAttachment("conflicting-output", new Uint8Array([9]), "different-project");
+    const incoming = structuredClone(ACME_METRICS_PROJECT);
+    incoming.metadata.id = "generated-output-collision";
+    incoming.generatedOutputs = [];
+    const bytes = new Uint8Array([1]);
+    incoming.generatedOutputs.push({
+      id: "conflicting-output",
+      kind: "preparation_package",
+      title: "Preparation package",
+      format: "zip",
+      generatedAt: "2026-07-17T12:00:00.000Z",
+      sha256: await sha256Hex(bytes),
+      validationStatus: "valid",
+      validationIssues: [],
+    });
+    const imported = {
+      project: incoming,
+      manifest: {},
+      attachments: new Map(),
+      generatedOutputs: new Map([["conflicting-output", bytes]]),
+    } as unknown as ImportedProjectBundle;
+
+    await expect(restoreImportedProjectAtomically(store, imported)).rejects.toThrow(
+      /conflicts with unrelated local data/iu,
+    );
+    expect(await store.getAttachment("conflicting-output")).toEqual(new Uint8Array([9]));
+  });
+
+  it("cleans attachment and generated-output bytes no longer referenced after restore", async () => {
+    const store = new MemoryProjectStore();
+    const current = structuredClone(ACME_METRICS_PROJECT);
+    current.metadata.id = "cleanup-restore";
+    current.soc2.sourceReport = {
+      fileName: "old-report.pdf",
+      attachmentId: "stale-report",
+      sha256: await sha256Hex(new Uint8Array([1])),
+    };
+    current.generatedOutputs = [
+      {
+        id: "stale-output",
+        kind: "preparation_package",
+        title: "Old package",
+        format: "zip",
+        generatedAt: "2026-07-17T12:00:00.000Z",
+        sha256: await sha256Hex(new Uint8Array([2])),
+        validationStatus: "valid",
+        validationIssues: [],
+      },
+    ];
+    await store.save(current);
+    await store.putAttachment("stale-report", new Uint8Array([1]), current.metadata.id);
+    await store.putAttachment("stale-output", new Uint8Array([2]), current.metadata.id);
+    const incoming = structuredClone(current);
+    delete incoming.soc2.sourceReport;
+    incoming.generatedOutputs = [];
+    const imported = {
+      project: incoming,
+      manifest: {},
+      attachments: new Map(),
+      generatedOutputs: new Map(),
+    } as unknown as ImportedProjectBundle;
+
+    await restoreImportedProjectAtomically(store, imported);
+
+    expect(await store.getAttachment("stale-report")).toBeUndefined();
+    expect(await store.getAttachment("stale-output")).toBeUndefined();
+  });
+
+  it("rolls back project metadata and bytes if stale-output cleanup fails", async () => {
+    class FailingCleanupStore extends MemoryProjectStore {
+      fail = false;
+      override deleteAttachment(id: string): Promise<void> {
+        if (this.fail && id === "stale-output") {
+          return Promise.reject(new Error("simulated stale output cleanup failure"));
+        }
+        return super.deleteAttachment(id);
+      }
+    }
+    const store = new FailingCleanupStore();
+    const current = structuredClone(ACME_METRICS_PROJECT);
+    current.metadata.id = "failed-cleanup-restore";
+    current.generatedOutputs = [];
+    const bytes = new Uint8Array([2]);
+    current.generatedOutputs.push({
+      id: "stale-output",
+      kind: "preparation_package",
+      title: "Old package",
+      format: "zip",
+      generatedAt: "2026-07-17T12:00:00.000Z",
+      sha256: await sha256Hex(bytes),
+      validationStatus: "valid",
+      validationIssues: [],
+    });
+    await store.save(current);
+    await store.putAttachment("stale-output", bytes, current.metadata.id);
+    const incoming = structuredClone(current);
+    incoming.metadata.name = "Incoming project";
+    incoming.generatedOutputs = [];
+    store.fail = true;
+
+    await expect(
+      restoreImportedProjectAtomically(store, {
+        project: incoming,
+        manifest: {},
+        attachments: new Map(),
+        generatedOutputs: new Map(),
+      } as unknown as ImportedProjectBundle),
+    ).rejects.toThrow(/simulated stale output cleanup failure/iu);
+    expect((await store.load(current.metadata.id))?.metadata.name).toBe(current.metadata.name);
+    expect(await store.getAttachment("stale-output")).toEqual(bytes);
+  });
+
   it("removes staged attachment bytes when a new-project restore fails", async () => {
     class NonCascadingFailingStore extends MemoryProjectStore {
       override putAttachment(id: string, bytes: Uint8Array, projectId?: string): Promise<void> {
@@ -249,11 +585,22 @@ describe("local project backup orchestration", () => {
       attachmentId: "fallback-source-report",
       sha256: await sha256Hex(new Uint8Array([1, 2, 3])),
     };
+    const generatedBytes = new Uint8Array([80, 75, 3, 4]);
+    incoming.generatedOutputs.push({
+      id: "fallback-generated-output",
+      kind: "preparation_package",
+      title: "Preparation package",
+      format: "zip",
+      generatedAt: "2026-07-17T12:00:00.000Z",
+      sha256: await sha256Hex(generatedBytes),
+      validationStatus: "valid",
+      validationIssues: [],
+    });
     const imported = {
       project: incoming,
       manifest: {},
       attachments: new Map([["fallback-source-report", new Uint8Array([1, 2, 3])]]),
-      generatedOutputs: new Map(),
+      generatedOutputs: new Map([["fallback-generated-output", generatedBytes]]),
     } as unknown as ImportedProjectBundle;
 
     const restored = await restoreImportedProjectAtomically(store, imported);
@@ -263,5 +610,9 @@ describe("local project backup orchestration", () => {
       "fallback-source-report",
     );
     expect(await store.getAttachment("fallback-source-report")).toBeUndefined();
+    expect((await store.load("fallback-import"))?.generatedOutputs).toContainEqual(
+      expect.objectContaining({ id: "fallback-generated-output" }),
+    );
+    expect(await store.getAttachment("fallback-generated-output")).toBeUndefined();
   });
 });

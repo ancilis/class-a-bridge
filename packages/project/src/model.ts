@@ -561,6 +561,47 @@ export const BridgeProjectSchema = z
         message: "A fictional sample project requires a visible watermark.",
       });
     }
+
+    const attachmentIds = new Set<string>();
+    if (project.soc2.sourceReport) attachmentIds.add(project.soc2.sourceReport.attachmentId);
+    for (const evidence of project.evidence) {
+      if (evidence.attachmentId) attachmentIds.add(evidence.attachmentId);
+    }
+    for (const material of project.materials) {
+      if (material.attachmentId) attachmentIds.add(material.attachmentId);
+    }
+
+    const outputIds = new Set<string>();
+    const outputHashes = new Set<string>();
+    project.generatedOutputs.forEach((output, index) => {
+      if (outputIds.has(output.id)) {
+        context.addIssue({
+          code: "custom",
+          path: ["generatedOutputs", index, "id"],
+          message: "Each generated output identifier must be unique within the project.",
+        });
+      }
+      if (attachmentIds.has(output.id)) {
+        context.addIssue({
+          code: "custom",
+          path: ["generatedOutputs", index, "id"],
+          message: "A generated output identifier cannot also identify a local attachment.",
+        });
+      }
+      outputIds.add(output.id);
+      outputHashes.add(output.sha256);
+    });
+
+    project.snapshots.forEach((snapshot, index) => {
+      if (!outputHashes.has(snapshot.packageHash)) {
+        context.addIssue({
+          code: "custom",
+          path: ["snapshots", index, "packageHash"],
+          message:
+            "Snapshot packageHash must match a generated output retained in the project record.",
+        });
+      }
+    });
   });
 
 export type BridgeProject = z.infer<typeof BridgeProjectSchema>;

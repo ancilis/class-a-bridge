@@ -69,6 +69,16 @@ describe("BridgeProject", () => {
 
   it("records unresolved package freshness without inventing a fresh status", () => {
     const project = createEmptyProject("Final review", "Provider");
+    project.generatedOutputs.push({
+      id: "package-1",
+      kind: "preparation_package",
+      title: "Preparation package 1.0",
+      format: "zip",
+      generatedAt: "2026-07-17T00:00:00.000Z",
+      sha256: "b".repeat(64),
+      validationStatus: "valid",
+      validationIssues: [],
+    });
     project.snapshots.push({
       id: "snapshot-1",
       version: "1.0",
@@ -86,6 +96,63 @@ describe("BridgeProject", () => {
     expect(BridgeProjectSchema.parse(project).snapshots[0]?.freshnessStatus).toBe(
       "needs_confirmation",
     );
+  });
+
+  it("rejects duplicate generated-output identifiers", () => {
+    const project = createEmptyProject("Output integrity", "Provider");
+    const output = {
+      id: "package-1",
+      kind: "preparation_package",
+      title: "Preparation package 1.0",
+      format: "zip" as const,
+      generatedAt: "2026-07-17T00:00:00.000Z",
+      sha256: "b".repeat(64),
+      validationStatus: "valid" as const,
+      validationIssues: [],
+    };
+    project.generatedOutputs.push(output, { ...output, title: "Duplicate package" });
+
+    expect(() => BridgeProjectSchema.parse(project)).toThrow(/generated output.*unique/iu);
+  });
+
+  it("rejects a generated-output identifier that collides with a local attachment", () => {
+    const project = createEmptyProject("Output integrity", "Provider");
+    project.soc2.sourceReport = {
+      fileName: "soc-2.pdf",
+      attachmentId: "package-1",
+      sha256: "a".repeat(64),
+    };
+    project.generatedOutputs.push({
+      id: "package-1",
+      kind: "preparation_package",
+      title: "Preparation package 1.0",
+      format: "zip",
+      generatedAt: "2026-07-17T00:00:00.000Z",
+      sha256: "b".repeat(64),
+      validationStatus: "valid",
+      validationIssues: [],
+    });
+
+    expect(() => BridgeProjectSchema.parse(project)).toThrow(/generated output.*attachment/iu);
+  });
+
+  it("requires every immutable snapshot package hash to bind to a generated output", () => {
+    const project = createEmptyProject("Snapshot integrity", "Provider");
+    project.snapshots.push({
+      id: "snapshot-1",
+      version: "1.0",
+      createdAt: "2026-07-17T00:00:00.000Z",
+      providerApprover: "Provider approver",
+      verificationDate: "2026-07-17",
+      validationDate: "2026-07-17",
+      projectHash: "a".repeat(64),
+      packageHash: "b".repeat(64),
+      freshnessStatus: "needs_confirmation",
+      unresolvedItems: [],
+      immutable: true,
+    });
+
+    expect(() => BridgeProjectSchema.parse(project)).toThrow(/packageHash.*generated output/iu);
   });
 
   it("rejects provider-approved status without a named approver and valid approval time", () => {
