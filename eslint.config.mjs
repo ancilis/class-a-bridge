@@ -10,6 +10,7 @@ export default tseslint.config(
       "**/dist/**",
       "**/node_modules/**",
       "**/out/**",
+      "**/public/sw.js",
       "packages/rules/vendor/**",
       "packages/schemas/src/generated/**",
       "packages/schemas/vendor/**",

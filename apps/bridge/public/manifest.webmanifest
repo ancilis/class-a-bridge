@@ -1,0 +1,13 @@
+{
+  "name": "Class A Bridge by Ancilis",
+  "short_name": "Class A Bridge",
+  "description": "Local-first FedRAMP 20x Class A preparation workspace.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f5f6f2",
+  "theme_color": "#103c45",
+  "icons": [
+    { "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
