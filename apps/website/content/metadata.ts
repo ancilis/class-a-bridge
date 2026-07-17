@@ -10,7 +10,7 @@ export function createPageMetadata(page: StaticPageDefinition): Metadata {
   const canonical = `${baseUrl}${page.path}`;
 
   return {
-    title: `${page.title} | Class A Bridge by Ancilis`,
+    title: page.title,
     description: page.description,
     alternates: { canonical },
     openGraph: {

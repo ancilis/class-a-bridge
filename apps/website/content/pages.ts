@@ -182,6 +182,24 @@ const openSourcePage: StaticPageDefinition = {
       ],
     },
     {
+      id: "source-access",
+      title: "Download and review the release",
+      cards: [
+        {
+          title: "Version 1.0.0 source archive",
+          body: "Download the authored source, workspace packages, tests, documentation, and release configuration published with this site.",
+          href: "/downloads/class-a-bridge-1.0.0-source.tar.gz",
+          linkLabel: "Download the source archive",
+        },
+        {
+          title: "Apache License 2.0",
+          body: "Read the full Apache License 2.0 text that applies to Ancilis-authored source code.",
+          href: "https://www.apache.org/licenses/LICENSE-2.0.txt",
+          linkLabel: "Read the license text",
+        },
+      ],
+    },
+    {
       id: "regulatory-content",
       title: "Versioned official sources, separate Ancilis guidance",
       bullets: [
@@ -206,11 +224,15 @@ const openSourcePage: StaticPageDefinition = {
       cards: [
         {
           title: "Report a security issue",
-          body: "Use the private vulnerability-reporting process in SECURITY.md rather than a public issue.",
+          body: "Report a suspected vulnerability privately to the Ancilis security team rather than through a public issue.",
+          href: "mailto:security@ancilis.ai",
+          linkLabel: "Email the security team",
         },
         {
           title: "Propose a product change",
           body: "Describe the user outcome, evidence for the interpretation, accessibility impact, tests, and migration implications.",
+          href: "/contact/",
+          linkLabel: "Send product feedback",
         },
         {
           title: "Review a rule update",
@@ -777,7 +799,8 @@ const privacyPage: StaticPageDefinition = {
       title: "Security and retention",
       body: [
         "Local data remains until you delete it, clear browser storage, or a browser/device policy removes it. Ancilis cannot restore a project that never left your browser.",
-        "Contact information is retained only as needed to respond, maintain business records, protect the service, and meet applicable obligations. A production deployer should publish its contact endpoint retention details.",
+        "Contact inquiries and any approved summaries are retained for up to 12 months and deleted sooner when no longer needed to respond or maintain the relationship.",
+        "Abuse-prevention and security logs for the optional contact service are retained for up to 90 days. Records may be kept longer when required by law or needed to establish, exercise, or defend legal claims.",
       ],
     },
     {

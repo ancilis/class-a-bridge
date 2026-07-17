@@ -1,0 +1,7 @@
+[build]
+  command = "pnpm build && pnpm release:assemble"
+  publish = "dist/class-a-bridge"
+
+[build.environment]
+  NODE_VERSION = "24"
+  PNPM_VERSION = "10.33.0"

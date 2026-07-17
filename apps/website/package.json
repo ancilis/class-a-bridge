@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "next build",
+    "check:release-links": "node scripts/check-release-links.mjs",
     "dev": "next dev",
     "lint": "eslint .",
     "test": "vitest run",

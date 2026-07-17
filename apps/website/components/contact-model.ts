@@ -20,6 +20,13 @@ export interface ContactPayload {
 
 export type ContactErrors = Partial<Record<keyof ContactFields, string>>;
 
+export function focusContactErrorSummary(
+  errors: ContactErrors,
+  summary: { readonly focus: () => void } | null,
+): void {
+  if (Object.keys(errors).length > 0) summary?.focus();
+}
+
 export function validateContactFields(fields: ContactFields): ContactErrors {
   const errors: ContactErrors = {};
 

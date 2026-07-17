@@ -1,9 +1,10 @@
 "use client";
 
-import { useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 
 import {
   createContactPayload,
+  focusContactErrorSummary,
   validateContactFields,
   type ContactErrors,
   type ContactFields,
@@ -30,13 +31,16 @@ export function ContactForm({ endpoint }: ContactFormProps) {
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const errorSummary = useRef<HTMLDivElement>(null);
 
+  useEffect(() => {
+    focusContactErrorSummary(errors, errorSummary.current);
+  }, [errors]);
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const nextErrors = validateContactFields(fields);
     setErrors(nextErrors);
 
     if (Object.keys(nextErrors).length > 0) {
-      errorSummary.current?.focus();
       return;
     }
 

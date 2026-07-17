@@ -83,6 +83,32 @@ describe("marketing content", () => {
     }
   });
 
+  it("publishes usable open-source, license, issue, and private security links", () => {
+    const page = requirePage("/open-source/");
+    const links = page.sections.flatMap((section) =>
+      (section.cards ?? []).flatMap((card) => (card.href ? [card.href] : [])),
+    );
+
+    expect(links).toEqual(
+      expect.arrayContaining([
+        "/downloads/class-a-bridge-1.0.0-source.tar.gz",
+        "https://www.apache.org/licenses/LICENSE-2.0.txt",
+        "/contact/",
+        "mailto:security@ancilis.ai",
+      ]),
+    );
+  });
+
+  it("states concrete retention windows for contact and abuse data", () => {
+    const page = requirePage("/privacy/");
+    const copy = JSON.stringify(page);
+
+    expect(copy).toContain("up to 12 months");
+    expect(copy).toContain("up to 90 days");
+    expect(copy).toContain("deleted sooner when no longer needed");
+    expect(copy).not.toContain("A production deployer should publish");
+  });
+
   it("does not use prohibited approval or automation claims", () => {
     const siteCopy = JSON.stringify({ homepage, faqItems, allStaticPages });
 

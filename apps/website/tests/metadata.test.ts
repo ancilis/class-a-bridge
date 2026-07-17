@@ -18,7 +18,7 @@ describe("search metadata", () => {
 
     const metadata = createPageMetadata(page);
 
-    expect(metadata.title).toContain(page.title);
+    expect(metadata.title).toBe(page.title);
     expect(metadata.description).toBe(page.description);
     expect(metadata.alternates?.canonical).toBe(`${baseUrl}${page.path}`);
     expect(metadata.openGraph?.url).toBe(`${baseUrl}${page.path}`);

@@ -5,8 +5,13 @@ import { allStaticPages, requiredRoutePaths } from "../content/pages";
 import { footerGroups, siteNavigation } from "../content/site-content";
 
 describe("internal navigation", () => {
-  it("only targets declared static routes or the separately deployed app", () => {
-    const declared = new Set(["/", ...requiredRoutePaths]);
+  it("only targets declared release routes, including the assembled application", () => {
+    const declared = new Set([
+      "/",
+      ...requiredRoutePaths,
+      "/app/",
+      "/downloads/class-a-bridge-1.0.0-source.tar.gz",
+    ]);
     const links = collectInternalLinks({
       pages: allStaticPages,
       navigation: siteNavigation,
@@ -14,8 +19,8 @@ describe("internal navigation", () => {
     });
 
     for (const href of links) {
-      if (href.startsWith("/app/")) continue;
-      expect(declared.has(href), `Undeclared internal link: ${href}`).toBe(true);
+      const pathname = new URL(href, "https://classabridge.ancilis.com").pathname;
+      expect(declared.has(pathname), `Undeclared internal link: ${href}`).toBe(true);
     }
   });
 

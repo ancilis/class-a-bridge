@@ -1,7 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   createContactPayload,
+  focusContactErrorSummary,
   validateContactFields,
   type ContactFields,
 } from "../components/contact-model";
@@ -58,5 +59,12 @@ describe("contact-only handoff", () => {
     });
 
     expect(payload.approvedSummary).toBe("We have five records marked needs expert review.");
+  });
+
+  it("focuses the mounted error summary after validation errors render", () => {
+    const focus = vi.fn();
+
+    focusContactErrorSummary({ email: "Enter a valid work email." }, { focus });
+    expect(focus).toHaveBeenCalledOnce();
   });
 });
