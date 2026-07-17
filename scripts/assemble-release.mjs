@@ -30,6 +30,16 @@ async function countFiles(directory) {
   return count;
 }
 
+async function assertNoSourceMaps(directory, description) {
+  for (const entry of await readdir(directory, { withFileTypes: true })) {
+    const entryPath = path.join(directory, entry.name);
+    if (entry.isDirectory()) await assertNoSourceMaps(entryPath, description);
+    else if (entry.isFile() && entry.name.endsWith(".map")) {
+      throw new Error(`${description} contains a source map and cannot be published: ${entryPath}`);
+    }
+  }
+}
+
 function assertSafeDestination(root, destination) {
   const distDirectory = path.resolve(root, "dist");
   const resolved = path.resolve(destination);
@@ -57,6 +67,10 @@ export async function assembleRelease({
   await requireFile(path.join(resolvedBridge, "manifest.webmanifest"), "PWA manifest");
   await requireFile(path.join(resolvedBridge, "sw.js"), "PWA service worker");
   await requireFile(path.join(resolvedBridge, "_headers"), "Bridge security headers");
+  await Promise.all([
+    assertNoSourceMaps(resolvedWebsite, "Marketing production build"),
+    assertNoSourceMaps(resolvedBridge, "Bridge production build"),
+  ]);
 
   const [websiteFiles, bridgeFiles] = await Promise.all([
     countFiles(resolvedWebsite),

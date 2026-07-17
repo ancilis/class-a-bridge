@@ -92,3 +92,35 @@ test("refuses release destinations outside the repository dist directory", async
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test("refuses to publish application source maps", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "class-a-bridge-release-"));
+  try {
+    const website = path.join(root, "website");
+    const bridge = path.join(root, "bridge");
+    const destination = path.join(root, "dist", "class-a-bridge");
+    await mkdir(website, { recursive: true });
+    await mkdir(path.join(bridge, "assets"), { recursive: true });
+    await writeFile(path.join(website, "index.html"), "marketing");
+    await writeFile(path.join(bridge, "index.html"), "workspace");
+    await writeFile(path.join(bridge, "manifest.webmanifest"), "{}");
+    await writeFile(path.join(bridge, "sw.js"), "// service worker");
+    await writeFile(path.join(bridge, "_headers"), "/*\n  X-Frame-Options: DENY\n");
+    await writeFile(path.join(bridge, "assets", "app.js"), "export {};\n");
+    await writeFile(path.join(bridge, "assets", "app.js.map"), "{}\n");
+
+    await assert.rejects(
+      () =>
+        assembleRelease({
+          root,
+          website,
+          bridge,
+          destination,
+          sourceArchiveBytes: new Uint8Array([31, 139, 8, 0]),
+        }),
+      /source map/iu,
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
