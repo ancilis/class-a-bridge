@@ -1,6 +1,6 @@
 {
   "name": "@class-a-bridge/rules",
-  "version": "1.0.0",
+  "version": "0.9.0",
   "private": true,
   "type": "module",
   "exports": {
@@ -10,6 +10,7 @@
     "build": "tsc --noEmit",
     "lint": "eslint .",
     "rules:compare": "tsx scripts/compare-official.ts",
+    "rules:verify": "tsx scripts/generate-integrity-report.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },

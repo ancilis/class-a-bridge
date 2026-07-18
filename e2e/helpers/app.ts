@@ -64,7 +64,7 @@ export async function navigateTo(page: Page, name: string) {
  * test independently enforces real label associations.
  */
 export function fieldControl(
-  page: Page,
+  page: Page | Locator,
   label: string,
   control: "input" | "select" | "textarea" = "input",
 ): Locator {
@@ -83,6 +83,14 @@ export async function observeProjectDataNetwork(page: Page, canary = PRIVATE_CAN
   const leaked: string[] = [];
   const expectedOrigin = new URL(process.env["PLAYWRIGHT_BASE_URL"] ?? "http://127.0.0.1:4173")
     .origin;
+  page.on("websocket", (socket) => {
+    unexpected.push(`WEBSOCKET ${socket.url()}`);
+    if (socket.url().includes(canary)) leaked.push(`WEBSOCKET ${socket.url()}`);
+    socket.on("framesent", ({ payload }) => {
+      const body = typeof payload === "string" ? payload : payload.toString("utf8");
+      if (body.includes(canary)) leaked.push(`WEBSOCKET FRAME ${socket.url()}`);
+    });
+  });
   await page.route("**/*", async (route) => {
     const request = route.request();
     const requestText = [
@@ -93,12 +101,11 @@ export async function observeProjectDataNetwork(page: Page, canary = PRIVATE_CAN
     ].join("\n");
     if (requestText.includes(canary)) leaked.push(`${request.method()} ${request.url()}`);
     const url = new URL(request.url());
-    const isStaticGet =
-      url.origin === expectedOrigin &&
-      request.method() === "GET" &&
-      ["document", "script", "stylesheet", "image", "font", "manifest", "other"].includes(
-        request.resourceType(),
-      );
+    const isStaticPath =
+      ["/", "/index.html", "/sw.js", "/manifest.webmanifest"].includes(url.pathname) ||
+      url.pathname.startsWith("/assets/") ||
+      /^\/(?:icon|favicon|apple-touch-icon)/u.test(url.pathname);
+    const isStaticGet = url.origin === expectedOrigin && request.method() === "GET" && isStaticPath;
     if (!isStaticGet)
       unexpected.push(`${request.method()} ${request.resourceType()} ${request.url()}`);
     if (requestText.includes(canary) || !isStaticGet) await route.abort("blockedbyclient");
@@ -115,5 +122,8 @@ export async function observeProjectDataNetwork(page: Page, canary = PRIVATE_CAN
 }
 
 export async function waitForLocalSave(page: Page) {
-  await page.waitForTimeout(500);
+  await expect(page.getByRole("status", { name: "Local save status" })).toContainText(
+    "Saved locally",
+    { timeout: 5_000 },
+  );
 }

@@ -10,7 +10,7 @@ describe("internal navigation", () => {
       "/",
       ...requiredRoutePaths,
       "/app/",
-      "/downloads/class-a-bridge-1.0.0-source.tar.gz",
+      "/downloads/class-a-bridge-0.9.0-source.tar.gz",
     ]);
     const links = collectInternalLinks({
       pages: allStaticPages,

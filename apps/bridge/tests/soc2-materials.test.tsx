@@ -35,19 +35,55 @@ describe("manual SOC 2 materials workflow", () => {
     await user.clear(within(mappingForm).getByLabelText("Report page"));
     await user.type(within(mappingForm).getByLabelText("Report page"), "42");
     await user.selectOptions(within(mappingForm).getByLabelText("Class A rule"), "KSI-IAM-AAM");
-    await user.click(within(mappingForm).getByRole("button", { name: "Add manual mapping" }));
+    const currentMappingForm = screen.getByRole("form", { name: "Add a SOC 2 mapping" });
+    await user.click(
+      within(currentMappingForm).getByRole("button", { name: "Add manual mapping" }),
+    );
 
-    const mapping = screen.getByRole("article", { name: "CC6.1 to KSI-IAM-AAM mapping" });
-    expect(within(mapping).getByLabelText("Mapping confirmed by a person")).toBeChecked();
+    let mapping = screen.getByRole("article", { name: "CC6.1 to KSI-IAM-AAM mapping" });
+    expect(within(mapping).getByLabelText("Mapping confirmed by a person")).not.toBeChecked();
+    expect(within(mapping).getByLabelText("Mapping confirmed by a person")).toBeDisabled();
     await user.type(
       within(mapping).getByLabelText("Gap description"),
       "Automation coverage still needs confirmation.",
     );
+    await user.selectOptions(
+      within(mapping).getByLabelText("Mapping review outcome"),
+      "partial_support",
+    );
     await user.type(within(mapping).getByLabelText("Reviewer"), "Morgan Lee");
+    await user.type(within(mapping).getByLabelText("Review date"), "2026-07-18");
+    expect(within(mapping).getByLabelText("Mapping confirmed by a person")).toBeDisabled();
+
+    await user.click(screen.getByRole("button", { name: "SOC 2 reuse" }));
+    const controlReview = screen.getByRole("article", { name: "CC6.1 SOC 2 control review" });
+    await user.click(within(controlReview).getByText("Edit and confirm this control"));
+    await user.type(within(controlReview).getByLabelText("Control reviewer"), "Morgan Lee");
+    await user.type(within(controlReview).getByLabelText("Control review date"), "2026-07-18");
+    await user.click(within(controlReview).getByRole("button", { name: "Confirm control record" }));
+    await user.click(screen.getByRole("button", { name: "SOC 2 materials" }));
+    mapping = screen.getByRole("article", { name: "CC6.1 to KSI-IAM-AAM mapping" });
+    expect(within(mapping).getByLabelText("Mapping confirmed by a person")).toBeEnabled();
+    await user.click(within(mapping).getByLabelText("Mapping confirmed by a person"));
+    expect(within(mapping).getByLabelText("Mapping confirmed by a person")).toBeChecked();
     expect(within(mapping).getByLabelText("Gap description")).toHaveValue(
       "Automation coverage still needs confirmation.",
     );
     expect(within(mapping).getByLabelText("Reviewer")).toHaveValue("Morgan Lee");
+
+    await user.type(within(mapping).getByLabelText("Reason for the mapping"), " More detail.");
+    expect(within(mapping).getByLabelText("Mapping confirmed by a person")).not.toBeChecked();
+
+    const restoredMappingForm = screen.getByRole("form", { name: "Add a SOC 2 mapping" });
+    await user.selectOptions(within(restoredMappingForm).getByLabelText("SOC 2 control"), "CC6.1");
+    await user.selectOptions(
+      within(restoredMappingForm).getByLabelText("Class A rule"),
+      "KSI-IAM-AAM",
+    );
+    await user.click(
+      within(restoredMappingForm).getByRole("button", { name: "Add manual mapping" }),
+    );
+    expect(screen.getByRole("alert")).toHaveTextContent(/already has a mapping record/iu);
   });
 
   it("captures report context and auditor exceptions without a PDF", async () => {

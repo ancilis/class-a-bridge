@@ -37,11 +37,106 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Run repository verification
         run: pnpm verify
+      - name: Generate and enforce regulatory integrity evidence
+        run: pnpm --filter @class-a-bridge/rules rules:verify
+      - name: Verify pinned official schema checksums
+        run: pnpm schemas:verify
+      - name: Generate and enforce release-integrity evidence
+        run: pnpm release:integrity
+      - name: Preserve release-integrity evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: release-integrity-evidence
+          if-no-files-found: error
+          path: |
+            reports/release/release-integrity.json
+            reports/release/release-integrity.md
+            reports/release/sbom.cdx.json
+            reports/release/license-summary.json
+            reports/release/license-summary.md
+            reports/release/dependency-audit.json
+            reports/release/dependency-audit.md
+            reports/regulatory/regulatory-integrity.json
+            reports/regulatory/regulatory-integrity.md
+            reports/regulatory/rule-selection-audit.json
+            reports/regulatory/rule-selection-audit.md
       - name: Install browser engines
         run: pnpm exec playwright install --with-deps chromium firefox webkit
       - name: Run accessibility suites
         run: pnpm test:a11y
       - name: Run end-to-end suites
         run: pnpm test:e2e
-      - name: Audit production dependencies
-        run: pnpm audit --prod --audit-level high
+
+  bridge-stability:
+    name: Grouped and repeated bridge tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Check out reviewed source
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+      - name: Install pinned pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+        with:
+          version: 10.33.0
+          run_install: false
+      - name: Install pinned Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: Install from lockfile
+        run: pnpm install --frozen-lockfile
+      - name: Run the grouped bridge suite in a constrained configuration
+        run: pnpm --filter @class-a-bridge/bridge exec vitest run --maxWorkers=1 --no-file-parallelism
+      - name: Repeat all formerly flaky full-application workflows ten times
+        run: |
+          for run_index in $(seq 1 10); do
+            echo "Affected workflow group ${run_index}/10"
+            pnpm --filter @class-a-bridge/bridge exec vitest run \
+              tests/evidence-metadata.test.tsx \
+              tests/package-freshness.test.tsx \
+              tests/validation-navigation.test.tsx \
+              --maxWorkers=1 --no-file-parallelism --reporter=dot
+          done
+      - name: Repeat the complete grouped bridge suite five times
+        run: |
+          for run_index in $(seq 1 5); do
+            echo "Complete bridge run ${run_index}/5"
+            pnpm --filter @class-a-bridge/bridge exec vitest run --maxWorkers=1 --no-file-parallelism --reporter=dot
+          done
+      - name: Repeat the complete workspace suite three times
+        run: |
+          for run_index in $(seq 1 3); do
+            echo "Complete workspace run ${run_index}/3"
+            TURBO_FORCE=true pnpm exec turbo run test --concurrency=1 --output-logs=errors-only
+          done
+
+  source-archive:
+    name: Verify extracted source archive without Git metadata
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Check out reviewed source
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+      - name: Install pinned pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+        with:
+          version: 10.33.0
+          run_install: false
+      - name: Install pinned Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: Install source archive verifier dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build and verify the extracted source archive
+        env:
+          CLASS_A_BRIDGE_SOURCE_COMMIT: ${{ github.sha }}
+          CLASS_A_BRIDGE_RELEASE_CHANNEL: ${{ github.ref_type == 'tag' && 'stable' || 'continuous-integration' }}
+        run: pnpm verify:source-archive

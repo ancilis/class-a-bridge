@@ -1,4 +1,5 @@
 const DEFAULT_BODY_LIMIT = 16 * 1024;
+const MAXIMUM_RATE_LIMIT_KEYS = 100_000;
 const CONTACT_FIELDS = new Set([
   "approvedSummary",
   "company",
@@ -66,6 +67,13 @@ export class MemoryRateLimitStore implements RateLimitStore {
   readonly #maximumKeys: number;
 
   constructor(maximumKeys = 10_000) {
+    if (
+      !Number.isSafeInteger(maximumKeys) ||
+      maximumKeys < 1 ||
+      maximumKeys > MAXIMUM_RATE_LIMIT_KEYS
+    ) {
+      throw new Error("The in-memory rate-limit maximum key count must be between 1 and 100000");
+    }
     this.#maximumKeys = maximumKeys;
   }
 
@@ -138,15 +146,16 @@ function originIsAllowed(origin: string | null, allowedOrigins: ReadonlySet<stri
   }
 }
 
-function securityHeaders(origin?: string) {
+export function contactSecurityHeaders(origin?: string) {
   const headers = new Headers({
     "cache-control": "no-store",
-    "content-security-policy": "default-src 'none'; base-uri 'none'; frame-ancestors 'none'",
+    "content-security-policy":
+      "default-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
     "content-type": "application/json; charset=utf-8",
     "cross-origin-resource-policy": "same-site",
     "permissions-policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
     "referrer-policy": "no-referrer",
-    "strict-transport-security": "max-age=63072000; includeSubDomains; preload",
+    "strict-transport-security": "max-age=31536000",
     vary: "Origin",
     "x-content-type-options": "nosniff",
     "x-frame-options": "DENY",
@@ -157,7 +166,7 @@ function securityHeaders(origin?: string) {
 
 function jsonResponse(status: number, body: unknown, origin?: string) {
   return new Response(JSON.stringify(body), {
-    headers: securityHeaders(origin),
+    headers: contactSecurityHeaders(origin),
     status,
   });
 }
@@ -279,8 +288,13 @@ export function createContactHandler(options: ContactHandlerOptions) {
       );
     }
   }
-  if (options.rateLimit.limit < 1 || options.rateLimit.windowMs < 1) {
-    throw new Error("Rate-limit values must be positive");
+  if (
+    !Number.isSafeInteger(options.rateLimit.limit) ||
+    options.rateLimit.limit < 1 ||
+    !Number.isSafeInteger(options.rateLimit.windowMs) ||
+    options.rateLimit.windowMs < 1
+  ) {
+    throw new Error("Rate-limit values must be positive safe integers");
   }
   const allowedOrigins = new Set(options.allowedOrigins);
   const bodyLimit = options.bodyLimitBytes ?? DEFAULT_BODY_LIMIT;
@@ -315,10 +329,14 @@ export function createContactHandler(options: ContactHandlerOptions) {
 
     if (request.method === "OPTIONS") {
       const requestedMethod = request.headers.get("access-control-request-method");
-      if (requestedMethod !== "POST") {
+      const requestedHeaders = request.headers.get("access-control-request-headers");
+      const asksForUnsupportedHeader = requestedHeaders
+        ?.split(",")
+        .some((header) => header.trim().toLowerCase() !== "content-type");
+      if (requestedMethod !== "POST" || asksForUnsupportedHeader) {
         return jsonResponse(400, { accepted: false, code: "invalid_preflight" }, allowedOrigin);
       }
-      const headers = securityHeaders(allowedOrigin);
+      const headers = contactSecurityHeaders(allowedOrigin);
       headers.set("access-control-allow-headers", "content-type");
       headers.set("access-control-allow-methods", "POST, OPTIONS");
       headers.set("access-control-max-age", "600");

@@ -9,7 +9,7 @@ describe("marketing content", () => {
       eyebrow: "Open-source FedRAMP 20x preparation",
       title: "Turn your SOC 2 Type II into a clear FedRAMP Class A plan.",
       description:
-        "Class A Bridge guides compliance teams through eligibility, scope, evidence, and package preparation. No account, no SDK, and no confidential document upload.",
+        "See what your existing SOC 2 program may support, identify what is still missing, and prepare a structured FedRAMP 20x Class A workspace. No account, no SDK, and no confidential document upload.",
       primaryCta: "Start the free assessment",
       secondaryCta: "Explore the sample workspace",
       trustLine: "Open source · Local-first · Built for compliance teams",
@@ -43,8 +43,31 @@ describe("marketing content", () => {
         "Is it only for AI vendors?",
         "Does it support Class B or Class C?",
         "Can Ancilis review the result?",
+        "Does it use a universal SOC 2-to-FedRAMP crosswalk?",
+        "Does it use artificial intelligence to suggest mappings?",
       ]),
     );
+  });
+
+  it("positions SOC 2 reuse as deterministic, explainable, local, and human-confirmed", () => {
+    const reuseCopy = JSON.stringify({
+      homepage,
+      product: requirePage("/product/"),
+      howItWorks: requirePage("/how-it-works/"),
+      methodology: requirePage("/methodology/"),
+    }).toLowerCase();
+
+    expect(reuseCopy).toContain("soc 2 reuse accelerator");
+    expect(reuseCopy).toContain("deterministic");
+    expect(reuseCopy).toContain("explains why");
+    expect(reuseCopy).toContain("your team confirms every mapping");
+    expect(reuseCopy).toContain("does not apply a universal crosswalk");
+    expect(reuseCopy).toContain("runs locally in your browser");
+    expect(reuseCopy).toContain("does not use artificial intelligence");
+    expect(reuseCopy).toContain("audit period");
+    expect(reuseCopy).toContain("test results");
+    expect(reuseCopy).toContain("exceptions");
+    expect(reuseCopy).toContain("carve-outs");
   });
 
   it("defines the complete plain-language glossary", () => {
@@ -91,7 +114,7 @@ describe("marketing content", () => {
 
     expect(links).toEqual(
       expect.arrayContaining([
-        "/downloads/class-a-bridge-1.0.0-source.tar.gz",
+        "/downloads/class-a-bridge-0.9.0-source.tar.gz",
         "https://www.apache.org/licenses/LICENSE-2.0.txt",
         "/contact/",
         "mailto:security@ancilis.ai",
@@ -117,7 +140,34 @@ describe("marketing content", () => {
     );
     expect(siteCopy).not.toMatch(/(?:you are|your company is) guaranteed eligible/i);
     expect(siteCopy).not.toMatch(/AI[- ]powered certification/i);
+    expect(siteCopy).not.toMatch(/AI[- ]powered (?:crosswalk|mapping|compliance)/i);
     expect(siteCopy).not.toMatch(/automated replacement for an assessor/i);
+    expect(siteCopy).not.toMatch(
+      /automatically (?:satisf(?:y|ies)|cover(?:s|ed)?|complete(?:s|d)?|approve(?:s|d)?)/i,
+    );
+  });
+
+  it("publishes an honest public-beta designation while human review remains pending", () => {
+    const siteCopy = JSON.stringify({ homepage, faqItems, allStaticPages });
+    const releaseNotes = requirePage("/release-notes/");
+
+    expect(releaseNotes.headline).toContain("0.9.0 Public Beta");
+    expect(siteCopy).not.toContain("Version 1.0");
+    expect(siteCopy).not.toContain("Release 1.0");
+    expect(siteCopy).not.toContain("complete Class A preparation foundation");
+    expect(siteCopy).not.toContain("reviewed mapping playbooks");
+  });
+
+  it("uses the approved Ancilis advisory boundary consistently", () => {
+    const approvedMessage =
+      "Software can organize and accelerate the record. Ancilis can help validate the interpretation, close implementation gaps, and review the package before your company applies.";
+    const servicesCopy = JSON.stringify(requirePage("/services/"));
+
+    expect(homepage.serviceMessage).toBe(approvedMessage);
+    expect(servicesCopy).toContain("Software can organize and accelerate the record.");
+    expect(servicesCopy).toContain(
+      "Clicking the call to action never sends the SOC 2 report, evidence, answers, or project records.",
+    );
   });
 
   it("returns a definite page or fails at the content boundary", () => {

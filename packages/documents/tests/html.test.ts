@@ -34,6 +34,7 @@ describe("human-readable reports", () => {
       "preliminary-fit",
       "executive-readiness",
       "detailed-gap",
+      "soc2-mapping",
       "scope-summary",
       "mandatory-requirements",
       "evidence-manifest",
@@ -48,6 +49,51 @@ describe("human-readable reports", () => {
       expect(report.html).toContain(project.organization.name);
       expect(report.html).not.toContain("FedRAMP compliant");
     }
+  });
+
+  it("generates a SOC 2 reuse report with inventory, provenance, limitations, and unresolved gaps", () => {
+    const report = generateHumanReport(createDocumentProject(), "soc2-mapping", {
+      generatedAt: GENERATED_AT,
+    });
+
+    expect(report.title).toBe("SOC 2 Reuse and Gap Report");
+    expect(report.html).toContain("Report and system metadata");
+    expect(report.html).toContain("Confirmed supporting material");
+    expect(report.html).toContain("Requirements without confirmed support");
+    expect(report.html).toContain("Mapping provenance");
+    expect(report.html).toContain("does not automatically satisfy");
+  });
+
+  it("exports only reviewed mapping decisions and does not treat rejection as support", () => {
+    const project = createDocumentProject();
+    project.mappings[0]!.reviewOutcome = "partial_support";
+    project.mappings.push(
+      {
+        ...project.mappings[0]!,
+        id: "map-rejected",
+        classARuleId: "KSI-IAM-APM",
+        excerpt: "Reviewed rejected mapping excerpt.",
+        coverage: "no_relevant_mapping",
+        reason: "The tested control does not address passwordless authentication.",
+        reviewOutcome: "rejected_mapping",
+      },
+      {
+        ...project.mappings[0]!,
+        id: "map-unreviewed",
+        classARuleId: "FRC-CSO-PKG",
+        excerpt: "UNREVIEWED-PRIVATE-SOURCE-EXCERPT",
+        confirmed: false,
+        reviewOutcome: "needs_expert_review",
+        reviewer: undefined,
+        reviewDate: undefined,
+      },
+    );
+
+    const report = generateHumanReport(project, "soc2-mapping", { generatedAt: GENERATED_AT });
+
+    expect(report.html).toContain("Reviewed rejected mapping excerpt.");
+    expect(report.html).not.toContain("UNREVIEWED-PRIVATE-SOURCE-EXCERPT");
+    expect(report.html).toMatch(/Requirements without confirmed support[\s\S]*KSI-IAM-APM/iu);
   });
 
   it("lists unresolved external assessment materials in the preliminary result", () => {

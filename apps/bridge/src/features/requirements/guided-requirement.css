@@ -1,0 +1,62 @@
+.guided-requirement {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.guided-requirement__classification {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.guided-requirement__classification div {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.7rem;
+}
+
+.guided-requirement__classification dt {
+  color: var(--ink-soft);
+  font-size: 0.75rem;
+  font-weight: 760;
+}
+
+.guided-requirement__classification dd {
+  margin: 0.2rem 0 0;
+  overflow-wrap: anywhere;
+  font-weight: 700;
+}
+
+.guided-requirement__official-text blockquote {
+  margin: 0.55rem 0;
+  border-left: 3px solid var(--blue);
+  padding: 0.35rem 0.8rem;
+  white-space: pre-wrap;
+}
+
+.guided-requirement__uncertainty {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  margin-top: 1rem;
+  border-top: 1px solid var(--line);
+  padding-top: 0.8rem;
+  color: var(--ink-soft);
+  font-size: 0.82rem;
+}
+
+.guided-requirement__navigation {
+  justify-content: space-between;
+}
+
+@media (max-width: 760px) {
+  .guided-requirement__classification {
+    grid-template-columns: 1fr;
+  }
+
+  .guided-requirement__uncertainty {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}

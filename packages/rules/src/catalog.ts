@@ -1,5 +1,7 @@
 import officialCatalogJson from "../vendor/fedramp-consolidated-rules.json";
 
+import { resolveEffectiveClassARule } from "./normalization";
+
 export const CATALOG_MANIFEST = {
   catalogVersion: "2026.07.14.01",
   commit: "12fe1b60f578ab448c26d143baac99d16d8bfe14",
@@ -84,6 +86,11 @@ export const RULE_SELECTIONS = {
 } as const;
 
 export type RuleSelection = keyof typeof RULE_SELECTIONS;
+export type OfficialClassASelection =
+  | "OFFICIALLY_MANDATORY"
+  | "OFFICIALLY_RECOMMENDED"
+  | "OFFICIALLY_OPTIONAL"
+  | "NOT_IN_CLASS_A_AGGREGATE";
 export type OfficialRule = Readonly<Record<string, unknown>> & {
   readonly name: string;
   readonly updated?: readonly { readonly date: string; readonly comment: string }[];
@@ -100,6 +107,18 @@ export interface NormalizedRuleRecord {
   readonly effectiveDateNote: string;
   readonly lastVerifiedDate: string;
   readonly officialText: string;
+  readonly classAApplicability: "CLASS_A_BRANCH" | "GENERAL_RULE" | "NO_CLASS_A_BRANCH";
+  readonly effectiveOfficial: Readonly<Record<string, unknown>>;
+  readonly fieldSourcePaths: Readonly<Record<string, string | null>>;
+  readonly officialObjectPath: string;
+  readonly usesClassSpecificBranch: boolean;
+  readonly usedGenericStatementFallback: boolean;
+  readonly officialClassASelection: OfficialClassASelection;
+  readonly officialIndividualForce: string | null;
+  readonly officialSelectionForce: "MUST" | "SHOULD" | "MAY" | null;
+  readonly officialSelectionSourceRuleId: "FRC-CLA-MFR" | "FRC-CLA-RFR" | "FRC-CLA-OFR" | null;
+  readonly productInclusionReason: string;
+  readonly workflowCategories: readonly string[];
   readonly changeHistory: readonly { readonly date: string; readonly comment: string }[];
   readonly official: OfficialRule;
   readonly selectionTags: readonly RuleSelection[];
@@ -113,60 +132,138 @@ export interface NormalizedRuleRecord {
   readonly needsFedrampConfirmation?: true;
 }
 
-export interface RuleGuidanceRecord {
-  readonly authoredBy: "Ancilis";
-  readonly disclaimer: string;
-  readonly evidenceExamples: readonly string[];
-  readonly whyItMatters: string;
-  readonly mappingHints: readonly string[];
-  readonly outputDocumentMappings: readonly string[];
-  readonly jsonSchemaMappings: readonly string[];
-  readonly plainLanguage: string;
-  readonly questions: readonly string[];
-  readonly ruleId: string;
-  readonly scopeConcerns: readonly string[];
-  readonly suggestedOwner: string;
-}
-
 const isObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 
-function collectOfficialRules(value: unknown, result = new Map<string, OfficialRule>()) {
+interface CollectedOfficialRule {
+  readonly official: OfficialRule;
+  readonly path: string;
+}
+
+function collectOfficialRules(
+  value: unknown,
+  result = new Map<string, CollectedOfficialRule>(),
+  path: readonly string[] = [],
+) {
   if (Array.isArray(value)) {
-    for (const item of value) collectOfficialRules(item, result);
+    value.forEach((item, index) => collectOfficialRules(item, result, [...path, String(index)]));
     return result;
   }
   if (!isObject(value)) return result;
 
   for (const [key, child] of Object.entries(value)) {
     if (/^[A-Z0-9]{3}(?:-[A-Z0-9]{3}){2}$/u.test(key) && isObject(child)) {
-      if (typeof child.name === "string") result.set(key, child as OfficialRule);
+      if (typeof child.name === "string") {
+        if (result.has(key)) throw new Error(`Official catalog contains duplicate rule ${key}`);
+        result.set(key, { official: child as OfficialRule, path: [...path, key].join(".") });
+      }
     }
-    collectOfficialRules(child, result);
+    collectOfficialRules(child, result, [...path, key]);
   }
   return result;
 }
 
 const officialById = collectOfficialRules(officialCatalogJson);
-const selectedIds = [...new Set(Object.values(RULE_SELECTIONS).flat())];
 
 const stringArray = (value: unknown): string[] =>
   Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
 
-const officialStatement = (official: OfficialRule) =>
-  typeof official.statement === "string" ? official.statement : official.name;
+const officialRelated = (id: string): readonly string[] => {
+  const record = officialById.get(id)?.official;
+  if (!record) throw new Error(`Official catalog does not contain aggregate rule ${id}`);
+  return stringArray(record.related);
+};
+
+export const OFFICIAL_CLASS_A_SELECTIONS = {
+  mandatory: officialRelated("FRC-CLA-MFR"),
+  recommended: officialRelated("FRC-CLA-RFR"),
+  optional: officialRelated("FRC-CLA-OFR"),
+} as const;
+
+for (const category of ["mandatory", "recommended", "optional"] as const) {
+  const configured = RULE_SELECTIONS[category];
+  const official = OFFICIAL_CLASS_A_SELECTIONS[category];
+  if (configured.length !== official.length || configured.some((id) => !official.includes(id))) {
+    throw new Error(
+      `Configured ${category} Class A selection does not match the pinned official aggregate rule`,
+    );
+  }
+}
+
+const selectedIds = [...new Set(Object.values(RULE_SELECTIONS).flat())];
+
+const classASelectionFor = (id: string) => {
+  if (OFFICIAL_CLASS_A_SELECTIONS.mandatory.includes(id)) {
+    return {
+      classification: "OFFICIALLY_MANDATORY" as const,
+      force: "MUST" as const,
+      sourceRuleId: "FRC-CLA-MFR" as const,
+    };
+  }
+  if (OFFICIAL_CLASS_A_SELECTIONS.recommended.includes(id)) {
+    return {
+      classification: "OFFICIALLY_RECOMMENDED" as const,
+      force: "SHOULD" as const,
+      sourceRuleId: "FRC-CLA-RFR" as const,
+    };
+  }
+  if (OFFICIAL_CLASS_A_SELECTIONS.optional.includes(id)) {
+    return {
+      classification: "OFFICIALLY_OPTIONAL" as const,
+      force: "MAY" as const,
+      sourceRuleId: "FRC-CLA-OFR" as const,
+    };
+  }
+  return {
+    classification: "NOT_IN_CLASS_A_AGGREGATE" as const,
+    force: null,
+    sourceRuleId: null,
+  };
+};
+
+const workflowCategoriesFor = (selectionTags: readonly RuleSelection[]) => {
+  const categories: string[] = [];
+  if (selectionTags.includes("mandatory")) categories.push("class-a-core");
+  if (selectionTags.includes("recommended")) categories.push("class-a-recommended");
+  if (selectionTags.includes("optional")) categories.push("class-a-optional");
+  if (selectionTags.includes("externalFramework")) categories.push("eligibility-prerequisite");
+  if (selectionTags.includes("marketplaceApplication")) categories.push("application-prerequisite");
+  if (selectionTags.includes("packageDependencies")) categories.push("package-output");
+  if (selectionTags.includes("generalProvider")) categories.push("general-provider");
+  return categories;
+};
+
+const inclusionReasonFor = (
+  selection: ReturnType<typeof classASelectionFor>,
+  workflowCategories: readonly string[],
+) => {
+  if (selection.classification === "OFFICIALLY_MANDATORY") {
+    return "Included in the pinned official Class A mandatory subset (FRC-CLA-MFR).";
+  }
+  if (selection.classification === "OFFICIALLY_RECOMMENDED") {
+    return "Included in the pinned official Class A recommended subset (FRC-CLA-RFR).";
+  }
+  if (selection.classification === "OFFICIALLY_OPTIONAL") {
+    return "Included in the pinned official Class A optional subset (FRC-CLA-OFR).";
+  }
+  return `Included for the product workflow: ${workflowCategories.join(", ")}.`;
+};
 
 export const RULE_REGISTRY: readonly NormalizedRuleRecord[] = selectedIds.map((id) => {
-  const official = officialById.get(id);
-  if (!official) throw new Error(`Official catalog does not contain selected rule ${id}`);
+  const collected = officialById.get(id);
+  if (!collected) throw new Error(`Official catalog does not contain selected rule ${id}`);
+  const { official, path: officialObjectPath } = collected;
+  const effective = resolveEffectiveClassARule(official);
   const selectionTags = Object.entries(RULE_SELECTIONS)
     .filter(([, ids]) => (ids as readonly string[]).includes(id))
     .map(([selection]) => selection as RuleSelection);
+  const classASelection = classASelectionFor(id);
+  const workflowCategories = workflowCategoriesFor(selectionTags);
 
   return {
     id,
     officialTitle: official.name,
-    requirementLevel: typeof official.force === "string" ? official.force : "UNSPECIFIED",
+    requirementLevel: effective.requirementLevel,
     applicability: [
       ...stringArray(official.affects),
       ...stringArray(official.certifications),
@@ -180,7 +277,20 @@ export const RULE_REGISTRY: readonly NormalizedRuleRecord[] = selectedIds.map((i
         ? "Copied from the official rule record."
         : "The official rule record does not publish a separate effective-date field; no date is inferred.",
     lastVerifiedDate: CATALOG_MANIFEST.verifiedAt,
-    officialText: officialStatement(official),
+    officialText: effective.officialText,
+    classAApplicability: effective.classAApplicability,
+    effectiveOfficial: effective.effectiveOfficial,
+    fieldSourcePaths: effective.fieldSourcePaths,
+    officialObjectPath,
+    usesClassSpecificBranch: effective.usesClassSpecificBranch,
+    usedGenericStatementFallback: effective.usedGenericStatementFallback,
+    officialClassASelection: classASelection.classification,
+    officialIndividualForce:
+      effective.requirementLevel === "NOT_PUBLISHED" ? null : effective.requirementLevel,
+    officialSelectionForce: classASelection.force,
+    officialSelectionSourceRuleId: classASelection.sourceRuleId,
+    productInclusionReason: inclusionReasonFor(classASelection, workflowCategories),
+    workflowCategories,
     changeHistory: official.updated ?? [],
     official,
     selectionTags,
@@ -195,77 +305,96 @@ export const RULE_REGISTRY: readonly NormalizedRuleRecord[] = selectedIds.map((i
   };
 });
 
-const ownerFor = (id: string) => {
-  if (id.startsWith("KSI-")) return "Security engineering lead";
-  if (id.startsWith("MKT-")) return "Marketplace program owner";
-  if (/^(CPO|SDR)-/u.test(id)) return "Certification package owner";
-  if (/^(IEC|CCM)-/u.test(id)) return "Security operations lead";
-  if (/^(VDR|VER)-/u.test(id)) return "Vulnerability management lead";
-  if (id.startsWith("IVV-")) return "Independent assessment coordinator";
-  return "FedRAMP program owner";
+const CPO_CLASS_A_REMOVAL_DATE = "2026-07-14";
+const CPO_CLASS_A_REMOVAL_COMMENT =
+  "Removed reference to class A. All class A certifications are 20x.";
+
+/**
+ * Matches the pinned catalog's exact FRC-CLA-RFR -> CPO-CSF-CPM discrepancy.
+ *
+ * This is intentionally a strict fingerprint, not a rule-id allowlist. A future
+ * source revision or any additional integrity defect must be reviewed instead of
+ * inheriting this catalog-specific exception.
+ */
+export const isKnownCpoClassAReferenceDiscrepancy = (rule: NormalizedRuleRecord) => {
+  const variesByClass = isObject(rule.official.varies_by_class)
+    ? rule.official.varies_by_class
+    : null;
+  const hasClassABranch = variesByClass !== null && Object.hasOwn(variesByClass, "a");
+  const recordsClassARemoval = rule.changeHistory.some(
+    ({ date, comment }) =>
+      date === CPO_CLASS_A_REMOVAL_DATE && comment === CPO_CLASS_A_REMOVAL_COMMENT,
+  );
+  const officialRecordsClassARemoval = (rule.official.updated ?? []).some(
+    ({ date, comment }) =>
+      date === CPO_CLASS_A_REMOVAL_DATE && comment === CPO_CLASS_A_REMOVAL_COMMENT,
+  );
+
+  return (
+    rule.id === "CPO-CSF-CPM" &&
+    rule.sourceVersion === CATALOG_MANIFEST.catalogVersion &&
+    rule.source.commit === CATALOG_MANIFEST.commit &&
+    rule.officialObjectPath === "FRR.CPO.data.rev5.CSF.CPO-CSF-CPM" &&
+    rule.officialClassASelection === "OFFICIALLY_RECOMMENDED" &&
+    rule.officialSelectionForce === "SHOULD" &&
+    rule.officialSelectionSourceRuleId === "FRC-CLA-RFR" &&
+    rule.selectionTags.includes("recommended") &&
+    rule.workflowCategories.includes("class-a-recommended") &&
+    rule.needsFedrampConfirmation === true &&
+    rule.classAApplicability === "NO_CLASS_A_BRANCH" &&
+    !rule.usesClassSpecificBranch &&
+    !rule.usedGenericStatementFallback &&
+    !hasClassABranch &&
+    recordsClassARemoval &&
+    officialRecordsClassARemoval
+  );
 };
 
-const outputMappingsFor = (id: string): string[] => {
-  const mappings = ["Mandatory requirements report", "Detailed gap report", "Action plan"];
-  if (id.startsWith("MAS-")) mappings.push("Scope summary");
-  if (id.startsWith("KSI-") || id.startsWith("SDR-")) mappings.push("Security Decision Record");
-  if (/^(CCM|IEC|VDR|VER)-/u.test(id)) mappings.push("Ongoing Certification Report");
-  if (/^(FRC|CPO|CDS)-/u.test(id)) mappings.push("Certification Package Overview");
-  if (/^(IVV|FRC)-/u.test(id)) mappings.push("External assessment materials checklist");
-  return [...new Set(mappings)];
-};
+export type RuleSelectionReviewStatus = "QUALIFIED_HUMAN_REVIEW_PENDING";
 
-const schemaMappingsFor = (official: OfficialRule, id: string): string[] => {
-  const schema =
-    isObject(official.schema) && typeof official.schema.url === "string"
-      ? [official.schema.url]
-      : [];
-  if (schema.length > 0) return schema;
-  if (id.startsWith("KSI-") || id.startsWith("SDR-")) {
-    return ["fedramp-security-decision-record-schema-2026-06-24.json"];
-  }
-  if (/^(CCM|IEC|VDR|VER)-/u.test(id)) {
-    return ["fedramp-ongoing-certification-report-schema-2026-06-24.json"];
-  }
-  return [];
-};
+export interface RuleSelectionAuditEntry {
+  readonly id: string;
+  readonly officialClassASelection: OfficialClassASelection;
+  readonly officialIndividualForce: string | null;
+  readonly officialSelectionForce: "MUST" | "SHOULD" | "MAY" | null;
+  readonly officialSelectionSourceRuleId: "FRC-CLA-MFR" | "FRC-CLA-RFR" | "FRC-CLA-OFR" | null;
+  readonly productInclusionReason: string;
+  readonly workflowCategories: readonly string[];
+  readonly mismatch: boolean;
+  readonly mismatchRationale: string | null;
+  readonly intentionalMismatch: boolean;
+  readonly intentionalMismatchRationale: string | null;
+  readonly reviewStatus: RuleSelectionReviewStatus;
+  readonly reviewer: string | null;
+  readonly reviewDate: string | null;
+}
 
-export const RULE_GUIDANCE: readonly RuleGuidanceRecord[] = RULE_REGISTRY.map(
-  ({ id, official }) => {
-    const related = Array.isArray(official.related)
-      ? official.related.filter((item): item is string => typeof item === "string")
-      : [];
-    const controls = Array.isArray(official.controls)
-      ? official.controls.filter((item): item is string => typeof item === "string")
-      : [];
-    const mappingTargets = [...related, ...controls];
+export const RULE_SELECTION_AUDIT: readonly RuleSelectionAuditEntry[] = RULE_REGISTRY.map(
+  (rule) => {
+    const mismatch =
+      rule.officialClassASelection !== "NOT_IN_CLASS_A_AGGREGATE" &&
+      rule.classAApplicability === "NO_CLASS_A_BRANCH";
+    const intentionalMismatch = mismatch && isKnownCpoClassAReferenceDiscrepancy(rule);
 
     return {
-      authoredBy: "Ancilis",
-      disclaimer:
-        "Ancilis guidance supports preparation only; it is not a FedRAMP determination, certification, legal opinion, or substitute for provider and assessor review.",
-      evidenceExamples: [
-        `A dated policy, configuration export, operating record, or review result that directly supports ${official.name}.`,
-        "An owner-approved explanation connecting the evidence to the federal offering and its current scope.",
-      ],
-      whyItMatters: `A provider needs a reviewable, current record for ${official.name} so its own approvers and independent reviewers can evaluate the representation in the context of the proposed cloud offering.`,
-      mappingHints: [
-        mappingTargets.length > 0
-          ? `Confirm mappings to official references: ${mappingTargets.join(", ")}.`
-          : "Map only confirmed SOC 2 controls or evidence whose scope and test period match this rule.",
-      ],
-      outputDocumentMappings: outputMappingsFor(id),
-      jsonSchemaMappings: schemaMappingsFor(official, id),
-      plainLanguage: `Explain how ${official.name} applies to the federal cloud offering, who owns it, and how a reviewer can verify that it operates as described.`,
-      questions: [
-        `What current process or technical measure addresses ${official.name}?`,
-        "What remains uncertain, out of scope, dependent on a third party, or awaiting human approval?",
-      ],
-      ruleId: id,
-      scopeConcerns: [
-        "Confirm the evidence covers the proposed federal offering, federal-data boundary, dependencies, and relevant assessment period.",
-      ],
-      suggestedOwner: ownerFor(id),
+      id: rule.id,
+      officialClassASelection: rule.officialClassASelection,
+      officialIndividualForce: rule.officialIndividualForce,
+      officialSelectionForce: rule.officialSelectionForce,
+      officialSelectionSourceRuleId: rule.officialSelectionSourceRuleId,
+      productInclusionReason: rule.productInclusionReason,
+      workflowCategories: rule.workflowCategories,
+      mismatch,
+      mismatchRationale: mismatch
+        ? "The official Class A aggregate includes this rule, while the individual rule publishes no Class A branch."
+        : null,
+      intentionalMismatch,
+      intentionalMismatchRationale: intentionalMismatch
+        ? "Ancilis intentionally preserves the pinned upstream FRC-CLA-RFR reference to CPO-CSF-CPM; the individual rule's 2026-07-14 history says Class A applicability was removed. Human confirmation remains required."
+        : null,
+      reviewStatus: "QUALIFIED_HUMAN_REVIEW_PENDING",
+      reviewer: null,
+      reviewDate: null,
     };
   },
 );

@@ -7,7 +7,7 @@ export default defineConfig({
   outputDir: "./test-results/playwright",
   fullyParallel: true,
   forbidOnly: Boolean(process.env["CI"]),
-  retries: process.env["CI"] ? 2 : 0,
+  retries: 0,
   ...(process.env["CI"] ? { workers: 2 } : {}),
   reporter: process.env["CI"]
     ? [["line"], ["html", { outputFolder: "playwright-report", open: "never" }]]
@@ -43,12 +43,12 @@ export default defineConfig({
     },
     {
       name: "firefox",
-      testMatch: /cross-browser\.spec\.ts/u,
+      testMatch: /(?:cross-browser|privacy-network)\.spec\.ts/u,
       use: { ...devices["Desktop Firefox"] },
     },
     {
       name: "webkit",
-      testMatch: /cross-browser\.spec\.ts/u,
+      testMatch: /(?:cross-browser|privacy-network)\.spec\.ts/u,
       use: { ...devices["Desktop Safari"] },
     },
   ],

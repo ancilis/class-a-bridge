@@ -1,4 +1,4 @@
-import { csvCell, safeFilename } from "@class-a-bridge/project";
+import { csvCell, isReviewedSoc2Mapping, safeFilename } from "@class-a-bridge/project";
 import type { BridgeProject } from "@class-a-bridge/project";
 import { zipSync } from "fflate";
 
@@ -116,21 +116,23 @@ const csvRows = (project: BridgeProject, kind: CsvKind): readonly (readonly unkn
           "Reviewer",
           "Review date",
         ],
-        ...project.mappings.map((mapping) => [
-          mapping.id,
-          mapping.soc2ControlId,
-          mapping.reportPage,
-          mapping.excerpt,
-          mapping.classARuleId,
-          mapping.coverage,
-          mapping.reason,
-          mapping.gapDescription,
-          mapping.additionalEvidenceNeeded,
-          mapping.suggested,
-          mapping.confirmed,
-          mapping.reviewer ?? "",
-          mapping.reviewDate ?? "",
-        ]),
+        ...project.mappings
+          .filter(isReviewedSoc2Mapping)
+          .map((mapping) => [
+            mapping.id,
+            mapping.soc2ControlId,
+            mapping.reportPage,
+            mapping.excerpt,
+            mapping.classARuleId,
+            mapping.coverage,
+            mapping.reason,
+            mapping.gapDescription,
+            mapping.additionalEvidenceNeeded,
+            mapping.suggested,
+            mapping.confirmed,
+            mapping.reviewer ?? "",
+            mapping.reviewDate ?? "",
+          ]),
       ];
   }
 };

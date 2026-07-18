@@ -9,10 +9,11 @@ test("the complete fictional workspace is clearly marked and navigable", async (
   await expect(page.getByText(/mandatory requirement records/iu)).toBeVisible();
 
   const navigation = page.getByRole("navigation", { name: "Project navigation" });
-  await expect(navigation.getByRole("button")).toHaveCount(10);
+  await expect(navigation.getByRole("button")).toHaveCount(11);
   for (const destination of [
     "Scope",
     "SOC 2 materials",
+    "SOC 2 reuse",
     "Class A requirements",
     "Evidence",
     "Action plan",

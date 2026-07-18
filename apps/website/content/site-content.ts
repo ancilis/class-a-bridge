@@ -3,7 +3,7 @@ import type { FaqItem, FooterGroup, GlossaryTerm, NavItem } from "./types";
 export const productName = "Class A Bridge by Ancilis";
 export const siteName = "Class A Bridge";
 export const siteDescription =
-  "A private, guided, open-source workspace for turning a SOC 2 Type II starting point into a clear FedRAMP 20x Class A preparation plan.";
+  "A local-first, open-source FedRAMP 20x Class A workspace with deterministic, human-confirmed SOC 2 reuse suggestions, gap analysis, and package validation.";
 
 export const siteNavigation: readonly NavItem[] = [
   { label: "Product", href: "/product/" },
@@ -20,7 +20,7 @@ export const homepage = {
     eyebrow: "Open-source FedRAMP 20x preparation",
     title: "Turn your SOC 2 Type II into a clear FedRAMP Class A plan.",
     description:
-      "Class A Bridge guides compliance teams through eligibility, scope, evidence, and package preparation. No account, no SDK, and no confidential document upload.",
+      "See what your existing SOC 2 program may support, identify what is still missing, and prepare a structured FedRAMP 20x Class A workspace. No account, no SDK, and no confidential document upload.",
     primaryCta: "Start the free assessment",
     secondaryCta: "Explore the sample workspace",
     trustLine: "Open source · Local-first · Built for compliance teams",
@@ -37,14 +37,35 @@ export const homepage = {
       "How to organize the resulting narratives, mappings, and package scaffold",
     ],
   },
+  reuseModel: {
+    eyebrow: "SOC 2 reuse with judgment intact",
+    title: "A SOC 2 reuse accelerator—not a universal crosswalk.",
+    intro:
+      "Class A Bridge does not apply a universal crosswalk. Its deterministic suggestion engine runs locally in your browser and evaluates the control information your team confirms.",
+    points: [
+      {
+        title: "Suggestions use your actual record",
+        body: "Review likely relationships using confirmed criteria, control descriptions, scope, audit period, test results, exceptions, and carve-outs.",
+      },
+      {
+        title: "Every suggestion explains why",
+        body: "See the matching playbook, relevant criterion, source excerpt, alignment checks, conflicts, and information still missing.",
+      },
+      {
+        title: "Your team confirms every mapping",
+        body: "Accept partial support, reject a relationship, record a mismatch, or request expert review. A suggestion never completes a requirement.",
+      },
+    ],
+    note: "The mapping engine does not use artificial intelligence, make opaque decisions, or send control content to a remote service.",
+  },
   outcomes: [
     {
       title: "Fit and eligibility assessment",
       body: "See a preliminary classification after eight focused questions, with reasons, possible blockers, and three next actions.",
     },
     {
-      title: "SOC 2 gap analysis",
-      body: "Map controls and report pages to Class A requirements, then confirm every suggested relationship yourself.",
+      title: "SOC 2 reuse and gap report",
+      body: "Inventory actual controls, review explainable reuse suggestions, and separate confirmed support from scope, period, exception, and FedRAMP-specific gaps.",
     },
     {
       title: "Guided requirement workspace",
@@ -80,8 +101,8 @@ export const homepage = {
     },
     {
       number: "03",
-      title: "Map evidence and address gaps",
-      body: "Connect SOC 2 controls, evidence candidates, owners, and implementation narratives to the relevant records.",
+      title: "Review reuse opportunities and gaps",
+      body: "Confirm or reject explainable SOC 2 mapping suggestions, then connect evidence candidates, owners, and follow-up work.",
     },
     {
       number: "04",
@@ -104,7 +125,7 @@ export const homepage = {
     "Source code is available for review and the core product requires no proprietary service",
   ],
   serviceMessage:
-    "Software can organize the record. Ancilis can help validate the interpretation, close implementation gaps, and review the package before your company applies.",
+    "Software can organize and accelerate the record. Ancilis can help validate the interpretation, close implementation gaps, and review the package before your company applies.",
 } as const;
 
 export const faqItems: readonly FaqItem[] = [
@@ -151,12 +172,22 @@ export const faqItems: readonly FaqItem[] = [
   {
     question: "Does it support Class B or Class C?",
     answer:
-      "Version 1.0 focuses on Class A preparation. The workspace can help organize early thinking, but it is not a complete Class B or Class C product.",
+      "Version 0.9.0 Public Beta focuses on Class A preparation. The workspace can help organize early thinking, but it is not a complete Class B or Class C product.",
   },
   {
     question: "Can Ancilis review the result?",
     answer:
       "Yes. You can request a readiness review using contact details only and separately download a redacted advisor handoff. Nothing from the project is sent when you open the advisory contact flow.",
+  },
+  {
+    question: "Does it use a universal SOC 2-to-FedRAMP crosswalk?",
+    answer:
+      "No. The deterministic engine suggests possible support from your actual control record, including scope, audit period, test results, exceptions, and carve-outs. Your team reviews the explanation and confirms, narrows, or rejects every mapping.",
+  },
+  {
+    question: "Does it use artificial intelligence to suggest mappings?",
+    answer:
+      "No. Suggestions come from deterministic rules and versioned mapping playbooks with visible review status, all running locally in your browser. The product shows why each relationship was suggested and never treats it as confirmed without your decision.",
   },
 ];
 

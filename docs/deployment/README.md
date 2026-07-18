@@ -12,13 +12,13 @@ No endpoint is required for the bridge. A deployment without the contact handler
 ## Clean production build
 
 ```sh
-corepack enable
-corepack prepare pnpm@10.33.0 --activate
+# If pnpm is not already installed:
+npm install --global pnpm@10.33.0
 pnpm install --frozen-lockfile
 pnpm verify
 ```
 
-Deploy only generated output from the reviewed commit. The source archive is made from Git `HEAD`, so commit the reviewed release state before the final assembly and verify its archive contents. Do not deploy the development server, repository root, `.env` files, source maps containing local paths, tests, or sample build caches. Preserve the release tag, commit, lockfile hash, release manifest, and build log with deployment evidence.
+Deploy only generated output from the reviewed source. Before publishing, run `pnpm verify:source-archive`; this creates and extracts the source release without `.git`, performs a frozen install and complete verification, and writes `dist/release-evidence/source-archive-verification.json`. Release assembly resolves a commit from explicit release metadata, embedded provenance, package metadata, or Git, in that order. When none is available it records “source commit unavailable” and continues without inventing a hash. Preserve the release tag when applicable, lockfile hash, `release-manifest.json`, `SOURCE_PROVENANCE.json`, `checksums.txt`, and build log with deployment evidence. Do not deploy the development server, repository root, `.env` files, source maps containing local paths, tests, or sample build caches.
 
 ## Recommended topology
 

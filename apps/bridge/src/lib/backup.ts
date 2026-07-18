@@ -243,11 +243,29 @@ export async function removeEvidenceCandidateLocally(
   for (const requirement of next.requirements) {
     requirement.evidenceIds = requirement.evidenceIds.filter((id) => id !== evidenceId);
   }
+  for (const mapping of next.mappings) {
+    mapping.evidenceIds = mapping.evidenceIds?.filter((id) => id !== evidenceId);
+  }
+  for (const control of next.soc2.controls) {
+    control.evidenceReferences = control.evidenceReferences?.filter((id) => id !== evidenceId);
+  }
   next.metadata.updatedAt = new Date().toISOString();
 
   try {
     await store.save(next);
-    if (evidence.attachmentId) await store.deleteAttachment(evidence.attachmentId);
+    if (evidence.attachmentId && !projectLocalByteIds(next).has(evidence.attachmentId)) {
+      const owner = await store.getAttachmentOwner(evidence.attachmentId);
+      const referencedElsewhere = await store.isAttachmentReferencedByOtherProject(
+        evidence.attachmentId,
+        project.metadata.id,
+      );
+      if (
+        !referencedElsewhere &&
+        ((owner?.kind === "owned" && owner.projectId === project.metadata.id) ||
+          owner?.kind === "legacy-unowned")
+      )
+        await store.deleteAttachment(evidence.attachmentId);
+    }
   } catch (error) {
     try {
       await store.save(previousProject);
@@ -345,6 +363,26 @@ export async function restoreImportedProjectAtomically(
   const incomingExpectedHashes = projectExpectedLocalByteHashes(imported.project);
   const staleIds = new Set([...previousIds].filter((id) => !incomingIds.has(id)));
 
+  // Attachment identifiers are globally keyed in browser storage. Reject every incoming
+  // reference that resolves to another project's bytes, including metadata-only restores.
+  for (const id of incomingIds) {
+    const existing = await store.getAttachment(id);
+    if (!existing) continue;
+    const owner = await store.getAttachmentOwner(id);
+    const legacyOwnedByThisProject =
+      owner?.kind === "legacy-unowned" &&
+      previousIds.has(id) &&
+      !(await store.isAttachmentReferencedByOtherProject(id, imported.project.metadata.id));
+    if (
+      !(owner?.kind === "owned" && owner.projectId === imported.project.metadata.id) &&
+      !legacyOwnedByThisProject
+    ) {
+      throw new Error(
+        `The backup local-file identifier “${id}” conflicts with data owned by another local project. Import stopped safely.`,
+      );
+    }
+  }
+
   // A backup can intentionally omit a referenced file. Retain a prior local copy only when
   // its bytes still match the incoming record; otherwise remove the stale copy after save.
   for (const id of incomingIds) {
@@ -357,6 +395,19 @@ export async function restoreImportedProjectAtomically(
     if ([...expectedHashes].some((expectedHash) => expectedHash !== actualHash)) {
       staleIds.add(id);
     }
+  }
+
+  for (const id of [...staleIds]) {
+    const owner = await store.getAttachmentOwner(id);
+    const referencedElsewhere = await store.isAttachmentReferencedByOtherProject(
+      id,
+      imported.project.metadata.id,
+    );
+    if (
+      referencedElsewhere ||
+      (owner?.kind === "owned" && owner.projectId !== imported.project.metadata.id)
+    )
+      staleIds.delete(id);
   }
 
   const touchedIds = new Set([...importedBytes.keys(), ...staleIds]);

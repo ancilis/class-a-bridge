@@ -1,4 +1,4 @@
-# Class A Bridge 1.0.0 Implementation Plan
+# Class A Bridge implementation plan (pre-1.0 baseline)
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:subagent-driven-development` or `superpowers:executing-plans` to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -156,7 +156,7 @@
 - [ ] Run offline reload/install tests, Chromium/Firefox/WebKit smoke tests, keyboard traversal, axe scans, print checks, and responsive snapshots.
 - [ ] Run `pnpm verify` from a clean dependency install; require typecheck, lint, unit, registry, schema, migration, security, accessibility, E2E, links, and both production builds to pass.
 - [ ] Generate working-product screenshots into `docs/screenshots` and mark sample views visibly fictional.
-- [ ] Publish `CHANGELOG.md` and release notes for 1.0.0, record exact build directories, and complete the release checklist.
+- [ ] Publish the evidence-based 0.9.0 Public Beta release notes, record exact build directories, and complete the release checklist; retain qualified review and real-hardware gates for 1.0.0.
 
 ## Completion evidence
 

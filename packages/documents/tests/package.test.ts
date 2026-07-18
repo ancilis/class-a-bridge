@@ -16,7 +16,19 @@ const decode = (bytes: Uint8Array | undefined) => new TextDecoder().decode(bytes
 
 describe("preparation package", () => {
   it("generates the numbered package layout, manifest, and checksums", async () => {
-    const result = await generatePreparationPackage(createDocumentProject(), {
+    const project = createDocumentProject();
+    project.mappings[0]!.reviewOutcome = "partial_support";
+    project.mappings.push({
+      ...project.mappings[0]!,
+      id: "map-unreviewed-private",
+      classARuleId: "FRC-CSO-PKG",
+      excerpt: "UNREVIEWED-PACKAGE-PRIVATE-EXCERPT",
+      confirmed: false,
+      reviewOutcome: "needs_expert_review",
+      reviewer: undefined,
+      reviewDate: undefined,
+    });
+    const result = await generatePreparationPackage(project, {
       generatedAt: GENERATED_AT,
       officialDocuments: OFFICIAL_OPTIONS,
     });
@@ -29,6 +41,7 @@ describe("preparation package", () => {
         "02-security-decision-record/security-decision-record.json",
         "03-ongoing-certification-report/ongoing-certification-report.json",
         "04-soc2-bridge/soc2-to-class-a-mapping.html",
+        "04-soc2-bridge/soc2-mapping-provenance.json",
         "05-scope/scope-summary.html",
         "06-evidence-manifest/evidence-manifest.csv",
         "07-readiness-and-open-items/action-plan.csv",
@@ -36,9 +49,12 @@ describe("preparation package", () => {
         "07-readiness-and-open-items/detailed-gap-report.html",
         "07-readiness-and-open-items/mandatory-requirements-report.html",
         "07-readiness-and-open-items/requirements.csv",
+        "07-readiness-and-open-items/unresolved-items-report.html",
         "08-validation/json-validation-report.html",
         "08-validation/final-internal-review-checklist.html",
         "08-validation/final-internal-review-checklist.json",
+        "08-validation/source-and-schema-versions.json",
+        "08-validation/attachment-inclusion-report.json",
         "manifest.json",
         "checksums.txt",
       ]),
@@ -51,6 +67,27 @@ describe("preparation package", () => {
       "01-certification-package-overview/certification-package-overview.json",
     );
     expect(result.validation.valid).toBe(true);
+    const mappingProvenance = JSON.parse(
+      decode(files["04-soc2-bridge/soc2-mapping-provenance.json"]),
+    ) as { readonly generatedAt: string; readonly mappings: readonly unknown[] };
+    expect(mappingProvenance).toEqual(
+      expect.objectContaining({
+        generatedAt: GENERATED_AT,
+        mappings: expect.any(Array),
+      }),
+    );
+    expect(mappingProvenance.mappings).not.toContainEqual(
+      expect.objectContaining({ id: "map-unreviewed-private" }),
+    );
+    expect(decode(files["04-soc2-bridge/soc2-to-class-a-mapping.html"])).not.toContain(
+      "UNREVIEWED-PACKAGE-PRIVATE-EXCERPT",
+    );
+    expect(JSON.parse(decode(files["08-validation/attachment-inclusion-report.json"]))).toEqual(
+      expect.objectContaining({
+        originalSoc2ReportIncluded: false,
+        includedAttachments: [],
+      }),
+    );
   });
 
   it("creates an actionable final-review checklist without treating schema validity as approval", () => {

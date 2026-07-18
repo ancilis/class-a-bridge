@@ -1,6 +1,6 @@
 # Official rules and schema maintenance
 
-## Release 1.0.0 baseline
+## Public Beta 0.9.0 baseline
 
 The rule registry pins FedRAMP Consolidated Rules for 2026:
 
@@ -12,7 +12,14 @@ The rule registry pins FedRAMP Consolidated Rules for 2026:
 
 The source bytes are in `packages/rules/vendor/fedramp-consolidated-rules.json`. `packages/rules/src/catalog.ts` selects application prerequisites, external-framework rules, all 23 mandatory Class A records, package dependencies, marketplace application records, and applicable recommended/optional records. Ancilis guidance lives in separate records and includes an explicit preparation-only disclaimer.
 
-The catalog currently contains an inconsistency: `FRC-CLA-RFR` references `CPO-CSF-CPM`, while the latter's 2026-07-14 change removed Class A applicability. The registry preserves the official content and marks it “Needs FedRAMP confirmation.” Maintainers must not resolve it by silently editing official bytes or presenting an invented interpretation.
+The catalog currently contains an inconsistency: `FRC-CLA-RFR` references
+`CPO-CSF-CPM`, while the latter's 2026-07-14 change removed Class A applicability.
+The registry preserves the official content and marks it “Needs FedRAMP
+confirmation.” The integrity exception fingerprints the exact aggregate source,
+individual source record, removal-history entry, applicability state, and pinned
+catalog version. It does not exempt other missing text, force, provenance, or
+source-path defects. Maintainers must not resolve the inconsistency by silently
+editing official bytes or presenting an invented interpretation.
 
 ## Vendored official schemas
 

@@ -2,7 +2,7 @@
 
 These assumptions make the implementation concrete without changing the product's regulatory interpretation.
 
-1. No existing Class A Bridge repository was present at `/Users/hellohelloalbus`; the new repository is `/Users/hellohelloalbus/class-a-bridge`.
+1. Repository paths are environment-specific. Public documentation, diagnostics, fixtures, and release artifacts use repository-relative or generic example paths and must not contain a maintainer's local home directory.
 2. The official baseline is FedRAMP Consolidated Rules for 2026 catalog `2026.07.14.01`, last updated July 14, 2026, pinned at commit `12fe1b60f578ab448c26d143baac99d16d8bfe14` and verified July 17, 2026.
 3. All eleven official FedRAMP JSON Schema files whose filenames are dated June 24, 2026 are vendored without local modifications. Retrieval-date checksums and their individual `$schemaVersion` values remain authoritative because the dated URLs can change.
 4. The initial release supports preparation for 20x Class A only. References to other classes are explanatory or service-planning content, not implemented assessment workflows.
@@ -20,3 +20,5 @@ These assumptions make the implementation concrete without changing the product'
 16. “Production-ready” means the repository builds, tests, exports, restores, runs offline, and has deployable static output; it does not mean FedRAMP has reviewed or endorsed the software.
 17. `FRC-CLA-RFR` currently references `CPO-CSF-CPM` even though the latter's July 14 change removed Class A applicability. The product preserves this official inconsistency and labels it “Needs FedRAMP confirmation.”
 18. The FedRAMP name is used descriptively; no FedRAMP logo, badge, or endorsement claim is used. Apache-2.0 applies to Ancilis-authored source code, not automatically to separately attributed official content.
+19. Mandatory SOC 2 mapping playbooks have not yet received documented qualified human review. Until that review and real-hardware release verification are recorded, the correct release designation is `0.9.0 Public Beta`, regardless of historical filenames or package versions.
+20. Deterministic SOC 2 mapping suggestions are editorial preparation aids. They never complete a requirement, establish evidence sufficiency, or create a provider-approved representation without individual human confirmation and provenance.

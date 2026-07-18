@@ -12,7 +12,7 @@ Choose one starting path:
 2. **Start without uploading a report** uses manual entry and is fully supported.
 3. **Explore a fictional sample workspace** opens Acme Metrics, marked “Fictional demonstration — not an actual certification package” and “Fictional example — not for submission.”
 
-The report is not uploaded to Ancilis. If it is password-protected, scanned, image-only, malformed, or too large, use manual entry. Class A Bridge does not perform optical character recognition in version 1.0.
+The report is not uploaded to Ancilis. If it is password-protected, scanned, image-only, malformed, or too large, use manual entry. Class A Bridge 0.9.0 Public Beta does not perform optical character recognition.
 
 ## Get the early result
 

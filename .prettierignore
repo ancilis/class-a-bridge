@@ -7,3 +7,12 @@ pnpm-lock.yaml
 packages/rules/vendor
 packages/schemas/vendor
 packages/schemas/src/generated
+reports/regulatory
+reports/release/artifacts
+reports/release/dependency-audit.json
+reports/release/dependency-audit.md
+reports/release/license-summary.json
+reports/release/license-summary.md
+reports/release/release-integrity.json
+reports/release/release-integrity.md
+reports/release/sbom.cdx.json

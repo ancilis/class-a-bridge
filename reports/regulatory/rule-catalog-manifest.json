@@ -1,0 +1,8 @@
+{
+  "catalogVersion": "2026.07.14.01",
+  "commit": "12fe1b60f578ab448c26d143baac99d16d8bfe14",
+  "sha256": "135707003f0aaa5ceb10d7d32c2681e5b1585a4eaf4403d0d135837787e5ae8e",
+  "sourceUrl": "https://github.com/FedRAMP/rules/blob/12fe1b60f578ab448c26d143baac99d16d8bfe14/fedramp-consolidated-rules.json",
+  "verifiedAt": "2026-07-17",
+  "actualChecksum": "135707003f0aaa5ceb10d7d32c2681e5b1585a4eaf4403d0d135837787e5ae8e"
+}

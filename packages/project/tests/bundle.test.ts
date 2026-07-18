@@ -280,7 +280,7 @@ describe(".classabridge bundles", () => {
     });
     const restored = await importProjectBundle(bundle);
     expect(restored.project.metadata.name).toBe("Legacy bundle");
-    expect(restored.project.metadata.migrations[0]?.id).toBe("v0-to-v1");
+    expect(restored.project.metadata.migrations[0]?.id).toBe("v0-to-v2");
   });
 
   it("rejects archive traversal and malformed projects", async () => {

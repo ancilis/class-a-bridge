@@ -345,6 +345,67 @@ describe("local project backup orchestration", () => {
     expect(await store.getAttachment(evidence.attachmentId)).toBeUndefined();
   });
 
+  it("keeps shared local bytes while another record in the project still references them", async () => {
+    const store = new MemoryProjectStore();
+    const project = structuredClone(ACME_METRICS_PROJECT);
+    project.metadata.id = "shared-attachment-project";
+    const bytes = new Uint8Array([7, 7, 7]);
+    const hash = await sha256Hex(bytes);
+    project.soc2.sourceReport = {
+      fileName: "fictional-report.pdf",
+      attachmentId: "shared-local-file",
+      sha256: hash,
+    };
+    const evidence = project.evidence[0]!;
+    evidence.attachmentId = "shared-local-file";
+    evidence.sha256 = hash;
+    await store.save(project);
+    await store.putAttachment("shared-local-file", bytes, project.metadata.id);
+
+    const next = await removeEvidenceCandidateLocally(store, project, evidence.id);
+
+    expect(next.soc2.sourceReport?.attachmentId).toBe("shared-local-file");
+    expect(await store.getAttachment("shared-local-file")).toEqual(bytes);
+  });
+
+  it("rejects a metadata-only restore that aliases another project's attachment", async () => {
+    const store = new MemoryProjectStore();
+    const bytes = new Uint8Array([4, 2, 4, 2]);
+    const hash = await sha256Hex(bytes);
+    const owner = structuredClone(ACME_METRICS_PROJECT);
+    owner.metadata.id = "attachment-owner";
+    owner.soc2.sourceReport = {
+      fileName: "owner-report.pdf",
+      attachmentId: "colliding-local-file",
+      sha256: hash,
+    };
+    await store.save(owner);
+    await store.putAttachment("colliding-local-file", bytes, owner.metadata.id);
+
+    const incoming = structuredClone(ACME_METRICS_PROJECT);
+    incoming.metadata.id = "attachment-importer";
+    incoming.soc2.sourceReport = {
+      fileName: "incoming-report.pdf",
+      attachmentId: "colliding-local-file",
+      sha256: hash,
+    };
+
+    await expect(
+      restoreImportedProjectAtomically(store, {
+        project: incoming,
+        manifest: {},
+        attachments: new Map(),
+        generatedOutputs: new Map(),
+      } as unknown as ImportedProjectBundle),
+    ).rejects.toThrow(/owned by another local project/iu);
+    expect(await store.getAttachment("colliding-local-file")).toEqual(bytes);
+    expect(await store.getAttachmentOwner("colliding-local-file")).toEqual({
+      kind: "owned",
+      projectId: owner.metadata.id,
+    });
+    expect(await store.load(incoming.metadata.id)).toBeUndefined();
+  });
+
   it("restores evidence metadata and bytes if local attachment deletion fails", async () => {
     class FailingDeleteStore extends MemoryProjectStore {
       fail = false;
@@ -476,7 +537,7 @@ describe("local project backup orchestration", () => {
     } as unknown as ImportedProjectBundle;
 
     await expect(restoreImportedProjectAtomically(store, imported)).rejects.toThrow(
-      /conflicts with unrelated local data/iu,
+      /owned by another local project/iu,
     );
     expect(await store.getAttachment("conflicting-output")).toEqual(new Uint8Array([9]));
   });

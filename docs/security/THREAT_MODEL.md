@@ -1,6 +1,6 @@
 # Threat model
 
-**System:** Class A Bridge 1.0.0  
+**System:** Class A Bridge 0.9.0 Public Beta
 **Review date:** 2026-07-17  
 **Method:** asset/trust-boundary review with STRIDE-style threat enumeration  
 **Scope:** repository build, static website, private browser PWA, local files/storage/exports, optional contact endpoint, and documented hosting

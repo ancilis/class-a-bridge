@@ -9,6 +9,8 @@ test("sample and core workspace navigation smoke across major browser engines", 
   await navigateTo(page, "Class A requirements");
   await expect(page.getByRole("heading", { level: 1, name: "Class A requirements" })).toBeVisible();
   await page.locator(".rule-list__item").filter({ hasText: "KSI-CMT-LMC" }).click();
+  await expect(page.getByText(/Guided task 1 of 9/iu)).toBeVisible();
+  await page.getByRole("button", { name: "Record mode" }).click();
   await expect(
     page.getByText("Dedicated Key Security Indicator workflow", { exact: true }),
   ).toBeVisible();

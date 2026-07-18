@@ -20,8 +20,14 @@ test("a user maps a SOC 2 control to a Class A requirement", async ({ page }) =>
   await expect(mapping).toContainText("Page 71");
   await expect(
     mapping.getByRole("checkbox", { name: /Mapping confirmed by a person/u }),
+  ).not.toBeChecked();
+  await fieldControl(mapping, "Mapping review outcome", "select").selectOption("partial_support");
+  await fieldControl(mapping, "Reviewer").fill("Morgan Lee");
+  await fieldControl(mapping, "Review date").fill("2026-07-18");
+  await mapping.getByRole("checkbox", { name: /Mapping confirmed by a person/u }).check();
+  await expect(
+    mapping.getByRole("checkbox", { name: /Mapping confirmed by a person/u }),
   ).toBeChecked();
-  await mapping.getByRole("combobox").selectOption("partially_covered");
 });
 
 test("a user adds local evidence metadata and a file without an upload", async ({ page }) => {
@@ -48,6 +54,7 @@ test("a user adds local evidence metadata and a file without an upload", async (
 test("a user completes a KSI requirement narrative and controls its status", async ({ page }) => {
   await openSample(page);
   await navigateTo(page, "Class A requirements");
+  await page.getByRole("button", { name: "Record mode" }).click();
   await page.locator(".rule-list__item").filter({ hasText: "KSI-CMT-LMC" }).click();
 
   await fieldControl(page, "Implementation explanation", "textarea").fill(
@@ -63,6 +70,7 @@ test("a user completes a KSI requirement narrative and controls its status", asy
 
   await navigateTo(page, "Overview");
   await navigateTo(page, "Class A requirements");
+  await page.getByRole("button", { name: "Record mode" }).click();
   await page.locator(".rule-list__item").filter({ hasText: "KSI-CMT-LMC" }).click();
   await expect(fieldControl(page, "Implementation explanation", "textarea")).toHaveValue(
     /immutable audit events/u,

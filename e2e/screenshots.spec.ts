@@ -31,10 +31,18 @@ test("capture release screenshots from the working browser application", async (
   await prepareCapture(page);
   await page.screenshot({ path: screenshotPath("bridge-eligibility-result.png"), fullPage: true });
 
+  await navigateTo(page, "SOC 2 reuse");
+  await expect(page.getByRole("heading", { level: 1, name: "SOC 2 reuse" })).toBeVisible();
+  await prepareCapture(page);
+  await page.screenshot({ path: screenshotPath("bridge-soc2-reuse.png"), fullPage: true });
+
   await navigateTo(page, "Class A requirements");
   await page.locator(".rule-list__item").filter({ hasText: "KSI-CMT-LMC" }).click();
   await prepareCapture(page);
-  await page.screenshot({ path: screenshotPath("bridge-ksi-workflow.png"), fullPage: true });
+  await page.screenshot({ path: screenshotPath("bridge-guided-requirement.png"), fullPage: true });
+  await page.getByRole("button", { name: "Record mode" }).click();
+  await prepareCapture(page);
+  await page.screenshot({ path: screenshotPath("bridge-record-mode.png"), fullPage: true });
 
   await navigateTo(page, "Package");
   await prepareCapture(page);

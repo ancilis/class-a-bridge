@@ -1,12 +1,12 @@
 {
   "name": "class-a-bridge",
-  "version": "1.0.0",
+  "version": "0.9.0",
   "private": true,
   "description": "Local-first FedRAMP 20x Class A preparation workspace maintained by Ancilis.",
   "license": "Apache-2.0",
   "packageManager": "pnpm@10.33.0",
   "engines": {
-    "node": ">=24.0.0 <26",
+    "node": ">=24.0.0 <25",
     "pnpm": "10.33.0"
   },
   "pnpm": {
@@ -20,6 +20,10 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "turbo run lint",
+    "release:samples": "pnpm --filter @class-a-bridge/testing artifacts:generate",
+    "release:integrity": "node scripts/release-integrity.mjs all",
+    "release:scan": "node scripts/release-integrity.mjs scan",
+    "release:supply-chain": "node scripts/release-integrity.mjs supply-chain",
     "rules:compare": "pnpm --filter @class-a-bridge/rules rules:compare",
     "release:assemble": "node scripts/assemble-release.mjs",
     "schemas:compare": "pnpm --filter @class-a-bridge/schemas schemas:compare",
@@ -29,9 +33,11 @@
     "test:e2e": "playwright test",
     "test:cross-browser": "playwright test e2e/cross-browser.spec.ts",
     "test:links": "pnpm --filter @class-a-bridge/website check:release-links",
-    "test:release": "node --test scripts/assemble-release.test.mjs",
+    "test:release": "node --test scripts/assemble-release.test.mjs scripts/release-integrity.test.mjs scripts/verify-source-archive.test.mjs",
+    "test:release-integrity": "node --test scripts/release-integrity.test.mjs",
     "typecheck": "turbo run typecheck",
-    "verify": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm test:release && pnpm build && pnpm release:assemble && pnpm test:links"
+    "verify": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm test:release && pnpm build && pnpm release:assemble && pnpm test:links",
+    "verify:source-archive": "node scripts/verify-source-archive.mjs"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.12.1",

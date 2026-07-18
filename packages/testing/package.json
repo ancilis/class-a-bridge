@@ -1,22 +1,26 @@
 {
   "name": "@class-a-bridge/testing",
-  "version": "1.0.0",
+  "version": "0.9.0",
   "private": true,
   "type": "module",
   "exports": {
     ".": "./src/index.ts"
   },
   "scripts": {
+    "artifacts:generate": "tsx --import ./scripts/register-schema-require.mjs scripts/generate-release-artifacts.ts",
     "build": "tsc --noEmit",
     "lint": "eslint .",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@class-a-bridge/documents": "workspace:*",
     "@class-a-bridge/project": "workspace:*",
-    "@class-a-bridge/rules": "workspace:*"
+    "@class-a-bridge/rules": "workspace:*",
+    "fflate": "0.8.2"
   },
   "devDependencies": {
+    "tsx": "4.21.0",
     "typescript": "catalog:",
     "vitest": "catalog:"
   }

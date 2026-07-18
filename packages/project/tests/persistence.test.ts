@@ -1,12 +1,16 @@
+import "fake-indexeddb/auto";
+import { IDBFactory } from "fake-indexeddb";
 import { describe, expect, it } from "vitest";
 
 import {
+  IndexedDbProjectStore,
   LocalStorageProjectStore,
   MemoryProjectStore,
   createEmptyProject,
   createProjectStore,
   createProjectStoreSafely,
   deleteAllLocalProjectData,
+  sha256Hex,
 } from "../src/index";
 
 class FakeStorage implements Storage {
@@ -60,6 +64,78 @@ it("deletes attachments owned by a deleted project", async () => {
   expect(await store.getAttachment("att-owned")).toBeDefined();
   await store.delete(project.metadata.id);
   expect(await store.getAttachment("att-owned")).toBeUndefined();
+});
+
+it("reassigns shared IndexedDB bytes and removes legacy raw bytes without orphaning data", async () => {
+  const descriptor = Object.getOwnPropertyDescriptor(globalThis, "indexedDB");
+  const factory = new IDBFactory();
+  Object.defineProperty(globalThis, "indexedDB", {
+    configurable: true,
+    value: factory,
+  });
+  const databaseName = `class-a-bridge-persistence-test-${crypto.randomUUID()}`;
+
+  try {
+    const store = new IndexedDbProjectStore(databaseName);
+    const bytes = new Uint8Array([1, 4, 1, 4]);
+    const hash = await sha256Hex(bytes);
+    const first = createEmptyProject("First owner", "Acme");
+    const second = createEmptyProject("Second owner", "Acme");
+    first.soc2.sourceReport = {
+      fileName: "first.pdf",
+      attachmentId: "shared-indexeddb-file",
+      sha256: hash,
+    };
+    second.soc2.sourceReport = {
+      fileName: "second.pdf",
+      attachmentId: "shared-indexeddb-file",
+      sha256: hash,
+    };
+    await store.save(first);
+    await store.save(second);
+    await store.putAttachment("shared-indexeddb-file", bytes, first.metadata.id);
+
+    await store.delete(first.metadata.id);
+    expect(await store.getAttachmentOwner("shared-indexeddb-file")).toEqual({
+      kind: "owned",
+      projectId: second.metadata.id,
+    });
+    expect(await store.getAttachment("shared-indexeddb-file")).toEqual(bytes);
+    await store.delete(second.metadata.id);
+    expect(await store.getAttachment("shared-indexeddb-file")).toBeUndefined();
+
+    const legacy = createEmptyProject("Legacy owner", "Acme");
+    legacy.soc2.sourceReport = {
+      fileName: "legacy.pdf",
+      attachmentId: "legacy-raw-file",
+      sha256: hash,
+    };
+    await store.save(legacy);
+    const request = factory.open(databaseName, 2);
+    const database = await new Promise<IDBDatabase>((resolve, reject) => {
+      request.onerror = () => reject(request.error ?? new Error("IndexedDB open failed."));
+      request.onsuccess = () => resolve(request.result);
+    });
+    const transaction = database.transaction("attachments", "readwrite");
+    transaction.objectStore("attachments").put(bytes, "legacy-raw-file");
+    await new Promise<void>((resolve, reject) => {
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = () =>
+        reject(transaction.error ?? new Error("IndexedDB transaction failed."));
+      transaction.onabort = () =>
+        reject(transaction.error ?? new Error("IndexedDB transaction was aborted."));
+    });
+    database.close();
+
+    expect(await store.getAttachmentOwner("legacy-raw-file")).toEqual({
+      kind: "legacy-unowned",
+    });
+    await store.delete(legacy.metadata.id);
+    expect(await store.getAttachment("legacy-raw-file")).toBeUndefined();
+  } finally {
+    if (descriptor) Object.defineProperty(globalThis, "indexedDB", descriptor);
+    else Reflect.deleteProperty(globalThis, "indexedDB");
+  }
 });
 
 it("deletes active-backend files and prior localStorage fallback records together", async () => {

@@ -70,6 +70,7 @@ describe("Class A Bridge application shell", () => {
       "Eligibility",
       "Scope",
       "SOC 2 materials",
+      "SOC 2 reuse",
       "Class A requirements",
       "Evidence",
       "Action plan",
@@ -79,6 +80,8 @@ describe("Class A Bridge application shell", () => {
     ]) {
       expect(screen.getByRole("button", { name: label })).toBeInTheDocument();
     }
+    await user.click(screen.getByRole("button", { name: "SOC 2 reuse" }));
+    expect(screen.getByRole("heading", { name: "SOC 2 reuse" })).toBeInTheDocument();
     expect(screen.getAllByText(/Needs expert review/iu).length).toBeGreaterThan(0);
   });
 
@@ -115,7 +118,19 @@ describe("Class A Bridge application shell", () => {
     const store = new MemoryProjectStore();
     const project = structuredClone(ACME_METRICS_PROJECT);
     project.metadata.isSample = false;
-    project.soc2.extractionCandidates[0]!.decision = "unreviewed";
+    project.soc2.extractionCandidates = [
+      {
+        id: "extract-report-issuer",
+        field: "Report issuer",
+        value: "Suggested Fictional Auditor LLP",
+        page: 2,
+        snippet: "Fictional source excerpt naming the report issuer.",
+        confidence: "medium",
+        detector: "Deterministic issuer pattern",
+        decision: "unreviewed",
+      },
+    ];
+    project.soc2.issuer = "Prior confirmed issuer";
     await store.save(project);
     const user = userEvent.setup();
 
@@ -128,6 +143,22 @@ describe("Class A Bridge application shell", () => {
       screen.getByRole("heading", { level: 1, name: /Review every suggested report value/iu }),
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Confirm" })).toBeInTheDocument();
+
+    const issuer = screen.getByLabelText("Report issuer");
+    await user.clear(issuer);
+    await user.type(issuer, "Edited Fictional Auditor LLP");
+    await waitFor(async () => {
+      const saved = await store.load(project.metadata.id);
+      expect(saved?.soc2.extractionCandidates[0]?.value).toBe("Edited Fictional Auditor LLP");
+      expect(saved?.soc2.issuer).toBe("Prior confirmed issuer");
+    });
+
+    await user.click(screen.getByRole("button", { name: "Mark edited" }));
+    await waitFor(async () => {
+      const saved = await store.load(project.metadata.id);
+      expect(saved?.soc2.extractionCandidates[0]?.decision).toBe("edited");
+      expect(saved?.soc2.issuer).toBe("Edited Fictional Auditor LLP");
+    });
   });
 
   it("shows an actionable local-save failure instead of swallowing it", async () => {

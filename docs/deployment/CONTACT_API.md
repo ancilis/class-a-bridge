@@ -48,9 +48,11 @@ The snippet shows the interface; adapt environment access and exports to the cho
 
 `getClientKey` must use a client address/key authenticated by the hosting platform or adapter. Do not trust an arbitrary public `X-Forwarded-For` header. Hashing the address with a rotating server secret before passing the key reduces retention of raw network identifiers.
 
+The handler sends a host-scoped `Strict-Transport-Security: max-age=31536000` header. It intentionally does not include `includeSubDomains` or `preload`; either directive requires a separate domain-wide HTTPS readiness review. Deploy the endpoint only over HTTPS, and ensure a fronting proxy or platform does not replace this policy with broader directives that the domain owner has not approved.
+
 ## Rate limiting
 
-`MemoryRateLimitStore` is bounded and works for one long-lived process. It resets on restart and does not coordinate across replicas. For serverless, edge, or horizontally scaled use, implement the `RateLimitStore` interface with an atomic shared store or configure the provider's WAF/rate limiting plus the application store. Preserve a fixed window, a small per-client limit, and a global abuse ceiling.
+`MemoryRateLimitStore` is bounded and works for one long-lived process. It defaults to 10,000 keys and rejects configured bounds above 100,000. It resets on restart and does not coordinate across replicas. For serverless, edge, or horizontally scaled use, implement the `RateLimitStore` interface with an atomic shared store or configure the provider's WAF/rate limiting plus the application store. Preserve a fixed window, a small per-client limit, and a global abuse ceiling.
 
 Do not weaken validation or accept project content as a workaround for a delivery provider.
 

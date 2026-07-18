@@ -57,10 +57,26 @@ function setup(options: { limit?: number } = {}) {
 }
 
 describe("optional contact endpoint", () => {
+  it.each([0, -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY, 100_001])(
+    "rejects an unsafe in-memory rate-limit key bound of %s",
+    (maximumKeys) => {
+      expect(() => new MemoryRateLimitStore(maximumKeys)).toThrow("maximum key count");
+    },
+  );
+
   it("does not expose the contact handler on another path", async () => {
     const { deliveries, handler } = setup();
 
     const response = await handler(contactRequest(validContact, { path: "/project/import" }));
+
+    expect(response.status).toBe(404);
+    expect(deliveries).toHaveLength(0);
+  });
+
+  it("does not expose the contact handler on a query-bearing path", async () => {
+    const { deliveries, handler } = setup();
+
+    const response = await handler(contactRequest(validContact, { path: "/api/contact?debug=1" }));
 
     expect(response.status).toBe(404);
     expect(deliveries).toHaveLength(0);
@@ -89,6 +105,28 @@ describe("optional contact endpoint", () => {
     ).toThrow("body limit");
   });
 
+  it.each([
+    { limit: Number.NaN, windowMs: 60_000 },
+    { limit: Number.POSITIVE_INFINITY, windowMs: 60_000 },
+    { limit: 1.5, windowMs: 60_000 },
+    { limit: 5, windowMs: Number.NaN },
+    { limit: 5, windowMs: Number.POSITIVE_INFINITY },
+    { limit: 5, windowMs: 1.5 },
+  ])("rejects invalid rate-limit configuration $limit/$windowMs", ({ limit, windowMs }) => {
+    expect(() =>
+      createContactHandler({
+        allowedOrigins: [allowedOrigin],
+        deliver: () => Promise.resolve(),
+        getClientKey: () => "test-client",
+        rateLimit: {
+          limit,
+          store: new MemoryRateLimitStore(),
+          windowMs,
+        },
+      }),
+    ).toThrow("Rate-limit values");
+  });
+
   it("accepts only validated contact fields and returns restrictive headers", async () => {
     const { deliveries, handler } = setup();
 
@@ -104,8 +142,31 @@ describe("optional contact endpoint", () => {
     ]);
     expect(response.headers.get("access-control-allow-origin")).toBe(allowedOrigin);
     expect(response.headers.get("cache-control")).toBe("no-store");
-    expect(response.headers.get("content-security-policy")).toContain("default-src 'none'");
+    expect(response.headers.get("content-security-policy")).toBe(
+      "default-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+    );
+    expect(response.headers.get("strict-transport-security")).toBe("max-age=31536000");
+    expect(response.headers.get("strict-transport-security")).not.toContain("preload");
+    expect(response.headers.get("strict-transport-security")).not.toContain("includeSubDomains");
     await expect(response.json()).resolves.toEqual({ accepted: true });
+  });
+
+  it.each([
+    { email: "not-an-email" },
+    { message: "" },
+    { message: "x".repeat(2_001) },
+    { name: "" },
+    { name: "x".repeat(121) },
+    { company: "x".repeat(161) },
+    { role: "x".repeat(121) },
+    { approvedSummary: "x".repeat(1_001) },
+  ])("rejects a contact record outside field constraints: %o", async (invalidFields) => {
+    const { deliveries, handler } = setup();
+
+    const response = await handler(contactRequest({ ...validContact, ...invalidFields }));
+
+    expect(response.status).toBe(400);
+    expect(deliveries).toHaveLength(0);
   });
 
   it("rejects unknown fields including assessment and document content", async () => {
@@ -125,6 +186,67 @@ describe("optional contact endpoint", () => {
       accepted: false,
       code: "invalid_request",
     });
+  });
+
+  it.each([
+    "answers",
+    "attachments",
+    "controlExcerpt",
+    "evidence",
+    "internalNotes",
+    "package",
+    "project",
+    "reportText",
+    "requirements",
+    "scope",
+    "soc2Report",
+  ])("rejects the project-data field %s", async (field) => {
+    const { deliveries, handler } = setup();
+
+    const response = await handler(contactRequest({ ...validContact, [field]: "private-canary" }));
+
+    expect(response.status).toBe(400);
+    expect(deliveries).toHaveLength(0);
+  });
+
+  it("rejects malformed JSON and a declared oversized body before delivery", async () => {
+    const { deliveries, handler } = setup();
+    const malformed = await handler(
+      new Request("https://contact.example/api/contact", {
+        body: "{not-json",
+        headers: { "content-type": "application/json", origin: allowedOrigin },
+        method: "POST",
+      }),
+    );
+    const declaredOversized = await handler(
+      new Request("https://contact.example/api/contact", {
+        body: JSON.stringify(validContact),
+        headers: {
+          "content-length": String(16 * 1024 + 1),
+          "content-type": "application/json",
+          origin: allowedOrigin,
+        },
+        method: "POST",
+      }),
+    );
+
+    expect(malformed.status).toBe(400);
+    expect(declaredOversized.status).toBe(413);
+    expect(deliveries).toHaveLength(0);
+  });
+
+  it("rejects malformed UTF-8 before parsing or delivery", async () => {
+    const { deliveries, handler } = setup();
+    const response = await handler(
+      new Request("https://contact.example/api/contact", {
+        body: new Uint8Array([0xc3, 0x28]),
+        headers: { "content-type": "application/json", origin: allowedOrigin },
+        method: "POST",
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    expect(deliveries).toHaveLength(0);
   });
 
   it("accepts international Unicode text while rejecting control characters", async () => {
@@ -149,13 +271,23 @@ describe("optional contact endpoint", () => {
   it("rejects missing or unapproved origins before reading contact data", async () => {
     const { deliveries, handler } = setup();
 
-    const response = await handler(
+    const unapproved = await handler(
       contactRequest(validContact, { origin: "https://attacker.test" }),
     );
+    const encoded = JSON.stringify(validContact);
+    const missing = await handler(
+      new Request("https://contact.example/api/contact", {
+        body: encoded,
+        headers: { "content-type": "application/json" },
+        method: "POST",
+      }),
+    );
 
-    expect(response.status).toBe(403);
+    expect(unapproved.status).toBe(403);
+    expect(missing.status).toBe(403);
     expect(deliveries).toHaveLength(0);
-    expect(response.headers.get("access-control-allow-origin")).toBeNull();
+    expect(unapproved.headers.get("access-control-allow-origin")).toBeNull();
+    expect(missing.headers.get("access-control-allow-origin")).toBeNull();
   });
 
   it("rejects unsupported methods and media types", async () => {
@@ -267,6 +399,27 @@ describe("optional contact endpoint", () => {
     expect(response.headers.get("access-control-allow-methods")).toBe("POST, OPTIONS");
   });
 
+  it("rejects preflight requests that ask to send non-allowlisted headers", async () => {
+    const { handler } = setup();
+    const request = new Request("https://contact.example/api/contact", {
+      headers: {
+        "access-control-request-headers": "content-type, x-project-content",
+        "access-control-request-method": "POST",
+        origin: allowedOrigin,
+      },
+      method: "OPTIONS",
+    });
+
+    const response = await handler(request);
+
+    expect(response.status).toBe(400);
+    expect(response.headers.get("access-control-allow-headers")).toBeNull();
+    await expect(response.json()).resolves.toEqual({
+      accepted: false,
+      code: "invalid_preflight",
+    });
+  });
+
   it("does not expose a delivery exception body", async () => {
     const logger = vi.fn();
     const handler = createContactHandler({
@@ -286,6 +439,17 @@ describe("optional contact endpoint", () => {
 describe("contact webhook delivery", () => {
   it("refuses a non-HTTPS destination", () => {
     expect(() => createWebhookDelivery({ url: "http://internal.test/contact" })).toThrow("HTTPS");
+  });
+
+  it("refuses destination credentials and invalid timeout values", () => {
+    expect(() =>
+      createWebhookDelivery({ url: "https://user:password@internal.test/contact" }),
+    ).toThrow("credentials");
+    for (const timeoutMs of [99, 30_001, Number.NaN, 1.5]) {
+      expect(() =>
+        createWebhookDelivery({ timeoutMs, url: "https://internal.test/contact" }),
+      ).toThrow("timeout");
+    }
   });
 
   it("sends the validated contact record without redirects", async () => {

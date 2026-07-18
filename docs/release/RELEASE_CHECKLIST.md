@@ -1,10 +1,10 @@
 # Release checklist
 
-This checklist is completed against the exact release commit and production-like outputs. A checked item means a reviewer observed evidence, not that the source file contained a pre-checked assertion. Store command logs, browser matrices, screenshots, header captures, and generated fixture outputs with the release record.
+This checklist is the maintainer template. The evidence-based 0.9.0 Public Beta decision record is generated at `reports/release/RELEASE_CHECKLIST.md`. A checked item here still means a reviewer observed evidence, not that source merely appears to support it.
 
 ## Identity and scope
 
-- [ ] Version and tag are `1.0.0`; changelog and release notes match.
+- [ ] Version and recommended tag are `v0.9.0`; changelog and Public Beta release notes match.
 - [ ] Product name is “Class A Bridge by Ancilis.”
 - [ ] Maintained-by-Ancilis and independent/non-GSA/non-FedRAMP-affiliation disclaimer is visible.
 - [ ] No page/output says compliant, certified, approved, guaranteed eligible, guaranteed to pass, or submission-ready from software completion.
@@ -28,7 +28,8 @@ This checklist is completed against the exact release commit and production-like
 - [ ] `apps/bridge/dist` is the complete installable offline PWA build.
 - [ ] `apps/contact-api/dist` is the optional compiled contact handler.
 - [ ] `dist/class-a-bridge` contains the website at `/`, bridge at `/app/`, merged headers, and `release-manifest.json`.
-- [ ] `/downloads/class-a-bridge-1.0.0-source.tar.gz` matches the reviewed Git `HEAD` and contains no secret/build output.
+- [ ] `pnpm verify:source-archive` exits 0 and its evidence JSON records a frozen install, full verification, and release assembly without `.git`.
+- [ ] `/downloads/class-a-bridge-<version>-source.tar.gz` contains the reviewed source, excludes secret/build output, and matches `release-manifest.json`, `SOURCE_PROVENANCE.json`, and `checksums.txt`.
 
 ## First-run and early value
 
@@ -53,7 +54,7 @@ This checklist is completed against the exact release commit and production-like
 
 ## Application navigation and workflows
 
-- [ ] Ten destinations exist and navigate correctly: Overview, Eligibility, Scope, SOC 2 materials, Class A requirements, Evidence, Action plan, Package, Reports, Project settings.
+- [ ] Eleven destinations exist and navigate correctly: Overview, Eligibility, Scope, SOC 2 materials, SOC 2 reuse, Class A requirements, Evidence, Action plan, Package, Reports, Project settings.
 - [ ] Every dashboard finding has a clear next action/deep link.
 - [ ] Scope builder covers environments/components/stores/identity/logging/deployment/security/endpoints/third parties/federal-data/impact/exclusions and produces summary/inventory/data flow/questions/mismatch.
 - [ ] Requirement workspace contains all requested narrative, mapping, evidence, owner/date/note/question/exception/acceptance/status/review fields.

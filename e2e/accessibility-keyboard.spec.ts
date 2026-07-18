@@ -39,6 +39,7 @@ test("the workspace has one main landmark and every editable control has an acce
     "Eligibility",
     "Scope",
     "SOC 2 materials",
+    "SOC 2 reuse",
     "Class A requirements",
     "Evidence",
     "Action plan",
@@ -68,6 +69,19 @@ test("the workspace has one main landmark and every editable control has an acce
           })),
       );
     expect(unnamed, `${destination} contains controls without programmatic labels`).toEqual([]);
+  }
+});
+
+test("SOC 2 reuse, guided requirements, evidence, and package screens pass automated WCAG checks", async ({
+  page,
+}) => {
+  await openSample(page);
+  for (const destination of ["SOC 2 reuse", "Class A requirements", "Evidence", "Package"]) {
+    await navigateTo(page, destination);
+    const result = await new AxeBuilder({ page })
+      .withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"])
+      .analyze();
+    expect(result.violations, `${destination} has automated accessibility violations`).toEqual([]);
   }
 });
 

@@ -28,6 +28,10 @@ describe("search metadata", () => {
     expect(organizationStructuredData["@type"]).toBe("Organization");
     expect(softwareStructuredData["@type"]).toBe("SoftwareApplication");
     expect(softwareStructuredData.applicationCategory).toBe("BusinessApplication");
+    expect(softwareStructuredData.softwareVersion).toBe("0.9.0");
+    expect(softwareStructuredData.featureList).toContain(
+      "Deterministic, human-confirmed SOC 2 reuse suggestions",
+    );
     expect(faqStructuredData.mainEntity).toHaveLength(faqItems.length);
   });
 

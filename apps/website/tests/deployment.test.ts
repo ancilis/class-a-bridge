@@ -34,4 +34,26 @@ describe("canonical static deployment", () => {
     expect(websiteHeaders).not.toMatch(/worker-src 'none'/u);
     expect(websiteHeaders).toContain("Referrer-Policy: no-referrer");
   });
+
+  it("serves extensionless generated image metadata with an explicit PNG content type", () => {
+    const websiteHeaders = readFileSync(new URL("../public/_headers", import.meta.url), "utf8");
+    const vercelConfig = JSON.parse(
+      readFileSync(new URL("../vercel.json", import.meta.url), "utf8"),
+    ) as {
+      headers?: Array<{ source?: string; headers?: Array<{ key?: string; value?: string }> }>;
+    };
+
+    for (const route of ["/icon", "/opengraph-image", "/twitter-image"]) {
+      expect(websiteHeaders).toMatch(new RegExp(`^${route}\\n\\s+Content-Type: image/png$`, "mu"));
+      expect(
+        vercelConfig.headers?.some(
+          (entry) =>
+            entry.source === route &&
+            entry.headers?.some(
+              (header) => header.key === "Content-Type" && header.value === "image/png",
+            ),
+        ),
+      ).toBe(true);
+    }
+  });
 });

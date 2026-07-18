@@ -83,5 +83,5 @@ describe("package validation navigation", () => {
       screen.getByRole("heading", { name: "Project settings and data management" }),
     ).toBeInTheDocument();
     await waitFor(() => expect(document.querySelector("#settings-service-models")).toHaveFocus());
-  }, 20_000);
+  });
 });

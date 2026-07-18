@@ -4,6 +4,7 @@ import { RULE_SELECTIONS } from "@class-a-bridge/rules";
 
 import {
   BridgeProjectSchema,
+  PROJECT_SCHEMA_VERSION,
   createEmptyProject,
   finalReviewApprovalScope,
   migrateProject,
@@ -34,7 +35,10 @@ describe("BridgeProject", () => {
     const project = createEmptyProject("Northstar Federal", "Northstar Cloud");
     expect(BridgeProjectSchema.parse(project)).toEqual(project);
     expect(project.metadata).toEqual(
-      expect.objectContaining({ schemaVersion: 1, ruleCatalogVersion: "2026.07.14.01" }),
+      expect.objectContaining({
+        schemaVersion: PROJECT_SCHEMA_VERSION,
+        ruleCatalogVersion: "2026.07.14.01",
+      }),
     );
     expect(project.approvals).toEqual([]);
     expect(project.requirements.map(({ ruleId }) => ruleId)).toEqual(RULE_SELECTIONS.mandatory);
@@ -95,6 +99,205 @@ describe("BridgeProject", () => {
     expect(() => BridgeProjectSchema.parse(project)).toThrow(/mapping.*UNKNOWN-RULE/iu);
   });
 
+  it("parses legacy v1 SOC 2 controls and mappings without inventing review provenance", () => {
+    const project = createEmptyProject("Legacy SOC 2 mapping", "Provider");
+    project.soc2.controls.push({
+      id: "SOC2-CC6.1",
+      title: "Logical access",
+      trustServicesCriteria: ["CC6.1"],
+      reportPages: [42],
+      auditorTest: "Inspected a sample of access changes.",
+      auditorResult: "No exceptions noted.",
+      exceptionIds: [],
+      excerpt: "Access is approved before provisioning.",
+    });
+    project.mappings.push({
+      id: "mapping-legacy",
+      soc2ControlId: "SOC2-CC6.1",
+      reportPage: 42,
+      excerpt: "Access is approved before provisioning.",
+      classARuleId: "KSI-IAM-AAM",
+      coverage: "supporting_evidence_only",
+      reason: "The sampled access control may provide supporting material.",
+      gapDescription: "Automation coverage still needs confirmation.",
+      additionalEvidenceNeeded: "Current identity configuration.",
+      suggested: true,
+      confirmed: false,
+    });
+
+    const parsed = BridgeProjectSchema.parse(project);
+    expect(parsed.soc2.controls[0]).toEqual(project.soc2.controls[0]);
+    expect(parsed.mappings[0]).toEqual(project.mappings[0]);
+    expect(parsed.mappings[0]).not.toHaveProperty("suggestionLevel");
+  });
+
+  it("rejects unresolved SOC 2 control, exception, and evidence references", () => {
+    const project = createEmptyProject("SOC 2 reference integrity", "Provider");
+    project.soc2.controls.push({
+      id: "SOC2-CC7.2",
+      title: "Monitoring",
+      trustServicesCriteria: ["CC7.2"],
+      reportPages: [61],
+      auditorTest: "Inspected monitoring alerts.",
+      auditorResult: "No exceptions noted.",
+      exceptionIds: ["missing-exception"],
+      excerpt: "Alerts are investigated.",
+      evidenceReferences: ["missing-evidence"],
+    });
+    project.mappings.push({
+      id: "mapping-missing-control",
+      soc2ControlId: "missing-control",
+      reportPage: 61,
+      excerpt: "Alerts are investigated.",
+      classARuleId: "KSI-INR-RIR",
+      coverage: "needs_human_review",
+      reason: "The control reference must resolve before review.",
+      gapDescription: "",
+      additionalEvidenceNeeded: "",
+      suggested: true,
+      confirmed: false,
+      evidenceIds: ["missing-evidence"],
+    });
+
+    expect(() => BridgeProjectSchema.parse(project)).toThrow(
+      /missing-exception|missing-evidence|missing-control/iu,
+    );
+  });
+
+  it("rejects duplicate SOC 2 control-to-rule pairs even when mapping IDs differ", () => {
+    const project = createEmptyProject("Duplicate mapping pair", "Provider");
+    project.soc2.controls.push({
+      id: "SOC2-CC8.1",
+      title: "Change management",
+      trustServicesCriteria: ["CC8.1"],
+      reportPages: [70],
+      auditorTest: "Inspected production changes.",
+      auditorResult: "No exceptions noted.",
+      exceptionIds: [],
+      excerpt: "Production changes require review.",
+    });
+    const mapping = {
+      id: "mapping-one",
+      soc2ControlId: "SOC2-CC8.1",
+      reportPage: 70,
+      excerpt: "Production changes require review.",
+      classARuleId: "KSI-CMT-LMC",
+      coverage: "partially_covered" as const,
+      reason: "Change review may support the logging-changes outcome.",
+      gapDescription: "Confirm that every change source is logged.",
+      additionalEvidenceNeeded: "Current change-log reconciliation.",
+      suggested: true,
+      confirmed: false,
+    };
+    project.mappings.push(mapping, { ...mapping, id: "mapping-two" });
+
+    expect(() => BridgeProjectSchema.parse(project)).toThrow(/control-to-rule pair.*unique/iu);
+  });
+
+  it("requires complete review provenance for every confirmed mapping decision", () => {
+    const project = createEmptyProject("Mapping provenance", "Provider");
+    project.soc2.controls.push({
+      id: "SOC2-CC8.1",
+      title: "Change management",
+      trustServicesCriteria: ["CC8.1"],
+      reportPages: [70],
+      auditorTest: "Inspected production changes.",
+      auditorResult: "No exceptions noted.",
+      exceptionIds: [],
+      excerpt: "Production changes require review.",
+    });
+    project.mappings.push({
+      id: "mapping-reviewed-without-provenance",
+      soc2ControlId: "SOC2-CC8.1",
+      reportPage: 70,
+      excerpt: "Production changes require review.",
+      classARuleId: "KSI-CMT-LMC",
+      coverage: "no_relevant_mapping",
+      reason: "A reviewer rejected this relationship.",
+      gapDescription: "No support was established.",
+      additionalEvidenceNeeded: "Current change records.",
+      suggested: true,
+      confirmed: true,
+      reviewOutcome: "rejected_mapping",
+    });
+
+    expect(() => BridgeProjectSchema.parse(project)).toThrow(/reviewer|review date|provenance/iu);
+  });
+
+  it("rejects a reviewed mapping when its outcome and coverage disagree", () => {
+    const project = createEmptyProject("Mapping invariant", "Provider");
+    project.soc2.controls.push({
+      id: "SOC2-CC6.1",
+      title: "Access management",
+      trustServicesCriteria: ["CC6.1"],
+      reportPages: [12],
+      auditorTest: "Inspected access reviews.",
+      auditorResult: "No exceptions noted.",
+      exceptionIds: [],
+      excerpt: "Access is reviewed.",
+    });
+    project.mappings.push({
+      id: "mapping-inconsistent-review",
+      soc2ControlId: "SOC2-CC6.1",
+      reportPage: 12,
+      excerpt: "Access is reviewed.",
+      classARuleId: "KSI-IAM-AAM",
+      coverage: "no_relevant_mapping",
+      reason: "Tampered imported review record.",
+      gapDescription: "",
+      additionalEvidenceNeeded: "",
+      suggested: false,
+      confirmed: true,
+      reviewOutcome: "confirmed_supporting_material",
+      reviewer: "Morgan Lee",
+      reviewDate: "2026-07-18",
+    });
+
+    const result = BridgeProjectSchema.safeParse(project);
+    expect(result.success).toBe(false);
+    expect(result.error?.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          path: ["mappings", 0, "coverage"],
+          message: expect.stringMatching(/must match the recorded review outcome/iu),
+        }),
+      ]),
+    );
+  });
+
+  it("rejects supporting mapping confirmation until the source control has a dated review", () => {
+    const project = createEmptyProject("Control review invariant", "Provider");
+    project.soc2.controls.push({
+      id: "SOC2-CC6.1",
+      title: "Access management",
+      trustServicesCriteria: ["CC6.1"],
+      reportPages: [12],
+      auditorTest: "Inspected access reviews.",
+      auditorResult: "No exceptions noted.",
+      exceptionIds: [],
+      excerpt: "Access is reviewed.",
+      confirmationStatus: "unreviewed",
+    });
+    project.mappings.push({
+      id: "mapping-with-unreviewed-control",
+      soc2ControlId: "SOC2-CC6.1",
+      reportPage: 12,
+      excerpt: "Access is reviewed.",
+      classARuleId: "KSI-IAM-AAM",
+      coverage: "partially_covered",
+      reason: "Potential support.",
+      gapDescription: "",
+      additionalEvidenceNeeded: "",
+      suggested: false,
+      confirmed: true,
+      reviewOutcome: "partial_support",
+      reviewer: "Morgan Lee",
+      reviewDate: "2026-07-18",
+    });
+
+    expect(() => BridgeProjectSchema.parse(project)).toThrow(/control record.*dated review/iu);
+  });
+
   it("requires a visible watermark for fictional sample projects", () => {
     const project = createEmptyProject("Sample", "Fictional Co");
     project.metadata.isSample = true;
@@ -112,9 +315,56 @@ describe("BridgeProject", () => {
     expect(migrated.metadata.name).toBe("Legacy");
     expect(migrated.organization.name).toBe("Old Co");
     expect(migrated.metadata.migrations).toEqual([
-      expect.objectContaining({ from: 0, to: 1, id: "v0-to-v1" }),
+      expect.objectContaining({ from: 0, to: PROJECT_SCHEMA_VERSION }),
     ]);
     expect(BridgeProjectSchema.parse(migrated)).toEqual(migrated);
+  });
+
+  it("migrates legacy v1 mappings without inventing reviewer provenance", () => {
+    const legacy = structuredClone(
+      createEmptyProject("Legacy v1 mapping", "Provider"),
+    ) as unknown as {
+      metadata: Omit<BridgeProject["metadata"], "schemaVersion"> & { schemaVersion: number };
+      soc2: BridgeProject["soc2"];
+      mappings: BridgeProject["mappings"];
+    } & Omit<BridgeProject, "metadata" | "soc2" | "mappings">;
+    legacy.metadata.schemaVersion = 1;
+    legacy.soc2.controls.push({
+      id: "SOC2-CC8.1",
+      title: "Change management",
+      trustServicesCriteria: ["CC8.1"],
+      reportPages: [70],
+      auditorTest: "Inspected changes.",
+      auditorResult: "No exceptions noted.",
+      exceptionIds: [],
+      excerpt: "Production changes require review.",
+    });
+    legacy.mappings.push({
+      id: "legacy-confirmed-mapping",
+      soc2ControlId: "SOC2-CC8.1",
+      reportPage: 70,
+      excerpt: "Production changes require review.",
+      classARuleId: "KSI-CMT-LMC",
+      coverage: "partially_covered",
+      reason: "Legacy mapping",
+      gapDescription: "Re-review required.",
+      additionalEvidenceNeeded: "Current evidence.",
+      suggested: true,
+      confirmed: true,
+    });
+
+    const migrated = migrateProject(legacy);
+
+    expect(migrated.metadata.schemaVersion).toBe(PROJECT_SCHEMA_VERSION);
+    expect(migrated.mappings[0]).toEqual(
+      expect.objectContaining({ confirmed: false, reviewOutcome: "needs_expert_review" }),
+    );
+    expect(migrated.mappings[0]?.missingInformation).toContain(
+      "Reconfirm this mapping after the project migration.",
+    );
+    expect(migrated.metadata.migrations).toContainEqual(
+      expect.objectContaining({ from: 1, to: PROJECT_SCHEMA_VERSION }),
+    );
   });
 
   it("defaults the optional package logo field when an older v1 project is restored", () => {

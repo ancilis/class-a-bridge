@@ -1,5 +1,6 @@
 import {
   MemoryRateLimitStore,
+  contactSecurityHeaders,
   createContactHandler,
   createWebhookDelivery,
   type RateLimitStore,
@@ -58,12 +59,7 @@ export default {
       return await createContactWorker(environment)(request);
     } catch {
       return new Response(JSON.stringify({ accepted: false, code: "temporarily_unavailable" }), {
-        headers: {
-          "cache-control": "no-store",
-          "content-security-policy": "default-src 'none'; base-uri 'none'; frame-ancestors 'none'",
-          "content-type": "application/json; charset=utf-8",
-          "x-content-type-options": "nosniff",
-        },
+        headers: contactSecurityHeaders(),
         status: 503,
       });
     }

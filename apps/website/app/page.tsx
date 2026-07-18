@@ -83,7 +83,32 @@ export default function HomePage() {
         </ul>
       </section>
 
-      <section className="home-section home-section--tint" aria-labelledby="outcomes-title">
+      <section className="home-section home-section--tint" aria-labelledby="reuse-title">
+        <div className="shell">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">{homepage.reuseModel.eyebrow}</p>
+              <h2 id="reuse-title">{homepage.reuseModel.title}</h2>
+            </div>
+            <p>{homepage.reuseModel.intro}</p>
+          </div>
+          <div className="outcome-grid">
+            {homepage.reuseModel.points.map((point, index) => (
+              <article key={point.title} className="outcome-card">
+                <span aria-hidden="true">{String(index + 1).padStart(2, "0")}</span>
+                <h3>{point.title}</h3>
+                <p>{point.body}</p>
+              </article>
+            ))}
+          </div>
+          <div className="section-note">
+            <span aria-hidden="true">i</span>
+            <p>{homepage.reuseModel.note}</p>
+          </div>
+        </div>
+      </section>
+
+      <section className="home-section" aria-labelledby="outcomes-title">
         <div className="shell">
           <div className="section-heading">
             <div>

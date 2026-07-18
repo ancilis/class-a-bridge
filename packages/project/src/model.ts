@@ -3,7 +3,7 @@ import { z } from "zod";
 import { CATALOG_MANIFEST, RULE_REGISTRY, RULE_SELECTIONS } from "@class-a-bridge/rules";
 
 export const RULE_CATALOG_VERSION = CATALOG_MANIFEST.catalogVersion;
-export const PROJECT_SCHEMA_VERSION = 1 as const;
+export const PROJECT_SCHEMA_VERSION = 2 as const;
 
 export const AnswerValueSchema = z.enum(["yes", "no", "not_sure"]);
 export type AnswerValue = z.infer<typeof AnswerValueSchema>;
@@ -190,21 +190,96 @@ const ExtractionCandidateSchema = z
     confidence: z.enum(["high", "medium", "low"]),
     detector: z.string(),
     decision: z.enum(["unreviewed", "confirmed", "edited", "ignored"]),
+    application: z
+      .object({
+        appliedValue: z.string(),
+        previousValue: z.string().optional(),
+        previousSecondaryValue: z.string().optional(),
+        addedToCanonical: z.boolean().optional(),
+      })
+      .strict()
+      .optional(),
   })
   .strict();
 
-const Soc2ControlSchema = z
+const Soc2SourceSuggestionSchema = z
+  .object({
+    field: z.string().min(1),
+    suggestedValue: z.string(),
+    sourcePage: z.number().int().positive(),
+    sourceExcerpt: z.string(),
+    extractionBasis: z.string().min(1),
+    decision: z.enum(["unreviewed", "confirmed", "edited", "ignored"]),
+    candidateId: z.string().min(1).optional(),
+  })
+  .strict();
+
+export const Soc2ControlSchema = z
   .object({
     id: z.string().min(1),
     title: z.string(),
+    description: z.string().optional(),
     trustServicesCriteria: z.array(z.string()),
     reportPages: z.array(z.number().int().positive()),
+    reportPageRange: z.string().optional(),
     auditorTest: z.string(),
     auditorResult: z.string(),
     exceptionIds: z.array(z.string().min(1)),
     excerpt: z.string(),
+    exceptionStatus: z.enum(["no_exception_reported", "exception_reported", "not_sure"]).optional(),
+    exceptionDescription: z.string().optional(),
+    remediationStatus: z
+      .enum(["not_required", "not_started", "in_progress", "remediated", "accepted", "not_sure"])
+      .optional(),
+    reportPeriod: z.string().optional(),
+    reportPeriodStart: z.iso.date().optional(),
+    reportPeriodEnd: z.iso.date().optional(),
+    frequency: z.string().optional(),
+    owner: z.string().optional(),
+    systemScope: z.string().optional(),
+    environment: z.string().optional(),
+    subserviceOrganization: z.string().optional(),
+    treatment: z.enum(["inclusive", "carve_out", "not_applicable", "not_sure"]).optional(),
+    complementaryUserEntityControl: z.string().optional(),
+    complementarySubserviceOrganizationControl: z.string().optional(),
+    evidenceReferences: z.array(z.string().min(1)).optional(),
+    scopeAlignment: z.enum(["aligned", "potential_mismatch", "not_sure"]).optional(),
+    confirmationStatus: z.enum(["unreviewed", "confirmed", "edited", "ignored"]).optional(),
+    reviewer: z.string().optional(),
+    reviewDate: z.iso.date().optional(),
+    notes: z.string().optional(),
+    sourceSuggestions: z.array(Soc2SourceSuggestionSchema).optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((control, context) => {
+    if (
+      control.reportPeriodStart &&
+      control.reportPeriodEnd &&
+      control.reportPeriodStart > control.reportPeriodEnd
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["reportPeriodEnd"],
+        message: "SOC 2 control report-period end cannot be before its start.",
+      });
+    }
+    if (control.confirmationStatus === "confirmed") {
+      if (!control.reviewer?.trim()) {
+        context.addIssue({
+          code: "custom",
+          path: ["reviewer"],
+          message: "A confirmed SOC 2 control requires a named reviewer.",
+        });
+      }
+      if (!control.reviewDate) {
+        context.addIssue({
+          code: "custom",
+          path: ["reviewDate"],
+          message: "A confirmed SOC 2 control requires a review date.",
+        });
+      }
+    }
+  });
 
 const Soc2ExceptionSchema = z
   .object({
@@ -416,7 +491,25 @@ const EvidenceSchema = z
   })
   .strict();
 
-const MappingSchema = z
+export const SOC2_REVIEW_OUTCOME_COVERAGE = {
+  confirmed_supporting_material: "likely_covered",
+  partial_support: "partially_covered",
+  supporting_evidence_only: "supporting_evidence_only",
+  fedramp_specific_work_required: "fedramp_specific_work_required",
+  scope_mismatch: "scope_mismatch",
+  period_mismatch: "needs_human_review",
+  exception_affects_reuse: "needs_human_review",
+  rejected_mapping: "no_relevant_mapping",
+  needs_expert_review: "needs_human_review",
+} as const;
+
+export const SOC2_SUPPORTING_REVIEW_OUTCOMES = [
+  "confirmed_supporting_material",
+  "partial_support",
+  "supporting_evidence_only",
+] as const;
+
+export const Soc2MappingSchema = z
   .object({
     id: z.string().min(1),
     soc2ControlId: z.string().min(1),
@@ -437,10 +530,80 @@ const MappingSchema = z
     additionalEvidenceNeeded: z.string(),
     suggested: z.boolean(),
     confirmed: z.boolean(),
+    suggestionLevel: z
+      .enum([
+        "strong_candidate",
+        "possible_candidate",
+        "insufficient_information",
+        "potential_conflict",
+        "expert_review_suggested",
+      ])
+      .optional(),
+    suggestionSource: z.enum(["deterministic_playbook", "manual", "imported"]).optional(),
+    playbookContentVersion: z.string().optional(),
+    matchedCriteria: z.array(z.string()).optional(),
+    matchedKeywords: z.array(z.string()).optional(),
+    suggestionReasons: z.array(z.string()).optional(),
+    scopeAlignment: z.enum(["aligned", "potential_mismatch", "not_sure"]).optional(),
+    periodAlignment: z.enum(["aligned", "mismatch", "not_sure"]).optional(),
+    testResultStatus: z
+      .enum(["no_exception_reported", "exception_reported", "needs_review", "missing"])
+      .optional(),
+    exceptionStatus: z.enum(["no_exception_reported", "exception_reported", "not_sure"]).optional(),
+    missingInformation: z.array(z.string()).optional(),
+    conflicts: z.array(z.string()).optional(),
+    evidenceIds: z.array(z.string().min(1)).optional(),
+    reviewOutcome: z
+      .enum([
+        "confirmed_supporting_material",
+        "partial_support",
+        "supporting_evidence_only",
+        "fedramp_specific_work_required",
+        "scope_mismatch",
+        "period_mismatch",
+        "exception_affects_reuse",
+        "rejected_mapping",
+        "needs_expert_review",
+      ])
+      .optional(),
     reviewer: z.string().optional(),
-    reviewDate: z.string().optional(),
+    reviewDate: z.iso.date().optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((mapping, context) => {
+    if (
+      mapping.reviewOutcome &&
+      mapping.coverage !== SOC2_REVIEW_OUTCOME_COVERAGE[mapping.reviewOutcome]
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["coverage"],
+        message: "Coverage must match the recorded review outcome.",
+      });
+    }
+    if (!mapping.confirmed) return;
+    if (!mapping.reviewOutcome) {
+      context.addIssue({
+        code: "custom",
+        path: ["reviewOutcome"],
+        message: "A confirmed mapping decision requires a recorded review outcome.",
+      });
+    }
+    if (!mapping.reviewer?.trim()) {
+      context.addIssue({
+        code: "custom",
+        path: ["reviewer"],
+        message: "A confirmed mapping decision requires a named reviewer.",
+      });
+    }
+    if (!mapping.reviewDate) {
+      context.addIssue({
+        code: "custom",
+        path: ["reviewDate"],
+        message: "A confirmed mapping decision requires a review date.",
+      });
+    }
+  });
 
 export const ACTION_CATEGORIES = [
   "eligibility_blockers",
@@ -592,7 +755,7 @@ export const BridgeProjectSchema = z
     materials: z.array(MaterialSchema),
     requirements: z.array(RequirementWorkSchema),
     evidence: z.array(EvidenceSchema),
-    mappings: z.array(MappingSchema),
+    mappings: z.array(Soc2MappingSchema),
     actions: z.array(ActionSchema),
     generatedOutputs: z.array(GeneratedOutputSchema),
     snapshots: z.array(SnapshotSchema),
@@ -663,6 +826,22 @@ export const BridgeProjectSchema = z
       ["soc2", "exceptions"],
       "SOC 2 exception",
     );
+    const soc2ControlIds = new Set(project.soc2.controls.map(({ id: controlId }) => controlId));
+    const soc2ControlsById = new Map(project.soc2.controls.map((control) => [control.id, control]));
+    const soc2ExceptionIds = new Set(
+      project.soc2.exceptions.map(({ id: exceptionId }) => exceptionId),
+    );
+    project.soc2.controls.forEach((control, controlIndex) => {
+      control.exceptionIds.forEach((exceptionId, referenceIndex) => {
+        if (!soc2ExceptionIds.has(exceptionId)) {
+          context.addIssue({
+            code: "custom",
+            path: ["soc2", "controls", controlIndex, "exceptionIds", referenceIndex],
+            message: `SOC 2 control exception reference ${exceptionId} does not resolve to a project exception.`,
+          });
+        }
+      });
+    });
     requireUnique(
       project.scope.resources,
       (item) => item.id,
@@ -703,6 +882,18 @@ export const BridgeProjectSchema = z
         });
       }
     }
+    project.requirements.forEach((requirement, requirementIndex) => {
+      requirement.soc2ControlIds.forEach((controlId, referenceIndex) => {
+        if (!soc2ControlIds.has(controlId)) {
+          context.addIssue({
+            code: "custom",
+            path: ["requirements", requirementIndex, "soc2ControlIds", referenceIndex],
+            message: `Requirement SOC 2 control reference ${controlId} does not resolve to the control inventory.`,
+          });
+        }
+      });
+    });
+    const evidenceIds = new Set(project.evidence.map(({ id: evidenceId }) => evidenceId));
     project.evidence.forEach((evidence, evidenceIndex) => {
       evidence.relatedRequirementIds.forEach((ruleId, referenceIndex) => {
         if (!requirementRuleIds.has(ruleId)) {
@@ -713,7 +904,17 @@ export const BridgeProjectSchema = z
           });
         }
       });
+      evidence.relatedSoc2ControlIds.forEach((controlId, referenceIndex) => {
+        if (!soc2ControlIds.has(controlId)) {
+          context.addIssue({
+            code: "custom",
+            path: ["evidence", evidenceIndex, "relatedSoc2ControlIds", referenceIndex],
+            message: `Evidence SOC 2 control reference ${controlId} does not resolve to the control inventory.`,
+          });
+        }
+      });
     });
+    const mappingPairs = new Set<string>();
     project.mappings.forEach((mapping, index) => {
       if (!requirementRuleIds.has(mapping.classARuleId)) {
         context.addIssue({
@@ -722,6 +923,62 @@ export const BridgeProjectSchema = z
           message: `Mapping requirement reference ${mapping.classARuleId} does not resolve to a project requirement.`,
         });
       }
+      if (!soc2ControlIds.has(mapping.soc2ControlId)) {
+        context.addIssue({
+          code: "custom",
+          path: ["mappings", index, "soc2ControlId"],
+          message: `Mapping SOC 2 control reference ${mapping.soc2ControlId} does not resolve to the control inventory.`,
+        });
+      }
+      const supportingOutcome = SOC2_SUPPORTING_REVIEW_OUTCOMES.some(
+        (outcome) => outcome === mapping.reviewOutcome,
+      );
+      const mappedControl = soc2ControlsById.get(mapping.soc2ControlId);
+      if (
+        mapping.confirmed &&
+        supportingOutcome &&
+        mappedControl &&
+        (mappedControl.confirmationStatus !== "confirmed" ||
+          !mappedControl.reviewer?.trim() ||
+          !mappedControl.reviewDate)
+      ) {
+        context.addIssue({
+          code: "custom",
+          path: ["mappings", index, "confirmed"],
+          message:
+            "A supporting mapping cannot be confirmed until its SOC 2 control record has a named, dated review.",
+        });
+      }
+      mapping.evidenceIds?.forEach((evidenceId, referenceIndex) => {
+        if (!evidenceIds.has(evidenceId)) {
+          context.addIssue({
+            code: "custom",
+            path: ["mappings", index, "evidenceIds", referenceIndex],
+            message: `Mapping evidence reference ${evidenceId} does not resolve to the evidence library.`,
+          });
+        }
+      });
+      const pair = `${mapping.soc2ControlId}\u0000${mapping.classARuleId}`;
+      if (mappingPairs.has(pair)) {
+        context.addIssue({
+          code: "custom",
+          path: ["mappings", index, "classARuleId"],
+          message:
+            "Each SOC 2 control-to-rule pair must be unique; project.mappings is the authoritative relationship list.",
+        });
+      }
+      mappingPairs.add(pair);
+    });
+    project.soc2.controls.forEach((control, controlIndex) => {
+      control.evidenceReferences?.forEach((evidenceId, referenceIndex) => {
+        if (!evidenceIds.has(evidenceId)) {
+          context.addIssue({
+            code: "custom",
+            path: ["soc2", "controls", controlIndex, "evidenceReferences", referenceIndex],
+            message: `SOC 2 control evidence reference ${evidenceId} does not resolve to the evidence library.`,
+          });
+        }
+      });
     });
     requireUnique(project.evidence, (item) => item.id, ["evidence"], "evidence");
     requireUnique(project.mappings, (item) => item.id, ["mappings"], "SOC 2 mapping");
@@ -808,6 +1065,8 @@ export const BridgeProjectSchema = z
 export type BridgeProject = z.infer<typeof BridgeProjectSchema>;
 export type EvidenceItem = z.infer<typeof EvidenceSchema>;
 export type RequirementWork = z.infer<typeof RequirementWorkSchema>;
+export type Soc2Control = z.infer<typeof Soc2ControlSchema>;
+export type Soc2Mapping = z.infer<typeof Soc2MappingSchema>;
 
 export function finalReviewApprovalScope(snapshot: BridgeProject["snapshots"][number]): string {
   return finalReviewScopeForSnapshot(snapshot);
@@ -857,7 +1116,7 @@ export function createEmptyProject(name: string, organizationName: string): Brid
     metadata: {
       id: id(),
       name,
-      schemaVersion: 1,
+      schemaVersion: PROJECT_SCHEMA_VERSION,
       ruleCatalogVersion: RULE_CATALOG_VERSION,
       createdAt: now,
       updatedAt: now,

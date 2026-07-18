@@ -24,7 +24,7 @@ const productPage: StaticPageDefinition = {
   path: "/product/",
   title: "Class A Bridge product overview",
   description:
-    "See how Class A Bridge turns a SOC 2 Type II starting point into an explainable FedRAMP 20x Class A preparation workspace and package scaffold.",
+    "See how Class A Bridge accelerates explainable SOC 2 reuse and turns confirmed support and unresolved gaps into a FedRAMP 20x Class A workspace.",
   eyebrow: "The product",
   headline: "A guided workspace between your SOC 2 report and a Class A plan.",
   intro:
@@ -40,8 +40,8 @@ const productPage: StaticPageDefinition = {
           body: "Answer eight high-value questions and receive a result with reasons, uncertainties, source rules, and three actions.",
         },
         {
-          title: "Gap analysis",
-          body: "Map SOC 2 controls, pages, tests, results, and exceptions to Class A requirements without claiming a universal crosswalk.",
+          title: "SOC 2 reuse accelerator",
+          body: "Inventory controls and review deterministic suggestions based on scope, audit period, test results, exceptions, and carve-outs without claiming a universal crosswalk.",
         },
         {
           title: "Guided completion",
@@ -54,13 +54,27 @@ const productPage: StaticPageDefinition = {
       ],
     },
     {
+      id: "reuse",
+      title: "Suggestions stay explainable and human-confirmed",
+      body: [
+        "The deterministic mapping engine runs locally in your browser and does not use artificial intelligence. It uses user-confirmed control details and versioned playbooks with visible review status; it does not apply a universal crosswalk.",
+        "Every suggestion explains why the relationship may help, identifies conflicts and missing information, and stays separate from provider-approved content. Your team confirms every mapping before it can support a generated narrative.",
+      ],
+      bullets: [
+        "Strong candidate, possible candidate, insufficient information, potential conflict, or expert review suggested",
+        "Confirmed supporting material, partial support, evidence only, FedRAMP-specific work, mismatch, rejection, or expert review",
+        "No suggestion completes, approves, or represents that a Class A requirement is satisfied",
+      ],
+    },
+    {
       id: "workspace",
-      title: "One project, ten focused work areas",
+      title: "One project, eleven focused work areas",
       bullets: [
         "Overview and recommended next actions",
         "Eligibility rationale and external prerequisites",
         "Cloud service offering scope",
         "SOC 2 materials and timing",
+        "SOC 2 control inventory, reuse suggestions, mapping review, and gap reporting",
         "Class A requirements and seven dedicated Key Security Indicator workflows",
         "Evidence candidates, action planning, package generation, reports, and data settings",
       ],
@@ -99,7 +113,7 @@ const howItWorksPage: StaticPageDefinition = {
   path: "/how-it-works/",
   title: "How Class A Bridge works",
   description:
-    "Follow the private browser-based workflow from a SOC 2 Type II report or manual answers through scope, evidence, actions, and Class A package preparation.",
+    "Follow the private browser workflow from SOC 2 control inventory through explainable reuse suggestions, confirmed mappings, gaps, and Class A package preparation.",
   eyebrow: "How it works",
   headline: "One understandable decision at a time.",
   intro:
@@ -136,13 +150,14 @@ const howItWorksPage: StaticPageDefinition = {
     {
       id: "build",
       eyebrow: "Step 3",
-      title: "Define scope and develop requirement records",
+      title: "Review SOC 2 reuse before drafting requirements",
       bullets: [
-        "List systems, environments, data stores, identity, logging, deployment, security tooling, and third parties",
-        "Identify resources handling federal customer data or affecting confidentiality, integrity, or availability",
-        "Connect confirmed SOC 2 material and evidence candidates to the applicable requirement records",
-        "Capture owners, dates, open questions, exceptions, approvals, and technical handoffs",
+        "Import, paste, or manually enter controls; every extracted field remains a suggestion until confirmed",
+        "Check product scope, audit period, test results, exceptions, carve-outs, and subservice organizations",
+        "Review why each deterministic Class A relationship was suggested and confirm, narrow, or reject it",
+        "Record what the SOC 2 control establishes, what remains missing, and who owns the follow-up",
       ],
+      note: "The engine runs locally in your browser, does not use artificial intelligence, and does not apply a universal crosswalk. Your team confirms every mapping.",
     },
     {
       id: "export",
@@ -187,9 +202,9 @@ const openSourcePage: StaticPageDefinition = {
       title: "Download and review the release",
       cards: [
         {
-          title: "Version 1.0.0 source archive",
+          title: "Version 0.9.0 Public Beta source archive",
           body: "Download the authored source, workspace packages, tests, documentation, and release configuration published with this site.",
-          href: "/downloads/class-a-bridge-1.0.0-source.tar.gz",
+          href: "/downloads/class-a-bridge-0.9.0-source.tar.gz",
           linkLabel: "Download the source archive",
         },
         {
@@ -339,7 +354,7 @@ const methodologyPage: StaticPageDefinition = {
   path: "/methodology/",
   title: "Class A Bridge methodology",
   description:
-    "Review the deterministic eligibility, SOC 2 mapping, uncertainty, evidence, status, and regulatory-source methodology behind Class A Bridge.",
+    "Review the deterministic eligibility and SOC 2 reuse methodology, human confirmation model, uncertainty, evidence, and regulatory provenance behind Class A Bridge.",
   eyebrow: "Methodology",
   headline: "Organize the record without manufacturing certainty.",
   intro:
@@ -355,12 +370,13 @@ const methodologyPage: StaticPageDefinition = {
     },
     {
       id: "mapping",
-      title: "SOC 2 material is reusable, not universally interchangeable",
+      title: "A deterministic reuse accelerator, not a universal crosswalk",
       bullets: [
         "Mappings are many-to-many across controls, criteria, pages, tests, results, exceptions, requirements, evidence, and narratives",
-        "Every suggestion explains why it may be relevant and requires user confirmation",
-        "Coverage distinguishes likely coverage, partial support, evidence-only support, FedRAMP-specific work, scope mismatch, no mapping, and human review",
-        "A generic Trust Services Criteria reference never becomes a universal one-to-one crosswalk",
+        "The engine considers confirmed criteria, control text, scope, audit period, test results, exceptions, carve-outs, subservice organizations, and existing evidence relationships",
+        "Every suggestion explains why it may be relevant, shows alignment and conflict checks, and lists information still missing",
+        "Your team confirms every mapping; unconfirmed suggestions stay out of generated provider narratives",
+        "The engine runs locally in your browser, does not use artificial intelligence, and does not apply a universal crosswalk",
       ],
     },
     {
@@ -388,7 +404,7 @@ const methodologyPage: StaticPageDefinition = {
       id: "sources",
       title: "Regulatory content is versioned and reviewable",
       body: [
-        "Release 1.0.0 uses FedRAMP Consolidated Rules for 2026 catalog 2026.07.14.01 and pinned official schema copies dated in their filenames 2026-06-24, retrieved and checked on 2026-07-17.",
+        "Release 0.9.0 Public Beta uses FedRAMP Consolidated Rules for 2026 catalog 2026.07.14.01 and pinned official schema copies dated in their filenames 2026-06-24, retrieved and checked on 2026-07-17.",
         "When official content changes, maintainers compare source bytes and normalized records, review a readable diff, update provenance, and record interpretation changes instead of silently changing product behavior.",
       ],
     },
@@ -441,6 +457,14 @@ const guidancePage: StaticPageDefinition = {
         "Audit-engagement documentation that can be verified",
         "Expected schedule for the next report",
         "Supplemental compliance evidence when applicable",
+      ],
+    },
+    {
+      id: "reuse",
+      title: "Test reuse against the actual SOC 2 record",
+      body: [
+        "A control may provide useful supporting context without establishing the full Class A outcome. Review the control description, service scope, report period, auditor test and result, exceptions, carve-outs, subservice organizations, and complementary controls together.",
+        "Class A Bridge offers deterministic, explainable suggestions from that confirmed record. Treat each as a review prompt: confirm support, narrow it to partial support, reject it, or flag it for expert review. Additional FedRAMP-specific evidence is normal.",
       ],
     },
     {
@@ -561,7 +585,7 @@ const servicesPage: StaticPageDefinition = {
     },
     {
       id: "message",
-      title: "Software can organize the record.",
+      title: "Software can organize and accelerate the record.",
       note: "Ancilis can help validate the interpretation, close implementation gaps, and review the package before your company applies.",
     },
   ],
@@ -583,7 +607,7 @@ const faqPage: StaticPageDefinition = {
   eyebrow: "Frequently asked questions",
   headline: "Clear answers before you put sensitive work into the browser.",
   intro:
-    "These answers describe the product boundary for version 1.0. Official program rules and qualified reviewers remain authoritative for provider-specific decisions.",
+    "These answers describe the product boundary for version 0.9.0 Public Beta. Official program rules and qualified reviewers remain authoritative for provider-specific decisions.",
   sections: [],
   cta: {
     title: "Still deciding whether Class A fits?",
@@ -623,6 +647,15 @@ const docsPage: StaticPageDefinition = {
         "A selected PDF stays in the browser. Deterministic parsing may propose report type, issuer, period, product, criteria, controls, subservice organizations, exceptions, user controls, and bridge references.",
         "Confirm, edit, or ignore every candidate. If the file cannot be read, choose manual entry and continue without losing the project.",
       ],
+    },
+    {
+      id: "reuse",
+      title: "Building and reviewing the SOC 2 control inventory",
+      body: [
+        "Add controls through local PDF-assisted extraction, manual entry, spreadsheet-style paste, CSV import, or the fictional sample. Confirm, edit, or ignore extracted values before relying on them.",
+        "The deterministic engine proposes relationships from confirmed control details and explains its basis. Review scope, audit period, test results, exceptions, and carve-outs; then confirm, narrow, reject, or flag each mapping for expert review.",
+      ],
+      note: "A mapping suggestion never completes a requirement or proves that evidence is sufficient.",
     },
     {
       id: "project-data",
@@ -702,19 +735,20 @@ const releaseNotesPage: StaticPageDefinition = {
   path: "/release-notes/",
   title: "Class A Bridge release notes",
   description:
-    "Review the Class A Bridge 1.0.0 release scope, pinned regulatory sources, local-first capabilities, quality boundary, and known non-blocking limitations.",
+    "Review the Class A Bridge 0.9.0 Public Beta scope, SOC 2 reuse accelerator, pinned regulatory sources, local-first boundary, and known limitations.",
   eyebrow: "Release notes",
-  headline: "Version 1.0.0 — the complete Class A preparation foundation.",
+  headline: "Version 0.9.0 Public Beta — a public, evidence-seeking release.",
   intro:
-    "Released July 17, 2026. This first public release provides a no-account, local-first assessment and guided preparation workspace for FedRAMP 20x Class A.",
+    "Prepared July 18, 2026. This public beta provides a no-account, local-first assessment, SOC 2 reuse accelerator, and guided preparation workspace for FedRAMP 20x Class A.",
   sections: [
     {
       id: "included",
-      title: "Included in 1.0.0",
+      title: "Included in 0.9.0 Public Beta",
       bullets: [
         "Eight-question preliminary eligibility assessment with explainable results",
         "Local deterministic SOC 2 PDF parsing with manual fallback and confirmation",
-        "Guided scope, materials, requirement, seven-KSI, evidence, mapping, and action-plan workflows",
+        "SOC 2 control inventory, deterministic reuse suggestions, human-confirmed mappings, and reuse-and-gap reporting",
+        "Guided scope, materials, requirement, seven-KSI, evidence, and action-plan workflows",
         "Human-readable package artifacts, pinned-schema JSON validation, and final-review snapshots",
         "Standard, password-protected, and redacted advisor project exports",
         "Complete fictional Acme Metrics sample and static marketing, guidance, legal, and documentation site",
@@ -736,7 +770,8 @@ const releaseNotesPage: StaticPageDefinition = {
         "No collaborative cloud sync, accounts, or multi-user server workspace",
         "No cloud-provider integrations or automated evidence collection",
         "No automated FedRAMP application submission",
-        "Class B and Class C preparation are outside the 1.0 product scope",
+        "Class B and Class C preparation are outside the public-beta product scope",
+        "Ancilis-authored mapping playbooks remain explanatory draft content until their displayed qualified-review status is complete",
       ],
     },
   ],

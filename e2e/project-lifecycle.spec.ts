@@ -60,6 +60,7 @@ test("normal assessment and local evidence flow transmit no project data", async
   await page.getByRole("button", { name: "Add evidence candidate" }).click();
   await expect(page.getByText(PRIVATE_CANARY, { exact: true })).toBeVisible();
   await navigateTo(page, "Class A requirements");
+  await page.getByRole("button", { name: "Record mode" }).click();
   await page.locator(".rule-list__item").filter({ hasText: "KSI-CMT-LMC" }).click();
   await fieldControl(page, "Provider response", "textarea").fill(`${PRIVATE_CANARY} stays local.`);
   await waitForLocalSave(page);

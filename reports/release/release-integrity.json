@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "status": "passed",
+  "scannedFiles": 699,
+  "scannedArchives": 4,
+  "findings": [],
+  "allowlistedFindings": [
+    {
+      "ruleId": "workstation:linux-profile",
+      "relativePath": "apps/bridge/dist/assets/pdf.worker.min-Dtn11Elq.mjs",
+      "findingSha256": "10e234638c84fed736a876dd78ee5c3e75e0b45003726fc5f8405ccb7294011d",
+      "line": 28
+    },
+    {
+      "ruleId": "workstation:linux-profile",
+      "relativePath": "dist/class-a-bridge/app/assets/pdf.worker.min-Dtn11Elq.mjs",
+      "findingSha256": "bc973a2aab7084e13b4455de197fa2a8ba28eff475ffd094abb008a4e69f38a6",
+      "line": 28
+    }
+  ]
+}

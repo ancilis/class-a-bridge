@@ -1,0 +1,445 @@
+{
+  "generatedAt": "2026-07-18T14:01:32.975Z",
+  "contentVersion": "2026.07.18-beta.1",
+  "catalogVersion": "2026.07.14.01",
+  "total": 62,
+  "byStatus": {
+    "Draft": 62
+  },
+  "records": [
+    {
+      "ruleId": "FRC-CSO-FCP",
+      "contentVersion": "2026.07.18-beta.1",
+      "contentReviewStatus": "Draft",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "ruleId": "FRC-CSO-PKG",
+      "contentVersion": "2026.07.18-beta.1",
+      "contentReviewStatus": "Draft",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "ruleId": "FRC-CSO-JSN",
+      "contentVersion": "2026.07.18-beta.1",
+      "contentReviewStatus": "Draft",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "ruleId": "FRC-CSO-MRA",
+      "contentVersion": "2026.07.18-beta.1",
+      "contentReviewStatus": "Draft",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "ruleId": "FRC-CSO-POP",
+      "contentVersion": "2026.07.18-beta.1",
+      "contentReviewStatus": "Draft",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "ruleId": "FRC-CLA-ASF",
+      "contentVersion": "2026.07.18-beta.1",
+      "contentReviewStatus": "Draft",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "ruleId": "FRC-CLA-EAM",
+      "contentVersion": "2026.07.18-beta.1",
+      "contentReviewStatus": "Draft",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "ruleId": "FRC-CLA-MFR",
+      "contentVersion": "2026.07.18-beta.1",
+      "contentReviewStatus": "Draft",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "ruleId": "FRC-CLA-RFR",
+      "contentVersion": "2026.07.18-beta.1",
+      "contentReviewStatus": "Draft",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "ruleId": "FRC-CLA-OFR",
+      "contentVersion": "2026.07.18-beta.1",
+      "contentReviewStatus": "Draft",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "ruleId": "FRC-CLA-IVV",
+      "contentVersion": "2026.07.18-beta.1",
+      "contentReviewStatus": "Draft",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "ruleId": "MAS-CSO-IIR",
+      "contentVersion": "2026.07.18-beta.1",
+      "contentReviewStatus": "Draft",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "ruleId": "CDS-CSO-PUB",
+      "contentVersion": "2026.07.18-beta.1",
+      "contentReviewStatus": "Draft",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "ruleId": "CDS-CSO-UTC",
+      "contentVersion": "2026.07.18-beta.1",
+      "contentReviewStatus": "Draft",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "ruleId": "CDS-UTC-AAD",
+      "contentVersion": "2026.07.18-beta.1",
+      "contentReviewStatus": "Draft",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "ruleId": "AFC-CSO-INB",
+      "contentVersion": "2026.07.18-beta.1",
+      "contentReviewStatus": "Draft",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "ruleId": "AFC-CSO-RCV",
+      "contentVersion": "2026.07.18-beta.1",
+      "contentReviewStatus": "Draft",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "ruleId": "AFC-CSO-CRA",
+      "contentVersion": "2026.07.18-beta.1",
+      "contentReviewStatus": "Draft",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "ruleId": "IEC-CSO-EFR",
+      "contentVersion": "2026.07.18-beta.1",
+      "contentReviewStatus": "Draft",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "ruleId": "IEC-CSO-FIR",
+      "contentVersion": "2026.07.18-beta.1",
+      "contentReviewStatus": "Draft",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "ruleId": "VDR-CSO-DET",
+      "contentVersion": "2026.07.18-beta.1",
+      "contentReviewStatus": "Draft",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "ruleId": "CCM-OCR-AVL",
+      "contentVersion": "2026.07.18-beta.1",
+      "contentReviewStatus": "Draft",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "ruleId": "CCM-OCR-NRD",
+      "contentVersion": "2026.07.18-beta.1",
+      "contentReviewStatus": "Draft",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "ruleId": "IVV-CSX-AIA",
+      "contentVersion": "2026.07.18-beta.1",
+      "contentReviewStatus": "Draft",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "ruleId": "KSI-CMT-LMC",
+      "contentVersion": "2026.07.18-beta.1",
+      "contentReviewStatus": "Draft",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "ruleId": "KSI-CNA-RNT",
+      "contentVersion": "2026.07.18-beta.1",
+      "contentReviewStatus": "Draft",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "ruleId": "KSI-CED-RAT",
+      "contentVersion": "2026.07.18-beta.1",
+      "contentReviewStatus": "Draft",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "ruleId": "KSI-IAM-AAM",
+      "contentVersion": "2026.07.18-beta.1",
+      "contentReviewStatus": "Draft",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "ruleId": "KSI-IAM-APM",
+      "contentVersion": "2026.07.18-beta.1",
+      "contentReviewStatus": "Draft",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "ruleId": "KSI-INR-RIR",
+      "contentVersion": "2026.07.18-beta.1",
+      "contentReviewStatus": "Draft",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "ruleId": "KSI-SVC-SIN",
+      "contentVersion": "2026.07.18-beta.1",
+      "contentReviewStatus": "Draft",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "ruleId": "CDS-CSO-AVR",
+      "contentVersion": "2026.07.18-beta.1",
+      "contentReviewStatus": "Draft",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "ruleId": "CPO-CSF-CPM",
+      "contentVersion": "2026.07.18-beta.1",
+      "contentReviewStatus": "Draft",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "ruleId": "CPO-CSX-CPM",
+      "contentVersion": "2026.07.18-beta.1",
+      "contentReviewStatus": "Draft",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "ruleId": "IEC-CSO-IIR",
+      "contentVersion": "2026.07.18-beta.1",
+      "contentReviewStatus": "Draft",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "ruleId": "IEC-CSO-OIR",
+      "contentVersion": "2026.07.18-beta.1",
+      "contentReviewStatus": "Draft",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "ruleId": "VDR-TFR-MVX",
+      "contentVersion": "2026.07.18-beta.1",
+      "contentReviewStatus": "Draft",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "ruleId": "VDR-TFR-PCD",
+      "contentVersion": "2026.07.18-beta.1",
+      "contentReviewStatus": "Draft",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "ruleId": "VDR-TFR-PDD",
+      "contentVersion": "2026.07.18-beta.1",
+      "contentReviewStatus": "Draft",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "ruleId": "VDR-TFR-PSD",
+      "contentVersion": "2026.07.18-beta.1",
+      "contentReviewStatus": "Draft",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "ruleId": "VDR-TFR-PVR",
+      "contentVersion": "2026.07.18-beta.1",
+      "contentReviewStatus": "Draft",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "ruleId": "VER-TFR-EVU",
+      "contentVersion": "2026.07.18-beta.1",
+      "contentReviewStatus": "Draft",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "ruleId": "CCM-QTR-MTG",
+      "contentVersion": "2026.07.18-beta.1",
+      "contentReviewStatus": "Draft",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "ruleId": "CDS-CSO-PSM",
+      "contentVersion": "2026.07.18-beta.1",
+      "contentReviewStatus": "Draft",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "ruleId": "CMU-CSO-UVM",
+      "contentVersion": "2026.07.18-beta.1",
+      "contentReviewStatus": "Draft",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "ruleId": "FRC-APP-FIA",
+      "contentVersion": "2026.07.18-beta.1",
+      "contentReviewStatus": "Draft",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "ruleId": "IVV-CSO-FIA",
+      "contentVersion": "2026.07.18-beta.1",
+      "contentReviewStatus": "Draft",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "ruleId": "SDR-CSX-KMT",
+      "contentVersion": "2026.07.18-beta.1",
+      "contentReviewStatus": "Draft",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "ruleId": "VER-TFR-IRI",
+      "contentVersion": "2026.07.18-beta.1",
+      "contentReviewStatus": "Draft",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "ruleId": "VER-TFR-MRH",
+      "contentVersion": "2026.07.18-beta.1",
+      "contentReviewStatus": "Draft",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "ruleId": "VER-TFR-NRI",
+      "contentVersion": "2026.07.18-beta.1",
+      "contentReviewStatus": "Draft",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "ruleId": "CPO-CSO-OVR",
+      "contentVersion": "2026.07.18-beta.1",
+      "contentReviewStatus": "Draft",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "ruleId": "SDR-CSO-FRR",
+      "contentVersion": "2026.07.18-beta.1",
+      "contentReviewStatus": "Draft",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "ruleId": "MKT-CSO-MLR",
+      "contentVersion": "2026.07.18-beta.1",
+      "contentReviewStatus": "Draft",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "ruleId": "MKT-CSO-PML",
+      "contentVersion": "2026.07.18-beta.1",
+      "contentReviewStatus": "Draft",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "ruleId": "MKT-IIP-AGU",
+      "contentVersion": "2026.07.18-beta.1",
+      "contentReviewStatus": "Draft",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "ruleId": "MKT-IIP-DCP",
+      "contentVersion": "2026.07.18-beta.1",
+      "contentReviewStatus": "Draft",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "ruleId": "FRC-APP-MLF",
+      "contentVersion": "2026.07.18-beta.1",
+      "contentReviewStatus": "Draft",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "ruleId": "FRC-APP-AFC",
+      "contentVersion": "2026.07.18-beta.1",
+      "contentReviewStatus": "Draft",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "ruleId": "FRC-APP-FCP",
+      "contentVersion": "2026.07.18-beta.1",
+      "contentReviewStatus": "Draft",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "ruleId": "FRC-APP-NTP",
+      "contentVersion": "2026.07.18-beta.1",
+      "contentReviewStatus": "Draft",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "ruleId": "FRC-APP-USA",
+      "contentVersion": "2026.07.18-beta.1",
+      "contentReviewStatus": "Draft",
+      "reviewer": null,
+      "reviewDate": null
+    }
+  ]
+}

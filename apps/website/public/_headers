@@ -7,3 +7,12 @@
   Strict-Transport-Security: max-age=31536000
   X-Content-Type-Options: nosniff
   X-Frame-Options: DENY
+
+/icon
+  Content-Type: image/png
+
+/opengraph-image
+  Content-Type: image/png
+
+/twitter-image
+  Content-Type: image/png

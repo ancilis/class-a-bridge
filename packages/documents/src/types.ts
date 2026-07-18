@@ -5,6 +5,7 @@ export const REPORT_KINDS = [
   "preliminary-fit",
   "executive-readiness",
   "detailed-gap",
+  "soc2-mapping",
   "scope-summary",
   "mandatory-requirements",
   "evidence-manifest",
@@ -14,8 +15,7 @@ export const REPORT_KINDS = [
 ] as const;
 
 export type ReportKind = (typeof REPORT_KINDS)[number];
-export type SupportingReportKind =
-  "soc2-mapping" | "external-materials" | "open-items" | "provider-approval";
+export type SupportingReportKind = "external-materials" | "open-items" | "provider-approval";
 export type HumanReportKind = ReportKind | SupportingReportKind;
 
 export interface GenerationOptions {

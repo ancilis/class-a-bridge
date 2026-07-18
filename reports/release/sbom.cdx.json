@@ -1,0 +1,1038 @@
+{
+  "$schema": "http://cyclonedx.org/schema/bom-1.5.schema.json",
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.5",
+  "serialNumber": "urn:uuid:3ab27e5a-127c-5d99-ab36-634df988e798",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2026-07-18T14:15:06.120Z",
+    "tools": {
+      "components": [
+        {
+          "type": "application",
+          "name": "Class A Bridge release-integrity generator",
+          "version": "0.9.0"
+        }
+      ]
+    },
+    "component": {
+      "type": "application",
+      "bom-ref": "pkg:npm/class-a-bridge@0.9.0",
+      "name": "class-a-bridge",
+      "version": "0.9.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "purl": "pkg:npm/class-a-bridge@0.9.0",
+      "supplier": {
+        "name": "Ancilis"
+      }
+    },
+    "properties": [
+      {
+        "name": "ancilis:inventory-source",
+        "value": "pnpm licenses list --prod --json"
+      }
+    ]
+  },
+  "components": [
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40img/colour@1.1.0",
+      "name": "@img/colour",
+      "version": "1.1.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "purl": "pkg:npm/%40img/colour@1.1.0",
+      "description": "The ESM-only 'color' package made compatible for use with CommonJS runtimes",
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/lovell/colour#readme"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40img/sharp-darwin-arm64@0.34.5",
+      "name": "@img/sharp-darwin-arm64",
+      "version": "0.34.5",
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "purl": "pkg:npm/%40img/sharp-darwin-arm64@0.34.5",
+      "description": "Prebuilt sharp for use with macOS 64-bit ARM",
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://sharp.pixelplumbing.com"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40img/sharp-libvips-darwin-arm64@1.2.4",
+      "name": "@img/sharp-libvips-darwin-arm64",
+      "version": "1.2.4",
+      "licenses": [
+        {
+          "license": {
+            "id": "LGPL-3.0-or-later"
+          }
+        }
+      ],
+      "purl": "pkg:npm/%40img/sharp-libvips-darwin-arm64@1.2.4",
+      "description": "Prebuilt libvips and dependencies for use with sharp on macOS 64-bit ARM",
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://sharp.pixelplumbing.com"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40napi-rs/canvas-darwin-arm64@1.0.2",
+      "name": "@napi-rs/canvas-darwin-arm64",
+      "version": "1.0.2",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "purl": "pkg:npm/%40napi-rs/canvas-darwin-arm64@1.0.2",
+      "description": "Canvas for Node.js with skia backend",
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/Brooooooklyn/canvas#readme"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40napi-rs/canvas@1.0.2",
+      "name": "@napi-rs/canvas",
+      "version": "1.0.2",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "purl": "pkg:npm/%40napi-rs/canvas@1.0.2",
+      "description": "Canvas for Node.js with skia backend",
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/Brooooooklyn/canvas#readme"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40next/env@16.2.10",
+      "name": "@next/env",
+      "version": "16.2.10",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "purl": "pkg:npm/%40next/env@16.2.10",
+      "description": "Next.js dotenv file loading",
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/vercel/next.js#readme"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40next/swc-darwin-arm64@16.2.10",
+      "name": "@next/swc-darwin-arm64",
+      "version": "16.2.10",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "purl": "pkg:npm/%40next/swc-darwin-arm64@16.2.10",
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/vercel/next.js#readme"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40playwright/test@1.61.1",
+      "name": "@playwright/test",
+      "version": "1.61.1",
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "purl": "pkg:npm/%40playwright/test@1.61.1",
+      "description": "A high-level API to automate web browsers",
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://playwright.dev"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40swc/helpers@0.5.15",
+      "name": "@swc/helpers",
+      "version": "0.5.15",
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "purl": "pkg:npm/%40swc/helpers@0.5.15",
+      "description": "External helpers for the swc project.",
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://swc.rs"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/ajv-formats@3.0.1",
+      "name": "ajv-formats",
+      "version": "3.0.1",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "purl": "pkg:npm/ajv-formats@3.0.1",
+      "description": "Format validation for Ajv v7+",
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/ajv-validator/ajv-formats#readme"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/ajv@8.20.0",
+      "name": "ajv",
+      "version": "8.20.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "purl": "pkg:npm/ajv@8.20.0",
+      "description": "Another JSON Schema Validator",
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://ajv.js.org"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/baseline-browser-mapping@2.10.43",
+      "name": "baseline-browser-mapping",
+      "version": "2.10.43",
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "purl": "pkg:npm/baseline-browser-mapping@2.10.43",
+      "description": "A library for obtaining browser versions with their maximum supported Baseline feature set and Widely Available status.",
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/web-platform-dx/baseline-browser-mapping#readme"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/caniuse-lite@1.0.30001806",
+      "name": "caniuse-lite",
+      "version": "1.0.30001806",
+      "licenses": [
+        {
+          "license": {
+            "id": "CC-BY-4.0"
+          }
+        }
+      ],
+      "purl": "pkg:npm/caniuse-lite@1.0.30001806",
+      "description": "A smaller version of caniuse-db, with only the essentials!",
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/browserslist/caniuse-lite#readme"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/client-only@0.0.1",
+      "name": "client-only",
+      "version": "0.0.1",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "purl": "pkg:npm/client-only@0.0.1",
+      "description": "This is a marker package to indicate that a module can only be used in Client Components.",
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://reactjs.org/"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/detect-libc@2.1.2",
+      "name": "detect-libc",
+      "version": "2.1.2",
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "purl": "pkg:npm/detect-libc@2.1.2",
+      "description": "Node.js module to detect the C standard library (libc) implementation family and version",
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/lovell/detect-libc#readme"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/fast-deep-equal@3.1.3",
+      "name": "fast-deep-equal",
+      "version": "3.1.3",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "purl": "pkg:npm/fast-deep-equal@3.1.3",
+      "description": "Fast deep equal",
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/epoberezkin/fast-deep-equal#readme"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/fast-uri@3.1.3",
+      "name": "fast-uri",
+      "version": "3.1.3",
+      "licenses": [
+        {
+          "license": {
+            "id": "BSD-3-Clause"
+          }
+        }
+      ],
+      "purl": "pkg:npm/fast-uri@3.1.3",
+      "description": "Dependency-free RFC 3986 URI toolbox",
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/fastify/fast-uri"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/fflate@0.8.2",
+      "name": "fflate",
+      "version": "0.8.2",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "purl": "pkg:npm/fflate@0.8.2",
+      "description": "High performance (de)compression in an 8kB package",
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://101arrowz.github.io/fflate"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/fsevents@2.3.2",
+      "name": "fsevents",
+      "version": "2.3.2",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "purl": "pkg:npm/fsevents@2.3.2",
+      "description": "Native Access to MacOS FSEvents",
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/fsevents/fsevents"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/idb@8.0.3",
+      "name": "idb",
+      "version": "8.0.3",
+      "licenses": [
+        {
+          "license": {
+            "id": "ISC"
+          }
+        }
+      ],
+      "purl": "pkg:npm/idb@8.0.3",
+      "description": "A small wrapper that makes IndexedDB usable",
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/jakearchibald/idb#readme"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/json-schema-traverse@1.0.0",
+      "name": "json-schema-traverse",
+      "version": "1.0.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "purl": "pkg:npm/json-schema-traverse@1.0.0",
+      "description": "Traverse JSON Schema passing each schema object to callback",
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/epoberezkin/json-schema-traverse#readme"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/nanoid@3.3.16",
+      "name": "nanoid",
+      "version": "3.3.16",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "purl": "pkg:npm/nanoid@3.3.16",
+      "description": "A tiny (116 bytes), secure URL-friendly unique string ID generator",
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/ai/nanoid#readme"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/next@16.2.10",
+      "name": "next",
+      "version": "16.2.10",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "purl": "pkg:npm/next@16.2.10",
+      "description": "The React Framework",
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://nextjs.org"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/pdfjs-dist@6.1.200",
+      "name": "pdfjs-dist",
+      "version": "6.1.200",
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "purl": "pkg:npm/pdfjs-dist@6.1.200",
+      "description": "Generic build of Mozilla's PDF.js library.",
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://mozilla.github.io/pdf.js/"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/picocolors@1.1.1",
+      "name": "picocolors",
+      "version": "1.1.1",
+      "licenses": [
+        {
+          "license": {
+            "id": "ISC"
+          }
+        }
+      ],
+      "purl": "pkg:npm/picocolors@1.1.1",
+      "description": "The tiniest and the fastest library for terminal output formatting with ANSI colors",
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/alexeyraspopov/picocolors#readme"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/playwright-core@1.61.1",
+      "name": "playwright-core",
+      "version": "1.61.1",
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "purl": "pkg:npm/playwright-core@1.61.1",
+      "description": "A high-level API to automate web browsers",
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://playwright.dev"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/playwright@1.61.1",
+      "name": "playwright",
+      "version": "1.61.1",
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "purl": "pkg:npm/playwright@1.61.1",
+      "description": "A high-level API to automate web browsers",
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://playwright.dev"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/postcss@8.5.19",
+      "name": "postcss",
+      "version": "8.5.19",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "purl": "pkg:npm/postcss@8.5.19",
+      "description": "Tool for transforming styles with JS plugins",
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://postcss.org/"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/react-dom@19.2.7",
+      "name": "react-dom",
+      "version": "19.2.7",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "purl": "pkg:npm/react-dom@19.2.7",
+      "description": "React package for working with the DOM.",
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://react.dev/"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/react@19.2.7",
+      "name": "react",
+      "version": "19.2.7",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "purl": "pkg:npm/react@19.2.7",
+      "description": "React is a JavaScript library for building user interfaces.",
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://react.dev/"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/require-from-string@2.0.2",
+      "name": "require-from-string",
+      "version": "2.0.2",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "purl": "pkg:npm/require-from-string@2.0.2",
+      "description": "Require module from string",
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/floatdrop/require-from-string#readme"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/scheduler@0.27.0",
+      "name": "scheduler",
+      "version": "0.27.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "purl": "pkg:npm/scheduler@0.27.0",
+      "description": "Cooperative scheduler for the browser environment.",
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://react.dev/"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/semver@7.8.5",
+      "name": "semver",
+      "version": "7.8.5",
+      "licenses": [
+        {
+          "license": {
+            "id": "ISC"
+          }
+        }
+      ],
+      "purl": "pkg:npm/semver@7.8.5",
+      "description": "The semantic version parser used by npm.",
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/npm/node-semver#readme"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/sharp@0.34.5",
+      "name": "sharp",
+      "version": "0.34.5",
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "purl": "pkg:npm/sharp@0.34.5",
+      "description": "High performance Node.js image processing, the fastest module to resize JPEG, PNG, WebP, GIF, AVIF and TIFF images",
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://sharp.pixelplumbing.com"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/source-map-js@1.2.1",
+      "name": "source-map-js",
+      "version": "1.2.1",
+      "licenses": [
+        {
+          "license": {
+            "id": "BSD-3-Clause"
+          }
+        }
+      ],
+      "purl": "pkg:npm/source-map-js@1.2.1",
+      "description": "Generates and consumes source maps",
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/7rulnik/source-map-js"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/styled-jsx@5.1.6",
+      "name": "styled-jsx",
+      "version": "5.1.6",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "purl": "pkg:npm/styled-jsx@5.1.6",
+      "description": "Full CSS support for JSX without compromises",
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/vercel/styled-jsx#readme"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/tslib@2.8.1",
+      "name": "tslib",
+      "version": "2.8.1",
+      "licenses": [
+        {
+          "license": {
+            "id": "0BSD"
+          }
+        }
+      ],
+      "purl": "pkg:npm/tslib@2.8.1",
+      "description": "Runtime library for TypeScript helper functions",
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://www.typescriptlang.org/"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/zod@4.3.6",
+      "name": "zod",
+      "version": "4.3.6",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "purl": "pkg:npm/zod@4.3.6",
+      "description": "TypeScript-first schema declaration and validation library with static type inference",
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://zod.dev"
+        }
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "ref": "pkg:npm/class-a-bridge@0.9.0",
+      "dependsOn": [
+        "pkg:npm/%40img/colour@1.1.0",
+        "pkg:npm/%40img/sharp-darwin-arm64@0.34.5",
+        "pkg:npm/%40img/sharp-libvips-darwin-arm64@1.2.4",
+        "pkg:npm/%40napi-rs/canvas-darwin-arm64@1.0.2",
+        "pkg:npm/%40napi-rs/canvas@1.0.2",
+        "pkg:npm/%40next/env@16.2.10",
+        "pkg:npm/%40next/swc-darwin-arm64@16.2.10",
+        "pkg:npm/%40playwright/test@1.61.1",
+        "pkg:npm/%40swc/helpers@0.5.15",
+        "pkg:npm/ajv-formats@3.0.1",
+        "pkg:npm/ajv@8.20.0",
+        "pkg:npm/baseline-browser-mapping@2.10.43",
+        "pkg:npm/caniuse-lite@1.0.30001806",
+        "pkg:npm/client-only@0.0.1",
+        "pkg:npm/detect-libc@2.1.2",
+        "pkg:npm/fast-deep-equal@3.1.3",
+        "pkg:npm/fast-uri@3.1.3",
+        "pkg:npm/fflate@0.8.2",
+        "pkg:npm/fsevents@2.3.2",
+        "pkg:npm/idb@8.0.3",
+        "pkg:npm/json-schema-traverse@1.0.0",
+        "pkg:npm/nanoid@3.3.16",
+        "pkg:npm/next@16.2.10",
+        "pkg:npm/pdfjs-dist@6.1.200",
+        "pkg:npm/picocolors@1.1.1",
+        "pkg:npm/playwright-core@1.61.1",
+        "pkg:npm/playwright@1.61.1",
+        "pkg:npm/postcss@8.5.19",
+        "pkg:npm/react-dom@19.2.7",
+        "pkg:npm/react@19.2.7",
+        "pkg:npm/require-from-string@2.0.2",
+        "pkg:npm/scheduler@0.27.0",
+        "pkg:npm/semver@7.8.5",
+        "pkg:npm/sharp@0.34.5",
+        "pkg:npm/source-map-js@1.2.1",
+        "pkg:npm/styled-jsx@5.1.6",
+        "pkg:npm/tslib@2.8.1",
+        "pkg:npm/zod@4.3.6"
+      ]
+    },
+    {
+      "ref": "pkg:npm/%40img/colour@1.1.0",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/%40img/sharp-darwin-arm64@0.34.5",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/%40img/sharp-libvips-darwin-arm64@1.2.4",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/%40napi-rs/canvas-darwin-arm64@1.0.2",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/%40napi-rs/canvas@1.0.2",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/%40next/env@16.2.10",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/%40next/swc-darwin-arm64@16.2.10",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/%40playwright/test@1.61.1",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/%40swc/helpers@0.5.15",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/ajv-formats@3.0.1",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/ajv@8.20.0",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/baseline-browser-mapping@2.10.43",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/caniuse-lite@1.0.30001806",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/client-only@0.0.1",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/detect-libc@2.1.2",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/fast-deep-equal@3.1.3",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/fast-uri@3.1.3",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/fflate@0.8.2",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/fsevents@2.3.2",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/idb@8.0.3",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/json-schema-traverse@1.0.0",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/nanoid@3.3.16",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/next@16.2.10",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/pdfjs-dist@6.1.200",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/picocolors@1.1.1",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/playwright-core@1.61.1",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/playwright@1.61.1",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/postcss@8.5.19",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/react-dom@19.2.7",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/react@19.2.7",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/require-from-string@2.0.2",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/scheduler@0.27.0",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/semver@7.8.5",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/sharp@0.34.5",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/source-map-js@1.2.1",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/styled-jsx@5.1.6",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/tslib@2.8.1",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/zod@4.3.6",
+      "dependsOn": []
+    }
+  ]
+}

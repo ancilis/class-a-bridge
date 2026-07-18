@@ -5,7 +5,8 @@ Run this procedure against the exact release candidate and production-like host 
 ## Automated gates
 
 ```sh
-corepack enable
+# If pnpm is not already installed:
+npm install --global pnpm@10.33.0
 pnpm install --frozen-lockfile
 pnpm format:check
 pnpm lint

@@ -5,8 +5,8 @@
 Class A Bridge is a pnpm/Turborepo monorepo using Node.js 24, pnpm 10.33.0, strict TypeScript, React, a static Next.js website, a Vite PWA, Zod project boundaries, browser Web Crypto/IndexedDB, precompiled AJV validators, and Vitest/browser quality gates.
 
 ```sh
-corepack enable
-corepack prepare pnpm@10.33.0 --activate
+# If pnpm is not already installed:
+npm install --global pnpm@10.33.0
 pnpm install --frozen-lockfile
 pnpm verify
 ```
@@ -69,11 +69,13 @@ The contact form creates an allowlisted payload from form state. The optional ha
 
 1. Freeze feature/regulatory scope.
 2. Update version, changelog, release notes, official manifests, and known limitations.
-3. Run frozen install and full verification from a clean checkout.
-4. Execute security, privacy-canary, accessibility, cross-browser, offline/PWA, link, print, import/export, and host-header checks.
-5. Generate screenshots from the exact working build with visible fictional watermark where sample data appears.
-6. Complete [RELEASE_CHECKLIST.md](../release/RELEASE_CHECKLIST.md) with evidence links/output.
-7. Obtain independent maintainer review and create the signed/annotated tag according to repository policy.
-8. Deploy immutable outputs, smoke test production, record build locations/commit, then announce.
+3. Run `pnpm release:samples`; inspect `reports/release/artifacts/sample-artifacts-manifest.json`, restore the `.classabridge` bundle, and confirm the package JSON validation result before publication.
+4. Run frozen install and full verification from a clean checkout.
+5. Run `pnpm verify:source-archive`; retain `dist/release-evidence/source-archive-verification.json` with the release evidence.
+6. Execute security, privacy-canary, accessibility, cross-browser, offline/PWA, link, print, import/export, and host-header checks.
+7. Generate screenshots from the exact working build with visible fictional watermark where sample data appears.
+8. Complete [RELEASE_CHECKLIST.md](../release/RELEASE_CHECKLIST.md) with evidence links/output.
+9. Obtain independent maintainer review and create the signed/annotated tag according to repository policy.
+10. Deploy immutable outputs, smoke test production, record build locations/commit, then announce.
 
 Rollback changes static assets only. Preserve browser-schema compatibility. Security advisories follow [SECURITY.md](../../SECURITY.md).

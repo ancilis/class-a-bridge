@@ -13,6 +13,8 @@ describe("key marketing pages", () => {
     expect(markup).toContain("Turn your SOC 2 Type II into a clear FedRAMP Class A plan.");
     expect(markup).toContain("Start the free assessment");
     expect(markup).toContain("Explore the sample workspace");
+    expect(markup).toContain("A SOC 2 reuse accelerator—not a universal crosswalk.");
+    expect(markup).toContain("Your team confirms every mapping");
     expect(markup).toContain("What you receive");
     expect(markup).toContain("How it works");
     expect(markup).toContain("Designed for compliance teams");
@@ -24,8 +26,9 @@ describe("key marketing pages", () => {
   it("renders the complete FAQ on its dedicated page", () => {
     const markup = renderToStaticMarkup(<FaqPage />);
 
-    expect(markup.match(/<details/g)).toHaveLength(10);
+    expect(markup.match(/<details/g)).toHaveLength(12);
     expect(markup).toContain("Can it submit our application?");
+    expect(markup).toContain("Does it use a universal SOC 2-to-FedRAMP crosswalk?");
   });
 
   it("presents exactly three application starting paths", () => {

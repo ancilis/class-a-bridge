@@ -1,4 +1,10 @@
-import { isProviderApprovedRequirement, safeFilename } from "@class-a-bridge/project";
+import {
+  isProviderApprovedRequirement,
+  isReviewedSoc2Mapping,
+  isReviewedSoc2Control,
+  safeFilename,
+  soc2MappingSupportsReuse,
+} from "@class-a-bridge/project";
 import type { BridgeProject } from "@class-a-bridge/project";
 import { getRule, RULE_SELECTIONS } from "@class-a-bridge/rules";
 
@@ -31,7 +37,7 @@ const TITLES: Record<HumanReportKind, string> = {
   "action-plan": "Action plan",
   "package-validation": "Package validation report",
   "advisor-handoff": "Advisor handoff report",
-  "soc2-mapping": "SOC 2-to-Class A mapping report",
+  "soc2-mapping": "SOC 2 Reuse and Gap Report",
   "external-materials": "External assessment materials checklist",
   "open-items": "Open items report",
   "provider-approval": "Provider approval record",
@@ -160,24 +166,135 @@ const readinessBody = (project: BridgeProject) => {
 };
 
 const mappingsBody = (project: BridgeProject, detailed: boolean) => {
-  const rows = project.mappings.map((mapping) => [
+  const controlsById = new Map(project.soc2.controls.map((control) => [control.id, control]));
+  const reviewedMappings = project.mappings.filter(isReviewedSoc2Mapping);
+  const supportingMappings = reviewedMappings.filter(
+    (mapping) =>
+      soc2MappingSupportsReuse(mapping) &&
+      Boolean(
+        project.soc2.controls.find(
+          (control) => control.id === mapping.soc2ControlId && isReviewedSoc2Control(control),
+        ),
+      ),
+  );
+  const confirmedRuleIds = new Set(supportingMappings.map((mapping) => mapping.classARuleId));
+  const requirementsWithoutConfirmedSupport = RULE_SELECTIONS.mandatory.filter(
+    (ruleId) => !confirmedRuleIds.has(ruleId),
+  );
+  const partialMappings = supportingMappings.filter((mapping) =>
+    ["partially_covered", "supporting_evidence_only"].includes(mapping.coverage),
+  );
+  const gapMappings = reviewedMappings.filter((mapping) =>
+    [
+      "fedramp_specific_work_required",
+      "scope_mismatch",
+      "no_relevant_mapping",
+      "needs_human_review",
+    ].includes(mapping.coverage),
+  );
+  const rows = reviewedMappings.map((mapping) => [
     mapping.soc2ControlId,
     mapping.reportPage,
     mapping.classARuleId,
     label(mapping.coverage),
     mapping.reason,
     mapping.gapDescription,
-    detailed
-      ? mapping.excerpt
-      : mapping.confirmed
-        ? "Confirmed by user"
-        : "Needs user confirmation",
+    detailed ? mapping.excerpt : "Reviewed by user",
     mapping.additionalEvidenceNeeded,
   ]);
   return [
     callout(
-      "A mapping is context, not proof of completion. Suggested mappings require user confirmation, and a SOC 2 control alone never completes a Class A requirement.",
+      "A reviewed mapping records a provider decision. Only reviewed supporting outcomes count as reuse; a rejection, conflict, or expert-review outcome does not. A SOC 2 control does not automatically satisfy a FedRAMP rule.",
       "warning",
+    ),
+    section(
+      "Report and system metadata",
+      table(
+        ["Field", "Recorded value"],
+        [
+          ["SOC 2 report type", label(project.soc2.confirmedType)],
+          ["Report issuer", project.soc2.issuer],
+          [
+            "Assessment period",
+            [project.soc2.reportStart, project.soc2.reportEnd].filter(Boolean).join(" to "),
+          ],
+          ["Report date", project.soc2.reportDate ?? "Needs confirmation"],
+          ["Audited system", project.soc2.systemName],
+          ["Proposed federal offering", project.offering.name],
+          ["Report treatment", label(project.soc2.treatment)],
+        ],
+      ),
+    ),
+    section(
+      "Scope alignment summary",
+      [
+        `<p>${text(project.scope.summary || "No scope summary has been confirmed.")}</p>`,
+        list(
+          project.scope.mismatchFindings,
+          "No mismatch is recorded; this is not confirmation that the SOC 2 and proposed federal boundaries match.",
+        ),
+      ].join(""),
+    ),
+    section(
+      "SOC 2 control inventory",
+      table(
+        ["Control", "Title", "Trust Services Criteria", "Pages", "Auditor result", "Exceptions"],
+        project.soc2.controls.map((control) => [
+          control.id,
+          control.title,
+          control.trustServicesCriteria.join(", "),
+          control.reportPages.join(", "),
+          control.auditorResult,
+          control.exceptionIds.join(", "),
+        ]),
+      ),
+    ),
+    section(
+      "Confirmed supporting material",
+      table(
+        [
+          "SOC 2 control",
+          "Class A rule",
+          "Coverage decision",
+          "Reviewer",
+          "Review date",
+          "Remaining gap",
+        ],
+        supportingMappings.map((mapping) => [
+          mapping.soc2ControlId,
+          mapping.classARuleId,
+          label(mapping.coverage),
+          mapping.reviewer ?? "Reviewer not recorded",
+          mapping.reviewDate ?? "Review date not recorded",
+          mapping.gapDescription,
+        ]),
+      ),
+    ),
+    section(
+      "Partial support and supporting evidence only",
+      table(
+        ["Control", "Control title", "Class A rule", "Classification", "Additional evidence"],
+        partialMappings.map((mapping) => [
+          mapping.soc2ControlId,
+          controlsById.get(mapping.soc2ControlId)?.title ?? "Control not found",
+          mapping.classARuleId,
+          label(mapping.coverage),
+          mapping.additionalEvidenceNeeded,
+        ]),
+      ),
+    ),
+    section(
+      "FedRAMP-specific gaps and conflicts",
+      table(
+        ["Control", "Class A rule", "Issue", "Gap", "Information still needed"],
+        gapMappings.map((mapping) => [
+          mapping.soc2ControlId,
+          mapping.classARuleId,
+          label(mapping.coverage),
+          mapping.gapDescription,
+          mapping.additionalEvidenceNeeded,
+        ]),
+      ),
     ),
     section(
       "Control mappings",
@@ -204,6 +321,70 @@ const mappingsBody = (project: BridgeProject, detailed: boolean) => {
           label(item.materiality),
           item.pages.join(", "),
           item.description,
+        ]),
+      ),
+    ),
+    section(
+      "Carve-outs, subservice organizations, and complementary controls",
+      [
+        `<p><strong>Treatment:</strong> ${text(label(project.soc2.treatment))}</p>`,
+        `<h3>Subservice organizations</h3>${list(project.soc2.subserviceOrganizations, "None recorded.")}`,
+        `<h3>Complementary user-entity controls</h3>${list(project.soc2.complementaryUserEntityControls, "None recorded.")}`,
+      ].join(""),
+    ),
+    section(
+      "Requirements without confirmed support",
+      table(
+        ["Class A rule", "Official title", "Next decision"],
+        requirementsWithoutConfirmedSupport.map((ruleId) => [
+          ruleId,
+          ruleName(ruleId),
+          "Look for an actual in-scope SOC 2 control or record the FedRAMP-specific work required.",
+        ]),
+      ),
+    ),
+    section(
+      "Evidence and decisions still needed",
+      [
+        `<h3>Additional evidence</h3>${list(
+          [
+            ...new Set(
+              reviewedMappings.map((mapping) => mapping.additionalEvidenceNeeded).filter(Boolean),
+            ),
+          ],
+          "No additional-evidence description has been recorded.",
+        )}`,
+        `<h3>Technical confirmations</h3>${list(
+          project.actions
+            .filter(
+              (action) => action.category === "technical_confirmation" && action.status !== "done",
+            )
+            .map((action) => action.title),
+          "No open technical-confirmation action is recorded.",
+        )}`,
+        `<h3>Executive decisions</h3>${list(
+          project.actions
+            .filter(
+              (action) => action.category === "executive_approval" && action.status !== "done",
+            )
+            .map((action) => action.title),
+          "No open executive-decision action is recorded.",
+        )}`,
+        `<h3>Expert-review items</h3>${list(project.advisorFlags, "No expert-review flag is recorded.")}`,
+      ].join(""),
+    ),
+    section(
+      "Mapping provenance",
+      table(
+        ["Mapping", "Origin", "Confirmation", "Source page", "Reviewer", "Review date", "Reason"],
+        reviewedMappings.map((mapping) => [
+          mapping.id,
+          mapping.suggested ? "Deterministic suggestion" : "Manual mapping",
+          `Reviewed: ${label(mapping.reviewOutcome ?? "needs_expert_review")}`,
+          mapping.reportPage,
+          mapping.reviewer ?? "",
+          mapping.reviewDate ?? "",
+          mapping.reason,
         ]),
       ),
     ),

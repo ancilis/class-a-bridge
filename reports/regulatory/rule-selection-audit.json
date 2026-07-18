@@ -1,0 +1,1134 @@
+{
+  "generatedAt": "2026-07-18T14:01:32.975Z",
+  "catalogVersion": "2026.07.14.01",
+  "reviewSummary": {
+    "status": "QUALIFIED_HUMAN_REVIEW_PENDING",
+    "reviewer": null,
+    "reviewDate": null,
+    "note": "Automated source-to-selection checks passed. No qualified human regulatory review is recorded by this generated report."
+  },
+  "rows": [
+    {
+      "id": "FRC-CSO-FCP",
+      "officialClassASelection": "NOT_IN_CLASS_A_AGGREGATE",
+      "officialIndividualForce": "MUST",
+      "officialSelectionForce": null,
+      "officialSelectionSourceRuleId": null,
+      "productInclusionReason": "Included for the product workflow: general-provider.",
+      "workflowCategories": [
+        "general-provider"
+      ],
+      "mismatch": false,
+      "mismatchRationale": null,
+      "intentionalMismatch": false,
+      "intentionalMismatchRationale": null,
+      "reviewStatus": "QUALIFIED_HUMAN_REVIEW_PENDING",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "id": "FRC-CSO-PKG",
+      "officialClassASelection": "OFFICIALLY_MANDATORY",
+      "officialIndividualForce": "MUST",
+      "officialSelectionForce": "MUST",
+      "officialSelectionSourceRuleId": "FRC-CLA-MFR",
+      "productInclusionReason": "Included in the pinned official Class A mandatory subset (FRC-CLA-MFR).",
+      "workflowCategories": [
+        "class-a-core",
+        "general-provider"
+      ],
+      "mismatch": false,
+      "mismatchRationale": null,
+      "intentionalMismatch": false,
+      "intentionalMismatchRationale": null,
+      "reviewStatus": "QUALIFIED_HUMAN_REVIEW_PENDING",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "id": "FRC-CSO-JSN",
+      "officialClassASelection": "OFFICIALLY_MANDATORY",
+      "officialIndividualForce": "MUST",
+      "officialSelectionForce": "MUST",
+      "officialSelectionSourceRuleId": "FRC-CLA-MFR",
+      "productInclusionReason": "Included in the pinned official Class A mandatory subset (FRC-CLA-MFR).",
+      "workflowCategories": [
+        "class-a-core",
+        "general-provider"
+      ],
+      "mismatch": false,
+      "mismatchRationale": null,
+      "intentionalMismatch": false,
+      "intentionalMismatchRationale": null,
+      "reviewStatus": "QUALIFIED_HUMAN_REVIEW_PENDING",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "id": "FRC-CSO-MRA",
+      "officialClassASelection": "NOT_IN_CLASS_A_AGGREGATE",
+      "officialIndividualForce": "MUST",
+      "officialSelectionForce": null,
+      "officialSelectionSourceRuleId": null,
+      "productInclusionReason": "Included for the product workflow: general-provider.",
+      "workflowCategories": [
+        "general-provider"
+      ],
+      "mismatch": false,
+      "mismatchRationale": null,
+      "intentionalMismatch": false,
+      "intentionalMismatchRationale": null,
+      "reviewStatus": "QUALIFIED_HUMAN_REVIEW_PENDING",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "id": "FRC-CSO-POP",
+      "officialClassASelection": "OFFICIALLY_MANDATORY",
+      "officialIndividualForce": "MUST NOT",
+      "officialSelectionForce": "MUST",
+      "officialSelectionSourceRuleId": "FRC-CLA-MFR",
+      "productInclusionReason": "Included in the pinned official Class A mandatory subset (FRC-CLA-MFR).",
+      "workflowCategories": [
+        "class-a-core",
+        "general-provider"
+      ],
+      "mismatch": false,
+      "mismatchRationale": null,
+      "intentionalMismatch": false,
+      "intentionalMismatchRationale": null,
+      "reviewStatus": "QUALIFIED_HUMAN_REVIEW_PENDING",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "id": "FRC-CLA-ASF",
+      "officialClassASelection": "NOT_IN_CLASS_A_AGGREGATE",
+      "officialIndividualForce": "MUST",
+      "officialSelectionForce": null,
+      "officialSelectionSourceRuleId": null,
+      "productInclusionReason": "Included for the product workflow: eligibility-prerequisite.",
+      "workflowCategories": [
+        "eligibility-prerequisite"
+      ],
+      "mismatch": false,
+      "mismatchRationale": null,
+      "intentionalMismatch": false,
+      "intentionalMismatchRationale": null,
+      "reviewStatus": "QUALIFIED_HUMAN_REVIEW_PENDING",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "id": "FRC-CLA-EAM",
+      "officialClassASelection": "NOT_IN_CLASS_A_AGGREGATE",
+      "officialIndividualForce": "MUST",
+      "officialSelectionForce": null,
+      "officialSelectionSourceRuleId": null,
+      "productInclusionReason": "Included for the product workflow: eligibility-prerequisite.",
+      "workflowCategories": [
+        "eligibility-prerequisite"
+      ],
+      "mismatch": false,
+      "mismatchRationale": null,
+      "intentionalMismatch": false,
+      "intentionalMismatchRationale": null,
+      "reviewStatus": "QUALIFIED_HUMAN_REVIEW_PENDING",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "id": "FRC-CLA-MFR",
+      "officialClassASelection": "NOT_IN_CLASS_A_AGGREGATE",
+      "officialIndividualForce": "MUST",
+      "officialSelectionForce": null,
+      "officialSelectionSourceRuleId": null,
+      "productInclusionReason": "Included for the product workflow: eligibility-prerequisite.",
+      "workflowCategories": [
+        "eligibility-prerequisite"
+      ],
+      "mismatch": false,
+      "mismatchRationale": null,
+      "intentionalMismatch": false,
+      "intentionalMismatchRationale": null,
+      "reviewStatus": "QUALIFIED_HUMAN_REVIEW_PENDING",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "id": "FRC-CLA-RFR",
+      "officialClassASelection": "NOT_IN_CLASS_A_AGGREGATE",
+      "officialIndividualForce": "SHOULD",
+      "officialSelectionForce": null,
+      "officialSelectionSourceRuleId": null,
+      "productInclusionReason": "Included for the product workflow: eligibility-prerequisite.",
+      "workflowCategories": [
+        "eligibility-prerequisite"
+      ],
+      "mismatch": false,
+      "mismatchRationale": null,
+      "intentionalMismatch": false,
+      "intentionalMismatchRationale": null,
+      "reviewStatus": "QUALIFIED_HUMAN_REVIEW_PENDING",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "id": "FRC-CLA-OFR",
+      "officialClassASelection": "NOT_IN_CLASS_A_AGGREGATE",
+      "officialIndividualForce": "MAY",
+      "officialSelectionForce": null,
+      "officialSelectionSourceRuleId": null,
+      "productInclusionReason": "Included for the product workflow: eligibility-prerequisite.",
+      "workflowCategories": [
+        "eligibility-prerequisite"
+      ],
+      "mismatch": false,
+      "mismatchRationale": null,
+      "intentionalMismatch": false,
+      "intentionalMismatchRationale": null,
+      "reviewStatus": "QUALIFIED_HUMAN_REVIEW_PENDING",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "id": "FRC-CLA-IVV",
+      "officialClassASelection": "NOT_IN_CLASS_A_AGGREGATE",
+      "officialIndividualForce": "MAY",
+      "officialSelectionForce": null,
+      "officialSelectionSourceRuleId": null,
+      "productInclusionReason": "Included for the product workflow: eligibility-prerequisite.",
+      "workflowCategories": [
+        "eligibility-prerequisite"
+      ],
+      "mismatch": false,
+      "mismatchRationale": null,
+      "intentionalMismatch": false,
+      "intentionalMismatchRationale": null,
+      "reviewStatus": "QUALIFIED_HUMAN_REVIEW_PENDING",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "id": "MAS-CSO-IIR",
+      "officialClassASelection": "OFFICIALLY_MANDATORY",
+      "officialIndividualForce": "MUST",
+      "officialSelectionForce": "MUST",
+      "officialSelectionSourceRuleId": "FRC-CLA-MFR",
+      "productInclusionReason": "Included in the pinned official Class A mandatory subset (FRC-CLA-MFR).",
+      "workflowCategories": [
+        "class-a-core"
+      ],
+      "mismatch": false,
+      "mismatchRationale": null,
+      "intentionalMismatch": false,
+      "intentionalMismatchRationale": null,
+      "reviewStatus": "QUALIFIED_HUMAN_REVIEW_PENDING",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "id": "CDS-CSO-PUB",
+      "officialClassASelection": "OFFICIALLY_MANDATORY",
+      "officialIndividualForce": "MUST",
+      "officialSelectionForce": "MUST",
+      "officialSelectionSourceRuleId": "FRC-CLA-MFR",
+      "productInclusionReason": "Included in the pinned official Class A mandatory subset (FRC-CLA-MFR).",
+      "workflowCategories": [
+        "class-a-core"
+      ],
+      "mismatch": false,
+      "mismatchRationale": null,
+      "intentionalMismatch": false,
+      "intentionalMismatchRationale": null,
+      "reviewStatus": "QUALIFIED_HUMAN_REVIEW_PENDING",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "id": "CDS-CSO-UTC",
+      "officialClassASelection": "OFFICIALLY_MANDATORY",
+      "officialIndividualForce": "MUST",
+      "officialSelectionForce": "MUST",
+      "officialSelectionSourceRuleId": "FRC-CLA-MFR",
+      "productInclusionReason": "Included in the pinned official Class A mandatory subset (FRC-CLA-MFR).",
+      "workflowCategories": [
+        "class-a-core"
+      ],
+      "mismatch": false,
+      "mismatchRationale": null,
+      "intentionalMismatch": false,
+      "intentionalMismatchRationale": null,
+      "reviewStatus": "QUALIFIED_HUMAN_REVIEW_PENDING",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "id": "CDS-UTC-AAD",
+      "officialClassASelection": "OFFICIALLY_MANDATORY",
+      "officialIndividualForce": "MUST",
+      "officialSelectionForce": "MUST",
+      "officialSelectionSourceRuleId": "FRC-CLA-MFR",
+      "productInclusionReason": "Included in the pinned official Class A mandatory subset (FRC-CLA-MFR).",
+      "workflowCategories": [
+        "class-a-core"
+      ],
+      "mismatch": false,
+      "mismatchRationale": null,
+      "intentionalMismatch": false,
+      "intentionalMismatchRationale": null,
+      "reviewStatus": "QUALIFIED_HUMAN_REVIEW_PENDING",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "id": "AFC-CSO-INB",
+      "officialClassASelection": "OFFICIALLY_MANDATORY",
+      "officialIndividualForce": "MUST",
+      "officialSelectionForce": "MUST",
+      "officialSelectionSourceRuleId": "FRC-CLA-MFR",
+      "productInclusionReason": "Included in the pinned official Class A mandatory subset (FRC-CLA-MFR).",
+      "workflowCategories": [
+        "class-a-core"
+      ],
+      "mismatch": false,
+      "mismatchRationale": null,
+      "intentionalMismatch": false,
+      "intentionalMismatchRationale": null,
+      "reviewStatus": "QUALIFIED_HUMAN_REVIEW_PENDING",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "id": "AFC-CSO-RCV",
+      "officialClassASelection": "OFFICIALLY_MANDATORY",
+      "officialIndividualForce": "MUST",
+      "officialSelectionForce": "MUST",
+      "officialSelectionSourceRuleId": "FRC-CLA-MFR",
+      "productInclusionReason": "Included in the pinned official Class A mandatory subset (FRC-CLA-MFR).",
+      "workflowCategories": [
+        "class-a-core"
+      ],
+      "mismatch": false,
+      "mismatchRationale": null,
+      "intentionalMismatch": false,
+      "intentionalMismatchRationale": null,
+      "reviewStatus": "QUALIFIED_HUMAN_REVIEW_PENDING",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "id": "AFC-CSO-CRA",
+      "officialClassASelection": "OFFICIALLY_MANDATORY",
+      "officialIndividualForce": "MUST",
+      "officialSelectionForce": "MUST",
+      "officialSelectionSourceRuleId": "FRC-CLA-MFR",
+      "productInclusionReason": "Included in the pinned official Class A mandatory subset (FRC-CLA-MFR).",
+      "workflowCategories": [
+        "class-a-core"
+      ],
+      "mismatch": false,
+      "mismatchRationale": null,
+      "intentionalMismatch": false,
+      "intentionalMismatchRationale": null,
+      "reviewStatus": "QUALIFIED_HUMAN_REVIEW_PENDING",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "id": "IEC-CSO-EFR",
+      "officialClassASelection": "OFFICIALLY_MANDATORY",
+      "officialIndividualForce": "MUST",
+      "officialSelectionForce": "MUST",
+      "officialSelectionSourceRuleId": "FRC-CLA-MFR",
+      "productInclusionReason": "Included in the pinned official Class A mandatory subset (FRC-CLA-MFR).",
+      "workflowCategories": [
+        "class-a-core"
+      ],
+      "mismatch": false,
+      "mismatchRationale": null,
+      "intentionalMismatch": false,
+      "intentionalMismatchRationale": null,
+      "reviewStatus": "QUALIFIED_HUMAN_REVIEW_PENDING",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "id": "IEC-CSO-FIR",
+      "officialClassASelection": "OFFICIALLY_MANDATORY",
+      "officialIndividualForce": "MUST",
+      "officialSelectionForce": "MUST",
+      "officialSelectionSourceRuleId": "FRC-CLA-MFR",
+      "productInclusionReason": "Included in the pinned official Class A mandatory subset (FRC-CLA-MFR).",
+      "workflowCategories": [
+        "class-a-core"
+      ],
+      "mismatch": false,
+      "mismatchRationale": null,
+      "intentionalMismatch": false,
+      "intentionalMismatchRationale": null,
+      "reviewStatus": "QUALIFIED_HUMAN_REVIEW_PENDING",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "id": "VDR-CSO-DET",
+      "officialClassASelection": "OFFICIALLY_MANDATORY",
+      "officialIndividualForce": "MUST",
+      "officialSelectionForce": "MUST",
+      "officialSelectionSourceRuleId": "FRC-CLA-MFR",
+      "productInclusionReason": "Included in the pinned official Class A mandatory subset (FRC-CLA-MFR).",
+      "workflowCategories": [
+        "class-a-core"
+      ],
+      "mismatch": false,
+      "mismatchRationale": null,
+      "intentionalMismatch": false,
+      "intentionalMismatchRationale": null,
+      "reviewStatus": "QUALIFIED_HUMAN_REVIEW_PENDING",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "id": "CCM-OCR-AVL",
+      "officialClassASelection": "OFFICIALLY_MANDATORY",
+      "officialIndividualForce": "MUST",
+      "officialSelectionForce": "MUST",
+      "officialSelectionSourceRuleId": "FRC-CLA-MFR",
+      "productInclusionReason": "Included in the pinned official Class A mandatory subset (FRC-CLA-MFR).",
+      "workflowCategories": [
+        "class-a-core",
+        "package-output"
+      ],
+      "mismatch": false,
+      "mismatchRationale": null,
+      "intentionalMismatch": false,
+      "intentionalMismatchRationale": null,
+      "reviewStatus": "QUALIFIED_HUMAN_REVIEW_PENDING",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "id": "CCM-OCR-NRD",
+      "officialClassASelection": "OFFICIALLY_MANDATORY",
+      "officialIndividualForce": "MUST",
+      "officialSelectionForce": "MUST",
+      "officialSelectionSourceRuleId": "FRC-CLA-MFR",
+      "productInclusionReason": "Included in the pinned official Class A mandatory subset (FRC-CLA-MFR).",
+      "workflowCategories": [
+        "class-a-core"
+      ],
+      "mismatch": false,
+      "mismatchRationale": null,
+      "intentionalMismatch": false,
+      "intentionalMismatchRationale": null,
+      "reviewStatus": "QUALIFIED_HUMAN_REVIEW_PENDING",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "id": "IVV-CSX-AIA",
+      "officialClassASelection": "OFFICIALLY_MANDATORY",
+      "officialIndividualForce": "MUST",
+      "officialSelectionForce": "MUST",
+      "officialSelectionSourceRuleId": "FRC-CLA-MFR",
+      "productInclusionReason": "Included in the pinned official Class A mandatory subset (FRC-CLA-MFR).",
+      "workflowCategories": [
+        "class-a-core"
+      ],
+      "mismatch": false,
+      "mismatchRationale": null,
+      "intentionalMismatch": false,
+      "intentionalMismatchRationale": null,
+      "reviewStatus": "QUALIFIED_HUMAN_REVIEW_PENDING",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "id": "KSI-CMT-LMC",
+      "officialClassASelection": "OFFICIALLY_MANDATORY",
+      "officialIndividualForce": null,
+      "officialSelectionForce": "MUST",
+      "officialSelectionSourceRuleId": "FRC-CLA-MFR",
+      "productInclusionReason": "Included in the pinned official Class A mandatory subset (FRC-CLA-MFR).",
+      "workflowCategories": [
+        "class-a-core"
+      ],
+      "mismatch": false,
+      "mismatchRationale": null,
+      "intentionalMismatch": false,
+      "intentionalMismatchRationale": null,
+      "reviewStatus": "QUALIFIED_HUMAN_REVIEW_PENDING",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "id": "KSI-CNA-RNT",
+      "officialClassASelection": "OFFICIALLY_MANDATORY",
+      "officialIndividualForce": null,
+      "officialSelectionForce": "MUST",
+      "officialSelectionSourceRuleId": "FRC-CLA-MFR",
+      "productInclusionReason": "Included in the pinned official Class A mandatory subset (FRC-CLA-MFR).",
+      "workflowCategories": [
+        "class-a-core"
+      ],
+      "mismatch": false,
+      "mismatchRationale": null,
+      "intentionalMismatch": false,
+      "intentionalMismatchRationale": null,
+      "reviewStatus": "QUALIFIED_HUMAN_REVIEW_PENDING",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "id": "KSI-CED-RAT",
+      "officialClassASelection": "OFFICIALLY_MANDATORY",
+      "officialIndividualForce": null,
+      "officialSelectionForce": "MUST",
+      "officialSelectionSourceRuleId": "FRC-CLA-MFR",
+      "productInclusionReason": "Included in the pinned official Class A mandatory subset (FRC-CLA-MFR).",
+      "workflowCategories": [
+        "class-a-core"
+      ],
+      "mismatch": false,
+      "mismatchRationale": null,
+      "intentionalMismatch": false,
+      "intentionalMismatchRationale": null,
+      "reviewStatus": "QUALIFIED_HUMAN_REVIEW_PENDING",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "id": "KSI-IAM-AAM",
+      "officialClassASelection": "OFFICIALLY_MANDATORY",
+      "officialIndividualForce": null,
+      "officialSelectionForce": "MUST",
+      "officialSelectionSourceRuleId": "FRC-CLA-MFR",
+      "productInclusionReason": "Included in the pinned official Class A mandatory subset (FRC-CLA-MFR).",
+      "workflowCategories": [
+        "class-a-core"
+      ],
+      "mismatch": false,
+      "mismatchRationale": null,
+      "intentionalMismatch": false,
+      "intentionalMismatchRationale": null,
+      "reviewStatus": "QUALIFIED_HUMAN_REVIEW_PENDING",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "id": "KSI-IAM-APM",
+      "officialClassASelection": "OFFICIALLY_MANDATORY",
+      "officialIndividualForce": null,
+      "officialSelectionForce": "MUST",
+      "officialSelectionSourceRuleId": "FRC-CLA-MFR",
+      "productInclusionReason": "Included in the pinned official Class A mandatory subset (FRC-CLA-MFR).",
+      "workflowCategories": [
+        "class-a-core"
+      ],
+      "mismatch": false,
+      "mismatchRationale": null,
+      "intentionalMismatch": false,
+      "intentionalMismatchRationale": null,
+      "reviewStatus": "QUALIFIED_HUMAN_REVIEW_PENDING",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "id": "KSI-INR-RIR",
+      "officialClassASelection": "OFFICIALLY_MANDATORY",
+      "officialIndividualForce": null,
+      "officialSelectionForce": "MUST",
+      "officialSelectionSourceRuleId": "FRC-CLA-MFR",
+      "productInclusionReason": "Included in the pinned official Class A mandatory subset (FRC-CLA-MFR).",
+      "workflowCategories": [
+        "class-a-core"
+      ],
+      "mismatch": false,
+      "mismatchRationale": null,
+      "intentionalMismatch": false,
+      "intentionalMismatchRationale": null,
+      "reviewStatus": "QUALIFIED_HUMAN_REVIEW_PENDING",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "id": "KSI-SVC-SIN",
+      "officialClassASelection": "OFFICIALLY_MANDATORY",
+      "officialIndividualForce": null,
+      "officialSelectionForce": "MUST",
+      "officialSelectionSourceRuleId": "FRC-CLA-MFR",
+      "productInclusionReason": "Included in the pinned official Class A mandatory subset (FRC-CLA-MFR).",
+      "workflowCategories": [
+        "class-a-core"
+      ],
+      "mismatch": false,
+      "mismatchRationale": null,
+      "intentionalMismatch": false,
+      "intentionalMismatchRationale": null,
+      "reviewStatus": "QUALIFIED_HUMAN_REVIEW_PENDING",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "id": "CDS-CSO-AVR",
+      "officialClassASelection": "OFFICIALLY_RECOMMENDED",
+      "officialIndividualForce": "SHOULD",
+      "officialSelectionForce": "SHOULD",
+      "officialSelectionSourceRuleId": "FRC-CLA-RFR",
+      "productInclusionReason": "Included in the pinned official Class A recommended subset (FRC-CLA-RFR).",
+      "workflowCategories": [
+        "class-a-recommended"
+      ],
+      "mismatch": false,
+      "mismatchRationale": null,
+      "intentionalMismatch": false,
+      "intentionalMismatchRationale": null,
+      "reviewStatus": "QUALIFIED_HUMAN_REVIEW_PENDING",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "id": "CPO-CSF-CPM",
+      "officialClassASelection": "OFFICIALLY_RECOMMENDED",
+      "officialIndividualForce": null,
+      "officialSelectionForce": "SHOULD",
+      "officialSelectionSourceRuleId": "FRC-CLA-RFR",
+      "productInclusionReason": "Included in the pinned official Class A recommended subset (FRC-CLA-RFR).",
+      "workflowCategories": [
+        "class-a-recommended"
+      ],
+      "mismatch": true,
+      "mismatchRationale": "The official Class A aggregate includes this rule, while the individual rule publishes no Class A branch.",
+      "intentionalMismatch": true,
+      "intentionalMismatchRationale": "Ancilis intentionally preserves the pinned upstream FRC-CLA-RFR reference to CPO-CSF-CPM; the individual rule's 2026-07-14 history says Class A applicability was removed. Human confirmation remains required.",
+      "reviewStatus": "QUALIFIED_HUMAN_REVIEW_PENDING",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "id": "CPO-CSX-CPM",
+      "officialClassASelection": "OFFICIALLY_RECOMMENDED",
+      "officialIndividualForce": "SHOULD",
+      "officialSelectionForce": "SHOULD",
+      "officialSelectionSourceRuleId": "FRC-CLA-RFR",
+      "productInclusionReason": "Included in the pinned official Class A recommended subset (FRC-CLA-RFR).",
+      "workflowCategories": [
+        "class-a-recommended",
+        "package-output"
+      ],
+      "mismatch": false,
+      "mismatchRationale": null,
+      "intentionalMismatch": false,
+      "intentionalMismatchRationale": null,
+      "reviewStatus": "QUALIFIED_HUMAN_REVIEW_PENDING",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "id": "IEC-CSO-IIR",
+      "officialClassASelection": "OFFICIALLY_RECOMMENDED",
+      "officialIndividualForce": "SHOULD",
+      "officialSelectionForce": "SHOULD",
+      "officialSelectionSourceRuleId": "FRC-CLA-RFR",
+      "productInclusionReason": "Included in the pinned official Class A recommended subset (FRC-CLA-RFR).",
+      "workflowCategories": [
+        "class-a-recommended"
+      ],
+      "mismatch": false,
+      "mismatchRationale": null,
+      "intentionalMismatch": false,
+      "intentionalMismatchRationale": null,
+      "reviewStatus": "QUALIFIED_HUMAN_REVIEW_PENDING",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "id": "IEC-CSO-OIR",
+      "officialClassASelection": "OFFICIALLY_RECOMMENDED",
+      "officialIndividualForce": "SHOULD",
+      "officialSelectionForce": "SHOULD",
+      "officialSelectionSourceRuleId": "FRC-CLA-RFR",
+      "productInclusionReason": "Included in the pinned official Class A recommended subset (FRC-CLA-RFR).",
+      "workflowCategories": [
+        "class-a-recommended"
+      ],
+      "mismatch": false,
+      "mismatchRationale": null,
+      "intentionalMismatch": false,
+      "intentionalMismatchRationale": null,
+      "reviewStatus": "QUALIFIED_HUMAN_REVIEW_PENDING",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "id": "VDR-TFR-MVX",
+      "officialClassASelection": "OFFICIALLY_RECOMMENDED",
+      "officialIndividualForce": "SHOULD",
+      "officialSelectionForce": "SHOULD",
+      "officialSelectionSourceRuleId": "FRC-CLA-RFR",
+      "productInclusionReason": "Included in the pinned official Class A recommended subset (FRC-CLA-RFR).",
+      "workflowCategories": [
+        "class-a-recommended"
+      ],
+      "mismatch": false,
+      "mismatchRationale": null,
+      "intentionalMismatch": false,
+      "intentionalMismatchRationale": null,
+      "reviewStatus": "QUALIFIED_HUMAN_REVIEW_PENDING",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "id": "VDR-TFR-PCD",
+      "officialClassASelection": "OFFICIALLY_RECOMMENDED",
+      "officialIndividualForce": "SHOULD",
+      "officialSelectionForce": "SHOULD",
+      "officialSelectionSourceRuleId": "FRC-CLA-RFR",
+      "productInclusionReason": "Included in the pinned official Class A recommended subset (FRC-CLA-RFR).",
+      "workflowCategories": [
+        "class-a-recommended"
+      ],
+      "mismatch": false,
+      "mismatchRationale": null,
+      "intentionalMismatch": false,
+      "intentionalMismatchRationale": null,
+      "reviewStatus": "QUALIFIED_HUMAN_REVIEW_PENDING",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "id": "VDR-TFR-PDD",
+      "officialClassASelection": "OFFICIALLY_RECOMMENDED",
+      "officialIndividualForce": "SHOULD",
+      "officialSelectionForce": "SHOULD",
+      "officialSelectionSourceRuleId": "FRC-CLA-RFR",
+      "productInclusionReason": "Included in the pinned official Class A recommended subset (FRC-CLA-RFR).",
+      "workflowCategories": [
+        "class-a-recommended"
+      ],
+      "mismatch": false,
+      "mismatchRationale": null,
+      "intentionalMismatch": false,
+      "intentionalMismatchRationale": null,
+      "reviewStatus": "QUALIFIED_HUMAN_REVIEW_PENDING",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "id": "VDR-TFR-PSD",
+      "officialClassASelection": "OFFICIALLY_RECOMMENDED",
+      "officialIndividualForce": "SHOULD",
+      "officialSelectionForce": "SHOULD",
+      "officialSelectionSourceRuleId": "FRC-CLA-RFR",
+      "productInclusionReason": "Included in the pinned official Class A recommended subset (FRC-CLA-RFR).",
+      "workflowCategories": [
+        "class-a-recommended"
+      ],
+      "mismatch": false,
+      "mismatchRationale": null,
+      "intentionalMismatch": false,
+      "intentionalMismatchRationale": null,
+      "reviewStatus": "QUALIFIED_HUMAN_REVIEW_PENDING",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "id": "VDR-TFR-PVR",
+      "officialClassASelection": "OFFICIALLY_RECOMMENDED",
+      "officialIndividualForce": "SHOULD",
+      "officialSelectionForce": "SHOULD",
+      "officialSelectionSourceRuleId": "FRC-CLA-RFR",
+      "productInclusionReason": "Included in the pinned official Class A recommended subset (FRC-CLA-RFR).",
+      "workflowCategories": [
+        "class-a-recommended"
+      ],
+      "mismatch": false,
+      "mismatchRationale": null,
+      "intentionalMismatch": false,
+      "intentionalMismatchRationale": null,
+      "reviewStatus": "QUALIFIED_HUMAN_REVIEW_PENDING",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "id": "VER-TFR-EVU",
+      "officialClassASelection": "OFFICIALLY_RECOMMENDED",
+      "officialIndividualForce": "SHOULD",
+      "officialSelectionForce": "SHOULD",
+      "officialSelectionSourceRuleId": "FRC-CLA-RFR",
+      "productInclusionReason": "Included in the pinned official Class A recommended subset (FRC-CLA-RFR).",
+      "workflowCategories": [
+        "class-a-recommended"
+      ],
+      "mismatch": false,
+      "mismatchRationale": null,
+      "intentionalMismatch": false,
+      "intentionalMismatchRationale": null,
+      "reviewStatus": "QUALIFIED_HUMAN_REVIEW_PENDING",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "id": "CCM-QTR-MTG",
+      "officialClassASelection": "OFFICIALLY_OPTIONAL",
+      "officialIndividualForce": "MAY",
+      "officialSelectionForce": "MAY",
+      "officialSelectionSourceRuleId": "FRC-CLA-OFR",
+      "productInclusionReason": "Included in the pinned official Class A optional subset (FRC-CLA-OFR).",
+      "workflowCategories": [
+        "class-a-optional"
+      ],
+      "mismatch": false,
+      "mismatchRationale": null,
+      "intentionalMismatch": false,
+      "intentionalMismatchRationale": null,
+      "reviewStatus": "QUALIFIED_HUMAN_REVIEW_PENDING",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "id": "CDS-CSO-PSM",
+      "officialClassASelection": "OFFICIALLY_OPTIONAL",
+      "officialIndividualForce": "MAY",
+      "officialSelectionForce": "MAY",
+      "officialSelectionSourceRuleId": "FRC-CLA-OFR",
+      "productInclusionReason": "Included in the pinned official Class A optional subset (FRC-CLA-OFR).",
+      "workflowCategories": [
+        "class-a-optional"
+      ],
+      "mismatch": false,
+      "mismatchRationale": null,
+      "intentionalMismatch": false,
+      "intentionalMismatchRationale": null,
+      "reviewStatus": "QUALIFIED_HUMAN_REVIEW_PENDING",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "id": "CMU-CSO-UVM",
+      "officialClassASelection": "OFFICIALLY_OPTIONAL",
+      "officialIndividualForce": "MAY",
+      "officialSelectionForce": "MAY",
+      "officialSelectionSourceRuleId": "FRC-CLA-OFR",
+      "productInclusionReason": "Included in the pinned official Class A optional subset (FRC-CLA-OFR).",
+      "workflowCategories": [
+        "class-a-optional"
+      ],
+      "mismatch": false,
+      "mismatchRationale": null,
+      "intentionalMismatch": false,
+      "intentionalMismatchRationale": null,
+      "reviewStatus": "QUALIFIED_HUMAN_REVIEW_PENDING",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "id": "FRC-APP-FIA",
+      "officialClassASelection": "OFFICIALLY_OPTIONAL",
+      "officialIndividualForce": "MAY",
+      "officialSelectionForce": "MAY",
+      "officialSelectionSourceRuleId": "FRC-CLA-OFR",
+      "productInclusionReason": "Included in the pinned official Class A optional subset (FRC-CLA-OFR).",
+      "workflowCategories": [
+        "class-a-optional",
+        "application-prerequisite"
+      ],
+      "mismatch": false,
+      "mismatchRationale": null,
+      "intentionalMismatch": false,
+      "intentionalMismatchRationale": null,
+      "reviewStatus": "QUALIFIED_HUMAN_REVIEW_PENDING",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "id": "IVV-CSO-FIA",
+      "officialClassASelection": "OFFICIALLY_OPTIONAL",
+      "officialIndividualForce": "MAY",
+      "officialSelectionForce": "MAY",
+      "officialSelectionSourceRuleId": "FRC-CLA-OFR",
+      "productInclusionReason": "Included in the pinned official Class A optional subset (FRC-CLA-OFR).",
+      "workflowCategories": [
+        "class-a-optional"
+      ],
+      "mismatch": false,
+      "mismatchRationale": null,
+      "intentionalMismatch": false,
+      "intentionalMismatchRationale": null,
+      "reviewStatus": "QUALIFIED_HUMAN_REVIEW_PENDING",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "id": "SDR-CSX-KMT",
+      "officialClassASelection": "OFFICIALLY_OPTIONAL",
+      "officialIndividualForce": "MAY",
+      "officialSelectionForce": "MAY",
+      "officialSelectionSourceRuleId": "FRC-CLA-OFR",
+      "productInclusionReason": "Included in the pinned official Class A optional subset (FRC-CLA-OFR).",
+      "workflowCategories": [
+        "class-a-optional"
+      ],
+      "mismatch": false,
+      "mismatchRationale": null,
+      "intentionalMismatch": false,
+      "intentionalMismatchRationale": null,
+      "reviewStatus": "QUALIFIED_HUMAN_REVIEW_PENDING",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "id": "VER-TFR-IRI",
+      "officialClassASelection": "OFFICIALLY_OPTIONAL",
+      "officialIndividualForce": "MAY",
+      "officialSelectionForce": "MAY",
+      "officialSelectionSourceRuleId": "FRC-CLA-OFR",
+      "productInclusionReason": "Included in the pinned official Class A optional subset (FRC-CLA-OFR).",
+      "workflowCategories": [
+        "class-a-optional"
+      ],
+      "mismatch": false,
+      "mismatchRationale": null,
+      "intentionalMismatch": false,
+      "intentionalMismatchRationale": null,
+      "reviewStatus": "QUALIFIED_HUMAN_REVIEW_PENDING",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "id": "VER-TFR-MRH",
+      "officialClassASelection": "OFFICIALLY_OPTIONAL",
+      "officialIndividualForce": "MAY",
+      "officialSelectionForce": "MAY",
+      "officialSelectionSourceRuleId": "FRC-CLA-OFR",
+      "productInclusionReason": "Included in the pinned official Class A optional subset (FRC-CLA-OFR).",
+      "workflowCategories": [
+        "class-a-optional"
+      ],
+      "mismatch": false,
+      "mismatchRationale": null,
+      "intentionalMismatch": false,
+      "intentionalMismatchRationale": null,
+      "reviewStatus": "QUALIFIED_HUMAN_REVIEW_PENDING",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "id": "VER-TFR-NRI",
+      "officialClassASelection": "OFFICIALLY_OPTIONAL",
+      "officialIndividualForce": "MAY",
+      "officialSelectionForce": "MAY",
+      "officialSelectionSourceRuleId": "FRC-CLA-OFR",
+      "productInclusionReason": "Included in the pinned official Class A optional subset (FRC-CLA-OFR).",
+      "workflowCategories": [
+        "class-a-optional"
+      ],
+      "mismatch": false,
+      "mismatchRationale": null,
+      "intentionalMismatch": false,
+      "intentionalMismatchRationale": null,
+      "reviewStatus": "QUALIFIED_HUMAN_REVIEW_PENDING",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "id": "CPO-CSO-OVR",
+      "officialClassASelection": "NOT_IN_CLASS_A_AGGREGATE",
+      "officialIndividualForce": "MUST",
+      "officialSelectionForce": null,
+      "officialSelectionSourceRuleId": null,
+      "productInclusionReason": "Included for the product workflow: package-output.",
+      "workflowCategories": [
+        "package-output"
+      ],
+      "mismatch": false,
+      "mismatchRationale": null,
+      "intentionalMismatch": false,
+      "intentionalMismatchRationale": null,
+      "reviewStatus": "QUALIFIED_HUMAN_REVIEW_PENDING",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "id": "SDR-CSO-FRR",
+      "officialClassASelection": "NOT_IN_CLASS_A_AGGREGATE",
+      "officialIndividualForce": "MUST",
+      "officialSelectionForce": null,
+      "officialSelectionSourceRuleId": null,
+      "productInclusionReason": "Included for the product workflow: package-output.",
+      "workflowCategories": [
+        "package-output"
+      ],
+      "mismatch": false,
+      "mismatchRationale": null,
+      "intentionalMismatch": false,
+      "intentionalMismatchRationale": null,
+      "reviewStatus": "QUALIFIED_HUMAN_REVIEW_PENDING",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "id": "MKT-CSO-MLR",
+      "officialClassASelection": "NOT_IN_CLASS_A_AGGREGATE",
+      "officialIndividualForce": "MUST",
+      "officialSelectionForce": null,
+      "officialSelectionSourceRuleId": null,
+      "productInclusionReason": "Included for the product workflow: application-prerequisite.",
+      "workflowCategories": [
+        "application-prerequisite"
+      ],
+      "mismatch": false,
+      "mismatchRationale": null,
+      "intentionalMismatch": false,
+      "intentionalMismatchRationale": null,
+      "reviewStatus": "QUALIFIED_HUMAN_REVIEW_PENDING",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "id": "MKT-CSO-PML",
+      "officialClassASelection": "NOT_IN_CLASS_A_AGGREGATE",
+      "officialIndividualForce": "MUST",
+      "officialSelectionForce": null,
+      "officialSelectionSourceRuleId": null,
+      "productInclusionReason": "Included for the product workflow: application-prerequisite.",
+      "workflowCategories": [
+        "application-prerequisite"
+      ],
+      "mismatch": false,
+      "mismatchRationale": null,
+      "intentionalMismatch": false,
+      "intentionalMismatchRationale": null,
+      "reviewStatus": "QUALIFIED_HUMAN_REVIEW_PENDING",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "id": "MKT-IIP-AGU",
+      "officialClassASelection": "NOT_IN_CLASS_A_AGGREGATE",
+      "officialIndividualForce": "MUST",
+      "officialSelectionForce": null,
+      "officialSelectionSourceRuleId": null,
+      "productInclusionReason": "Included for the product workflow: application-prerequisite.",
+      "workflowCategories": [
+        "application-prerequisite"
+      ],
+      "mismatch": false,
+      "mismatchRationale": null,
+      "intentionalMismatch": false,
+      "intentionalMismatchRationale": null,
+      "reviewStatus": "QUALIFIED_HUMAN_REVIEW_PENDING",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "id": "MKT-IIP-DCP",
+      "officialClassASelection": "NOT_IN_CLASS_A_AGGREGATE",
+      "officialIndividualForce": "MUST",
+      "officialSelectionForce": null,
+      "officialSelectionSourceRuleId": null,
+      "productInclusionReason": "Included for the product workflow: application-prerequisite.",
+      "workflowCategories": [
+        "application-prerequisite"
+      ],
+      "mismatch": false,
+      "mismatchRationale": null,
+      "intentionalMismatch": false,
+      "intentionalMismatchRationale": null,
+      "reviewStatus": "QUALIFIED_HUMAN_REVIEW_PENDING",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "id": "FRC-APP-MLF",
+      "officialClassASelection": "NOT_IN_CLASS_A_AGGREGATE",
+      "officialIndividualForce": "MUST",
+      "officialSelectionForce": null,
+      "officialSelectionSourceRuleId": null,
+      "productInclusionReason": "Included for the product workflow: application-prerequisite.",
+      "workflowCategories": [
+        "application-prerequisite"
+      ],
+      "mismatch": false,
+      "mismatchRationale": null,
+      "intentionalMismatch": false,
+      "intentionalMismatchRationale": null,
+      "reviewStatus": "QUALIFIED_HUMAN_REVIEW_PENDING",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "id": "FRC-APP-AFC",
+      "officialClassASelection": "NOT_IN_CLASS_A_AGGREGATE",
+      "officialIndividualForce": "MUST",
+      "officialSelectionForce": null,
+      "officialSelectionSourceRuleId": null,
+      "productInclusionReason": "Included for the product workflow: application-prerequisite.",
+      "workflowCategories": [
+        "application-prerequisite"
+      ],
+      "mismatch": false,
+      "mismatchRationale": null,
+      "intentionalMismatch": false,
+      "intentionalMismatchRationale": null,
+      "reviewStatus": "QUALIFIED_HUMAN_REVIEW_PENDING",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "id": "FRC-APP-FCP",
+      "officialClassASelection": "NOT_IN_CLASS_A_AGGREGATE",
+      "officialIndividualForce": "MUST",
+      "officialSelectionForce": null,
+      "officialSelectionSourceRuleId": null,
+      "productInclusionReason": "Included for the product workflow: application-prerequisite.",
+      "workflowCategories": [
+        "application-prerequisite"
+      ],
+      "mismatch": false,
+      "mismatchRationale": null,
+      "intentionalMismatch": false,
+      "intentionalMismatchRationale": null,
+      "reviewStatus": "QUALIFIED_HUMAN_REVIEW_PENDING",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "id": "FRC-APP-NTP",
+      "officialClassASelection": "NOT_IN_CLASS_A_AGGREGATE",
+      "officialIndividualForce": "MUST NOT",
+      "officialSelectionForce": null,
+      "officialSelectionSourceRuleId": null,
+      "productInclusionReason": "Included for the product workflow: application-prerequisite.",
+      "workflowCategories": [
+        "application-prerequisite"
+      ],
+      "mismatch": false,
+      "mismatchRationale": null,
+      "intentionalMismatch": false,
+      "intentionalMismatchRationale": null,
+      "reviewStatus": "QUALIFIED_HUMAN_REVIEW_PENDING",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
+      "id": "FRC-APP-USA",
+      "officialClassASelection": "NOT_IN_CLASS_A_AGGREGATE",
+      "officialIndividualForce": "MAY",
+      "officialSelectionForce": null,
+      "officialSelectionSourceRuleId": null,
+      "productInclusionReason": "Included for the product workflow: application-prerequisite.",
+      "workflowCategories": [
+        "application-prerequisite"
+      ],
+      "mismatch": false,
+      "mismatchRationale": null,
+      "intentionalMismatch": false,
+      "intentionalMismatchRationale": null,
+      "reviewStatus": "QUALIFIED_HUMAN_REVIEW_PENDING",
+      "reviewer": null,
+      "reviewDate": null
+    }
+  ]
+}

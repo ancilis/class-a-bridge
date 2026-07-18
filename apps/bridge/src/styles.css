@@ -757,6 +757,10 @@ textarea {
   color: var(--navy);
   font-weight: 780;
 }
+.nav-item--active:hover {
+  background: #d8eee8;
+  color: var(--navy);
+}
 .nav-item--active > span {
   color: var(--teal-dark);
 }

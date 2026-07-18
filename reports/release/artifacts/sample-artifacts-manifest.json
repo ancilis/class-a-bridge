@@ -1,0 +1,50 @@
+{
+  "format": "class-a-bridge-fictional-release-artifacts",
+  "formatVersion": 1,
+  "generatedAt": "2026-07-18T12:00:00.000Z",
+  "sourceFixture": "@class-a-bridge/testing ACME_METRICS_PROJECT",
+  "watermark": "Fictional example — not for submission.",
+  "disclaimer": "These artifacts are fictional demonstrations. They are not certification materials and must not be submitted.",
+  "artifacts": [
+    {
+      "fileName": "acme-metrics-fictional-sample.classabridge",
+      "mediaType": "application/vnd.ancilis.class-a-bridge+zip",
+      "bytes": 17267,
+      "sha256": "3b1aaa80cda1b00b58f3b407c14c7c09793cf63ed48de9e460549890107f00a9",
+      "sample": true,
+      "description": "Portable fictional Acme Metrics project backup with generated sample outputs."
+    },
+    {
+      "fileName": "acme-metrics-fictional-soc2-reuse-and-gap.html",
+      "mediaType": "text/html;charset=utf-8",
+      "bytes": 21500,
+      "sha256": "f7e8d06365abb608e27032800801b38ee860b8ae108a87bf686d4f5f8a91c66b",
+      "sample": true,
+      "description": "Print-friendly fictional SOC 2 Reuse and Gap Report."
+    },
+    {
+      "fileName": "acme-metrics-fictional-soc2-reuse-mapping.csv",
+      "mediaType": "text/csv;charset=utf-8",
+      "bytes": 3527,
+      "sha256": "f65b6f1017252c988d0a2464fbf3fc6a6de2ecbdbbf501845e97d2e4f2c20d0b",
+      "sample": true,
+      "description": "Fictional SOC 2-to-Class A mapping matrix with a visible sample notice."
+    },
+    {
+      "fileName": "acme-metrics-fictional-class-a-preparation-package.zip",
+      "mediaType": "application/zip",
+      "bytes": 81029,
+      "sha256": "2179d7bb683c121f91121cbeecb8d4add254db0cfa5b137179e7f1ae4ee9629a",
+      "sample": true,
+      "description": "Fictional Class A preparation package scaffold; not a submission package."
+    },
+    {
+      "fileName": "class-a-bridge-fictional-sample-license-and-notice.zip",
+      "mediaType": "application/zip",
+      "bytes": 4952,
+      "sha256": "57aa608d08f42c825af29e74adff2351381f657d3f660cb7920d9c0f99c5b7c4",
+      "sample": true,
+      "description": "Apache-2.0 license and notice bundle accompanying the fictional samples."
+    }
+  ]
+}

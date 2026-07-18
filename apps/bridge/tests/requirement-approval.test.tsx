@@ -12,6 +12,7 @@ describe("provider requirement approval", () => {
 
     await user.click(screen.getByRole("button", { name: /start without uploading/iu }));
     await user.click(screen.getByRole("button", { name: "Class A requirements" }));
+    await user.click(screen.getByRole("button", { name: "Record mode" }));
 
     const detail = screen.getByRole("region", { name: "Requirement record" });
     const status = within(detail).getByLabelText("Completion status");

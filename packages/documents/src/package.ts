@@ -1,4 +1,4 @@
-import { safeFilename, sha256Hex } from "@class-a-bridge/project";
+import { isReviewedSoc2Mapping, safeFilename, sha256Hex } from "@class-a-bridge/project";
 import type { BridgeProject } from "@class-a-bridge/project";
 import { CATALOG_MANIFEST } from "@class-a-bridge/rules";
 import { zipSync } from "fflate";
@@ -347,6 +347,32 @@ export async function generatePreparationPackage(
     mappingCsv.mimeType,
     "machine-readable",
   );
+  add(
+    "04-soc2-bridge/soc2-mapping-provenance.json",
+    serializeJsonArtifact("soc2-mapping-provenance", {
+      generatedAt,
+      mappings: project.mappings.filter(isReviewedSoc2Mapping).map((item) => ({
+        id: item.id,
+        soc2ControlId: item.soc2ControlId,
+        classARuleId: item.classARuleId,
+        reportPage: item.reportPage,
+        coverage: item.coverage,
+        suggested: item.suggested,
+        confirmed: item.confirmed,
+        suggestionLevel: item.suggestionLevel ?? null,
+        suggestionSource: item.suggestionSource ?? null,
+        playbookContentVersion: item.playbookContentVersion ?? null,
+        reviewOutcome: item.reviewOutcome ?? null,
+        reviewer: item.reviewer ?? null,
+        reviewDate: item.reviewDate ?? null,
+        evidenceIds: item.evidenceIds ?? [],
+      })),
+      disclaimer:
+        "A reviewed supporting SOC 2 mapping is supporting material only. It does not automatically satisfy a FedRAMP requirement or establish evidence sufficiency. Reviewed rejection, mismatch, exception, and expert-review outcomes establish no support.",
+    }).bytes,
+    "application/json",
+    "machine-readable",
+  );
   const materials = generateHumanReport(project, "external-materials", { generatedAt });
   add(
     "04-soc2-bridge/external-assessment-materials.html",
@@ -415,6 +441,12 @@ export async function generatePreparationPackage(
     openItems.mimeType,
     "human-readable",
   );
+  add(
+    "07-readiness-and-open-items/unresolved-items-report.html",
+    htmlBytes(openItems.html),
+    openItems.mimeType,
+    "human-readable",
+  );
   const actionCsv = generateCsv(project, "action-plan");
   add(
     "07-readiness-and-open-items/action-plan.csv",
@@ -462,12 +494,20 @@ export async function generatePreparationPackage(
     "application/json",
     "machine-readable",
   );
+  const sourceAndSchemaVersions = serializeJsonArtifact("source-and-schema-versions", {
+    ruleCatalog: CATALOG_MANIFEST,
+    schemas: official.schemaManifest,
+  });
   add(
     "08-validation/rule-source-and-schema-version-manifest.json",
-    serializeJsonArtifact("rule-source-and-schema-version-manifest", {
-      ruleCatalog: CATALOG_MANIFEST,
-      schemas: official.schemaManifest,
-    }).bytes,
+    sourceAndSchemaVersions.bytes,
+    "application/json",
+    "machine-readable",
+    false,
+  );
+  add(
+    "08-validation/source-and-schema-versions.json",
+    sourceAndSchemaVersions.bytes,
     "application/json",
     "machine-readable",
     false,
@@ -491,6 +531,28 @@ export async function generatePreparationPackage(
       userApproved: true,
     });
   }
+  add(
+    "08-validation/attachment-inclusion-report.json",
+    serializeJsonArtifact("attachment-inclusion-report", {
+      generatedAt,
+      originalSoc2ReportIncluded: project.soc2.sourceReport
+        ? attachmentConsent.some(
+            ({ attachmentId }) => attachmentId === project.soc2.sourceReport?.attachmentId,
+          )
+        : false,
+      includedAttachments: attachmentConsent,
+      excludedByDefault: [
+        "Original SOC 2 report",
+        "Evidence attachments",
+        "Incident materials",
+        "Internal notes",
+        "Unapproved SOC 2 mappings",
+      ],
+      consentRequired: true,
+    }).bytes,
+    "application/json",
+    "machine-readable",
+  );
 
   const indexPath = "00-read-me/package-index.html";
   const indexedPaths = [...files.keys(), indexPath, "manifest.json", "checksums.txt"].sort();
@@ -534,7 +596,7 @@ export async function generatePreparationPackage(
   const manifest: PreparationPackageManifest = {
     format: "class-a-bridge-preparation-package",
     formatVersion: 1,
-    packageVersion: options.packageVersion ?? "1.0.0-draft",
+    packageVersion: options.packageVersion ?? "draft-1",
     createdAt: generatedAt,
     project: {
       id: project.metadata.id,

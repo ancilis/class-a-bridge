@@ -2,6 +2,7 @@ import {
   BridgeProjectSchema,
   createEmptyProject,
   evaluateEligibility,
+  soc2MappingSupportsReuse,
   type AnswerValue,
   type BridgeProject,
   type EligibilityQuestionId,
@@ -17,6 +18,28 @@ const VALIDATION_REPORT_CONTENT = JSON.stringify({
   status: "invalid",
   issues: [{ field: "provider approval", message: "Missing fictional provider approval" }],
 });
+const SOC2_REUSE_REPORT_CONTENT = `<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>SOC 2 Reuse and Gap Report</title></head>
+<body>
+<p><strong>${SAMPLE_WATERMARK}</strong></p>
+<h1>Acme Metrics SOC 2 Reuse and Gap Report</h1>
+<p>System: Acme Metrics Cloud System. Fictional issuer: Fictional Independent Accounting Firm. Assessment period: July 1, 2025 through June 30, 2026. Proposed federal offering: Acme Metrics Cloud.</p>
+<h2>Scope alignment</h2><p>The commercial and proposed federal application boundary appears similar, but the carved-out Fictional Cloud Host and privileged support path require review.</p>
+<h2>Confirmed reusable controls</h2><p>Incident-response and change-management records were confirmed as supporting material. They do not automatically satisfy a Class A requirement.</p>
+<h2>Partial and supporting-only mappings</h2><p>Change approval testing supports change governance, while access testing supplies operating context. Complete change-source logging and account automation still require FedRAMP-specific evidence.</p>
+<h2>FedRAMP-specific gaps</h2><p>The team still needs current network-path validation, final incident-report timing and delivery records, package-specific approval, and official JSON validation.</p>
+<h2>Scope and period mismatches</h2><p>The hosting-provider carve-out affects scope reuse. A prior-period independent assessment does not align with the confirmed report period.</p>
+<h2>Auditor exceptions and carve-outs</h2><p>A delayed access removal affects reuse until remediation is reviewed. The carved-out host requires complementary-control and boundary confirmation.</p>
+<h2>Complementary controls</h2><p>Customers approve administrators and review access quarterly. The host's complementary privileged-access control remains a provider representation requiring confirmation.</p>
+<h2>Rejected mappings</h2><p>A keyword-only relationship between change management and passwordless authentication was rejected because the tested control objective was not substantively relevant.</p>
+<h2>Requirements without confirmed support</h2><p>Network restriction has a strong unconfirmed candidate. Vulnerability detection and several package-specific requirements have no confirmed SOC 2 support.</p>
+<h2>Evidence and follow-up</h2><p>Evidence candidates are linked by identifier. Technical owners must confirm network coverage, identity automation, report timing, and hosting scope. The accountable executive must approve final provider representations.</p>
+<h2>Expert-review items</h2><p>Review the access exception, carved-out host, prior-period assessment, and any use of the official upstream cross-reference inconsistency.</p>
+<h2>Mapping provenance</h2><p>Each record identifies the SOC 2 control, report page, Class A rule, review outcome, reviewer, review date, and related evidence candidate.</p>
+<p>Reviewer: Taylor Morgan. Review date: July 15, 2026.</p>
+<p>This report organizes preparation work only. It does not determine eligibility, certify the provider, establish evidence sufficiency, or replace provider, assessor, agency, or qualified-advisor review.</p>
+<p><strong>${SAMPLE_WATERMARK}</strong></p>
+</body></html>`;
 
 const answerValues: Record<EligibilityQuestionId, AnswerValue> = {
   soc2_type_ii: "yes",
@@ -38,15 +61,267 @@ const evidenceByRule: Readonly<Record<string, readonly string[]>> = {
   "IEC-CSO-FIR": ["evidence-ir-exercise"],
   "KSI-CED-RAT": ["evidence-training"],
 };
-const soc2ByRule: Readonly<
-  Record<string, { readonly ids: readonly string[]; readonly pages: readonly number[] }>
-> = {
-  "KSI-CMT-LMC": { ids: ["ACME-CC8.1"], pages: [70] },
-  "KSI-IAM-AAM": { ids: ["ACME-CC6.1"], pages: [42] },
-  "KSI-IAM-APM": { ids: ["ACME-CC6.1"], pages: [42] },
-  "KSI-INR-RIR": { ids: ["ACME-CC7.2"], pages: [61] },
-  "IEC-CSO-FIR": { ids: ["ACME-CC7.2"], pages: [61] },
-};
+
+const SAMPLE_MAPPINGS: BridgeProject["mappings"] = [
+  {
+    id: "map-change-partial",
+    soc2ControlId: "ACME-CC8.1",
+    reportPage: 70,
+    excerpt: "Fictional change approvals and tests were sampled.",
+    classARuleId: "KSI-CMT-LMC",
+    coverage: "partially_covered",
+    reason:
+      "The sampled control supports change governance, but it does not establish that every deployment, emergency change, direct console change, and infrastructure change is logged.",
+    gapDescription: "Reconcile every production change source to approval and audit logging.",
+    additionalEvidenceNeeded:
+      "Current configuration, deployment-to-ticket reconciliation, and a dated audit-log sample.",
+    suggested: true,
+    confirmed: true,
+    suggestionLevel: "strong_candidate",
+    suggestionSource: "deterministic_playbook",
+    playbookContentVersion: "2026.07.18-beta.1",
+    matchedCriteria: ["CC8.1"],
+    matchedKeywords: ["change", "deployment"],
+    suggestionReasons: [
+      "CC8.1 and the control's change-approval language match the reviewed change-management playbook.",
+    ],
+    scopeAlignment: "aligned",
+    periodAlignment: "aligned",
+    testResultStatus: "no_exception_reported",
+    exceptionStatus: "no_exception_reported",
+    missingInformation: ["Confirm coverage for emergency and direct changes."],
+    conflicts: [],
+    evidenceIds: ["evidence-change-sample"],
+    reviewOutcome: "partial_support",
+    reviewer: "Taylor Morgan",
+    reviewDate: "2026-07-15",
+  },
+  {
+    id: "map-incident-support",
+    soc2ControlId: "ACME-CC7.2",
+    reportPage: 61,
+    excerpt: "Fictional incident alerts and response records were sampled without exception.",
+    classARuleId: "KSI-INR-RIR",
+    coverage: "likely_covered",
+    reason:
+      "The tested monitoring and incident records support procedure review, while the federal reporting path and open exercise actions still need confirmation.",
+    gapDescription:
+      "Confirm FedRAMP recipients, deadlines, third-party dependencies, and corrective-action closure.",
+    additionalEvidenceNeeded:
+      "Current incident procedure, exercise review, and tracked improvement record.",
+    suggested: true,
+    confirmed: true,
+    suggestionLevel: "possible_candidate",
+    suggestionSource: "deterministic_playbook",
+    playbookContentVersion: "2026.07.18-beta.1",
+    matchedCriteria: ["CC7.2"],
+    matchedKeywords: ["incident", "monitoring"],
+    suggestionReasons: [
+      "The control contains incident-monitoring evidence relevant to procedure review.",
+    ],
+    scopeAlignment: "aligned",
+    periodAlignment: "aligned",
+    testResultStatus: "no_exception_reported",
+    exceptionStatus: "no_exception_reported",
+    missingInformation: ["Confirm the federal incident-reporting path."],
+    conflicts: [],
+    evidenceIds: ["evidence-ir-exercise"],
+    reviewOutcome: "confirmed_supporting_material",
+    reviewer: "Taylor Morgan",
+    reviewDate: "2026-07-15",
+  },
+  {
+    id: "map-access-exception",
+    soc2ControlId: "ACME-CC6.1",
+    reportPage: 42,
+    excerpt: "A fictional delayed access removal affected one tested item.",
+    classARuleId: "KSI-IAM-AAM",
+    coverage: "needs_human_review",
+    reason:
+      "The lifecycle test is relevant, but the auditor exception and incomplete automation evidence affect reuse.",
+    gapDescription: "Review remediation and identify every manual account-lifecycle path.",
+    additionalEvidenceNeeded:
+      "Remediation evidence, automation coverage, and current exception handling records.",
+    suggested: true,
+    confirmed: true,
+    suggestionLevel: "expert_review_suggested",
+    suggestionSource: "deterministic_playbook",
+    playbookContentVersion: "2026.07.18-beta.1",
+    matchedCriteria: ["CC6.1", "CC6.2"],
+    matchedKeywords: ["account", "access"],
+    suggestionReasons: ["The control is relevant, but a recorded exception affects reliance."],
+    scopeAlignment: "aligned",
+    periodAlignment: "aligned",
+    testResultStatus: "exception_reported",
+    exceptionStatus: "exception_reported",
+    missingInformation: ["Confirm remediation effectiveness."],
+    conflicts: ["An auditor exception affects this reuse candidate."],
+    evidenceIds: ["evidence-access-review"],
+    reviewOutcome: "exception_affects_reuse",
+    reviewer: "Taylor Morgan",
+    reviewDate: "2026-07-15",
+  },
+  {
+    id: "map-final-report-gap",
+    soc2ControlId: "ACME-CC7.2",
+    reportPage: 61,
+    excerpt:
+      "The SOC 2 test sampled response records but did not test FedRAMP final-report delivery.",
+    classARuleId: "IEC-CSO-FIR",
+    coverage: "fedramp_specific_work_required",
+    reason:
+      "Incident operating evidence may support the narrative but does not establish the Class A final-report content, recipients, or timing.",
+    gapDescription: "Create and validate the FedRAMP-specific final incident-report workflow.",
+    additionalEvidenceNeeded:
+      "Final-report template, delivery record, timing calculation, approval, and JSON validation.",
+    suggested: true,
+    confirmed: true,
+    suggestionLevel: "possible_candidate",
+    suggestionSource: "deterministic_playbook",
+    playbookContentVersion: "2026.07.18-beta.1",
+    matchedCriteria: ["CC7.2"],
+    matchedKeywords: ["incident"],
+    suggestionReasons: [
+      "The record supports incident handling but not the FedRAMP-specific artifact.",
+    ],
+    scopeAlignment: "aligned",
+    periodAlignment: "aligned",
+    testResultStatus: "no_exception_reported",
+    exceptionStatus: "no_exception_reported",
+    missingInformation: ["Confirm the delivery clock and recipients."],
+    conflicts: [],
+    evidenceIds: ["evidence-ir-exercise"],
+    reviewOutcome: "fedramp_specific_work_required",
+    reviewer: "Taylor Morgan",
+    reviewDate: "2026-07-15",
+  },
+  {
+    id: "map-host-scope-mismatch",
+    soc2ControlId: "ACME-CC9.2",
+    reportPage: 85,
+    excerpt:
+      "The fictional hosting service was identified but carved out of the auditor's testing.",
+    classARuleId: "FRC-CLA-EAM",
+    coverage: "scope_mismatch",
+    reason:
+      "A material in-boundary dependency was not included in the SOC 2 auditor's control testing.",
+    gapDescription: "Resolve how the carved-out host is treated for the proposed federal offering.",
+    additionalEvidenceNeeded:
+      "Host assurance materials, complementary-control operation, and provider boundary rationale.",
+    suggested: true,
+    confirmed: true,
+    suggestionLevel: "expert_review_suggested",
+    suggestionSource: "deterministic_playbook",
+    playbookContentVersion: "2026.07.18-beta.1",
+    matchedCriteria: ["CC9.2"],
+    matchedKeywords: ["subservice", "scope"],
+    suggestionReasons: ["The carved-out service materially affects the proposed boundary."],
+    scopeAlignment: "potential_mismatch",
+    periodAlignment: "aligned",
+    testResultStatus: "needs_review",
+    exceptionStatus: "not_sure",
+    missingInformation: ["Confirm the host's effective control coverage."],
+    conflicts: ["The supporting service is carved out and may create a boundary mismatch."],
+    evidenceIds: ["evidence-hosting-review"],
+    reviewOutcome: "scope_mismatch",
+    reviewer: "Taylor Morgan",
+    reviewDate: "2026-07-15",
+  },
+  {
+    id: "map-prior-period",
+    soc2ControlId: "ACME-CC4.2-PRIOR",
+    reportPage: 92,
+    excerpt: "The independent assessment sample relates to the prior report period.",
+    classARuleId: "FRC-CLA-IVV",
+    coverage: "needs_human_review",
+    reason:
+      "The control pattern is relevant, but its test period does not align with the current report.",
+    gapDescription: "Confirm current-period independent verification and validation coverage.",
+    additionalEvidenceNeeded: "Current engagement record, test results, and assessment schedule.",
+    suggested: true,
+    confirmed: true,
+    suggestionLevel: "potential_conflict",
+    suggestionSource: "deterministic_playbook",
+    playbookContentVersion: "2026.07.18-beta.1",
+    matchedCriteria: ["CC4.2"],
+    matchedKeywords: ["independent", "assessment"],
+    suggestionReasons: ["The test period predates the confirmed SOC 2 report period."],
+    scopeAlignment: "aligned",
+    periodAlignment: "mismatch",
+    testResultStatus: "no_exception_reported",
+    exceptionStatus: "no_exception_reported",
+    missingInformation: ["Add current-period assessment evidence."],
+    conflicts: ["The control period does not match the confirmed SOC 2 report period."],
+    evidenceIds: ["evidence-prior-assessment"],
+    reviewOutcome: "period_mismatch",
+    reviewer: "Taylor Morgan",
+    reviewDate: "2026-07-15",
+  },
+  {
+    id: "map-passwordless-rejected",
+    soc2ControlId: "ACME-CC8.1",
+    reportPage: 70,
+    excerpt: "The change-management test does not establish passwordless authentication.",
+    classARuleId: "KSI-IAM-APM",
+    coverage: "no_relevant_mapping",
+    reason:
+      "A keyword-only suggestion was rejected because the tested control addresses production changes, not authentication methods.",
+    gapDescription: "No reusable relationship was confirmed.",
+    additionalEvidenceNeeded: "Identity-provider policy and passwordless enforcement evidence.",
+    suggested: true,
+    confirmed: true,
+    suggestionLevel: "insufficient_information",
+    suggestionSource: "deterministic_playbook",
+    playbookContentVersion: "2026.07.18-beta.1",
+    matchedCriteria: [],
+    matchedKeywords: ["approval"],
+    suggestionReasons: ["The initial keyword overlap was not substantively relevant."],
+    scopeAlignment: "aligned",
+    periodAlignment: "aligned",
+    testResultStatus: "no_exception_reported",
+    exceptionStatus: "no_exception_reported",
+    missingInformation: [],
+    conflicts: ["The control objective is unrelated to passwordless authentication."],
+    evidenceIds: [],
+    reviewOutcome: "rejected_mapping",
+    reviewer: "Taylor Morgan",
+    reviewDate: "2026-07-15",
+  },
+  {
+    id: "map-host-expert-review",
+    soc2ControlId: "ACME-CC9.2",
+    reportPage: 85,
+    excerpt:
+      "Complementary host controls were described but not tested by the fictional SOC 2 auditor.",
+    classARuleId: "FRC-CLA-IVV",
+    coverage: "needs_human_review",
+    reason:
+      "Independent-assessment reuse depends on the treatment and evidence for the carved-out host.",
+    gapDescription:
+      "Qualified review is needed before relying on the host's separate assurance material.",
+    additionalEvidenceNeeded:
+      "Current host report, bridge letter if needed, and complementary-control evaluation.",
+    suggested: true,
+    confirmed: false,
+    suggestionLevel: "expert_review_suggested",
+    suggestionSource: "deterministic_playbook",
+    playbookContentVersion: "2026.07.18-beta.1",
+    matchedCriteria: ["CC9.2"],
+    matchedKeywords: ["subservice", "carve-out"],
+    suggestionReasons: ["The material service was carved out of the audited control testing."],
+    scopeAlignment: "potential_mismatch",
+    periodAlignment: "aligned",
+    testResultStatus: "needs_review",
+    exceptionStatus: "not_sure",
+    missingInformation: ["Obtain and review the host's current assessment material."],
+    conflicts: ["The service is carved out."],
+    evidenceIds: ["evidence-hosting-review"],
+    reviewOutcome: "needs_expert_review",
+  },
+] satisfies BridgeProject["mappings"];
+
+const mappingContributesRequirementReference = (mapping: BridgeProject["mappings"][number]) =>
+  soc2MappingSupportsReuse(mapping);
 
 function requirementFor(ruleId: string, index: number): RequirementWork {
   const isKsi = ksiIds.has(ruleId);
@@ -58,6 +333,9 @@ function requirementFor(ruleId: string, index: number): RequirementWork {
     "needs_technical_confirmation",
     "needs_expert_review",
   ][index % 5] as RequirementWork["status"];
+  const acceptedMappings = SAMPLE_MAPPINGS.filter(
+    (mapping) => mapping.classARuleId === ruleId && mappingContributesRequirementReference(mapping),
+  );
   return {
     ruleId,
     status,
@@ -84,8 +362,8 @@ function requirementFor(ruleId: string, index: number): RequirementWork {
     independentValidation: isKsi
       ? "The validation sample and reviewer independence remain to be confirmed."
       : "",
-    soc2ControlIds: [...(soc2ByRule[ruleId]?.ids ?? [])],
-    soc2PageReferences: [...(soc2ByRule[ruleId]?.pages ?? [])],
+    soc2ControlIds: [...new Set(acceptedMappings.map(({ soc2ControlId }) => soc2ControlId))],
+    soc2PageReferences: [...new Set(acceptedMappings.map(({ reportPage }) => reportPage))],
     evidenceIds: [...(evidenceByRule[ruleId] ?? [])],
     owner: guidance?.suggestedOwner ?? "FedRAMP program owner",
     notes:
@@ -222,32 +500,253 @@ function createAcmeMetricsProject(): BridgeProject {
       {
         id: "ACME-CC6.1",
         title: "Logical access",
-        trustServicesCriteria: ["CC6.1"],
+        description:
+          "The identity team approves, provisions, changes, and removes workforce access to the production service.",
+        trustServicesCriteria: ["CC6.1", "CC6.2"],
         reportPages: [42, 43],
+        reportPageRange: "42-43",
         auditorTest: "Inspected a fictional sample of workforce access changes.",
         auditorResult: "One delayed removal was noted and remediated.",
         exceptionIds: ["exception-access-removal"],
-        excerpt: "Fictional control excerpt for demonstration only.",
+        excerpt:
+          "Access requests require approval; a sampled terminated account was removed after the target window.",
+        exceptionStatus: "exception_reported",
+        exceptionDescription:
+          "One sampled terminated-user account was disabled two days after the target window.",
+        remediationStatus: "in_progress",
+        reportPeriod: "July 1, 2025 through June 30, 2026",
+        reportPeriodStart: "2025-07-01",
+        reportPeriodEnd: "2026-06-30",
+        frequency: "Event driven with quarterly review",
+        owner: "Identity and IT",
+        systemScope: "Acme Metrics Cloud",
+        environment: "Production and corporate identity",
+        treatment: "inclusive",
+        complementaryUserEntityControl:
+          "Customers approve administrators and review their access quarterly.",
+        evidenceReferences: ["evidence-access-review"],
+        scopeAlignment: "aligned",
+        confirmationStatus: "confirmed",
+        reviewer: "Taylor Morgan",
+        reviewDate: "2026-07-15",
+        notes: "The exception and remediation must be considered before this control is reused.",
+        sourceSuggestions: [
+          {
+            field: "Auditor test result",
+            suggestedValue: "One delayed removal was noted and remediated.",
+            sourcePage: 43,
+            sourceExcerpt: "One terminated-user account was disabled after the target window.",
+            extractionBasis: "Deterministic exception-language and page-reference pattern",
+            decision: "confirmed",
+          },
+        ],
       },
       {
         id: "ACME-CC7.2",
         title: "Security monitoring",
+        description:
+          "Security Operations monitors alerts and records incident triage and response activity.",
         trustServicesCriteria: ["CC7.2"],
         reportPages: [61, 62],
+        reportPageRange: "61-62",
         auditorTest: "Inspected fictional alert and incident samples.",
         auditorResult: "No exceptions in the sample tested.",
         exceptionIds: [],
-        excerpt: "Fictional monitoring excerpt for demonstration only.",
+        excerpt:
+          "Security alerts are monitored and incident response records are retained for review.",
+        exceptionStatus: "no_exception_reported",
+        remediationStatus: "not_required",
+        reportPeriod: "July 1, 2025 through June 30, 2026",
+        reportPeriodStart: "2025-07-01",
+        reportPeriodEnd: "2026-06-30",
+        frequency: "Continuous monitoring with event-driven response",
+        owner: "Security Operations",
+        systemScope: "Acme Metrics Cloud",
+        environment: "Production",
+        treatment: "inclusive",
+        evidenceReferences: ["evidence-ir-exercise"],
+        scopeAlignment: "aligned",
+        confirmationStatus: "confirmed",
+        reviewer: "Taylor Morgan",
+        reviewDate: "2026-07-15",
+        notes:
+          "The SOC 2 test does not establish FedRAMP reportability, recipients, or final-report timing.",
       },
       {
         id: "ACME-CC8.1",
         title: "Change management",
+        description:
+          "Production changes require review, testing, approval, and controlled deployment.",
         trustServicesCriteria: ["CC8.1"],
         reportPages: [70],
+        reportPageRange: "70",
         auditorTest: "Inspected fictional production changes for approval and testing.",
         auditorResult: "No exceptions in the sample tested.",
         exceptionIds: [],
-        excerpt: "Fictional change-management excerpt for demonstration only.",
+        excerpt:
+          "A sample of production change tickets was traced to approval, testing, and deployment records.",
+        exceptionStatus: "no_exception_reported",
+        remediationStatus: "not_required",
+        reportPeriod: "July 1, 2025 through June 30, 2026",
+        reportPeriodStart: "2025-07-01",
+        reportPeriodEnd: "2026-06-30",
+        frequency: "Per production change",
+        owner: "Platform Engineering",
+        systemScope: "Acme Metrics Cloud",
+        environment: "Production",
+        treatment: "inclusive",
+        evidenceReferences: ["evidence-change-sample"],
+        scopeAlignment: "aligned",
+        confirmationStatus: "confirmed",
+        reviewer: "Taylor Morgan",
+        reviewDate: "2026-07-15",
+        notes:
+          "Confirm emergency changes, direct cloud changes, and infrastructure drift before reuse.",
+      },
+      {
+        id: "ACME-CC6.6",
+        title: "Network traffic restrictions",
+        description:
+          "Network traffic is restricted to approved ingress, egress, service, and administrative paths.",
+        trustServicesCriteria: ["CC6.6", "CC6.7"],
+        reportPages: [52, 53],
+        reportPageRange: "52-53",
+        auditorTest:
+          "Inspected a fictional sample of network firewall changes and observed flow-log review.",
+        auditorResult: "No exceptions were reported in the sample tested.",
+        exceptionIds: [],
+        excerpt:
+          "Firewall rules restrict network traffic, and flow logs are reviewed for unexpected connections.",
+        exceptionStatus: "no_exception_reported",
+        remediationStatus: "not_required",
+        reportPeriod: "July 1, 2025 through June 30, 2026",
+        reportPeriodStart: "2025-07-01",
+        reportPeriodEnd: "2026-06-30",
+        frequency: "Per change with continuous flow logging",
+        owner: "Cloud Platform",
+        systemScope: "Acme Metrics Cloud",
+        environment: "Production",
+        treatment: "inclusive",
+        evidenceReferences: ["evidence-network-rules"],
+        scopeAlignment: "aligned",
+        confirmationStatus: "confirmed",
+        reviewer: "Taylor Morgan",
+        reviewDate: "2026-07-15",
+        notes: "This is a strong suggestion candidate, not a confirmed KSI-CNA-RNT mapping.",
+      },
+      {
+        id: "ACME-CC4.2-PRIOR",
+        title: "Prior-period independent assessment",
+        description:
+          "An independent assessment evaluated selected controls during the prior reporting period.",
+        trustServicesCriteria: ["CC4.2"],
+        reportPages: [92],
+        reportPageRange: "92",
+        auditorTest:
+          "Inspected the fictional prior-period independent assessment plan and results.",
+        auditorResult: "No exceptions were reported in the prior-period sample.",
+        exceptionIds: [],
+        excerpt:
+          "The prior-period independent assessment covered July 1, 2024 through June 30, 2025.",
+        exceptionStatus: "no_exception_reported",
+        remediationStatus: "not_required",
+        reportPeriod: "July 1, 2024 through June 30, 2025",
+        reportPeriodStart: "2024-07-01",
+        reportPeriodEnd: "2025-06-30",
+        frequency: "Annual",
+        owner: "GRC",
+        systemScope: "Acme Metrics Cloud",
+        environment: "Production",
+        treatment: "inclusive",
+        evidenceReferences: ["evidence-prior-assessment"],
+        scopeAlignment: "aligned",
+        confirmationStatus: "confirmed",
+        reviewer: "Taylor Morgan",
+        reviewDate: "2026-07-15",
+        notes:
+          "The period mismatch prevents the record from being treated as current-period support.",
+      },
+      {
+        id: "ACME-CC9.2",
+        title: "Subservice organization oversight",
+        description:
+          "The provider identifies material subservice organizations and reviews available assurance information.",
+        trustServicesCriteria: ["CC9.2"],
+        reportPages: [85, 86],
+        reportPageRange: "85-86",
+        auditorTest:
+          "Inspected vendor-review records; the fictional host's controls were carved out of the examination.",
+        auditorResult:
+          "The provider oversight control was tested without exception; host controls were not tested.",
+        exceptionIds: [],
+        excerpt:
+          "Fictional Cloud Host is a material subservice organization treated using the carve-out method.",
+        exceptionStatus: "not_sure",
+        remediationStatus: "not_sure",
+        reportPeriod: "July 1, 2025 through June 30, 2026",
+        reportPeriodStart: "2025-07-01",
+        reportPeriodEnd: "2026-06-30",
+        frequency: "Annual and on material change",
+        owner: "Vendor Risk and Cloud Platform",
+        systemScope: "Fictional Cloud Host supporting Acme Metrics Cloud",
+        environment: "Production hosting",
+        subserviceOrganization: "Fictional Cloud Host",
+        treatment: "carve_out",
+        complementarySubserviceOrganizationControl:
+          "The fictional host restricts and reviews privileged infrastructure access.",
+        evidenceReferences: ["evidence-hosting-review"],
+        scopeAlignment: "potential_mismatch",
+        confirmationStatus: "confirmed",
+        reviewer: "Taylor Morgan",
+        reviewDate: "2026-07-15",
+        notes: "Carve-out treatment requires separate assurance and technical boundary review.",
+      },
+      {
+        id: "ACME-CC7.1",
+        title: "Vulnerability detection coverage",
+        description:
+          "Automated scanners identify vulnerabilities in application code, dependencies, and exposed services.",
+        trustServicesCriteria: ["CC7.1"],
+        reportPages: [57],
+        reportPageRange: "57",
+        auditorTest: "Suggested: inspected scanner configuration and a sample of findings.",
+        auditorResult: "Suggested value requires user confirmation.",
+        exceptionIds: [],
+        excerpt:
+          "Automated vulnerability scans are performed against application components and exposed services.",
+        exceptionStatus: "not_sure",
+        remediationStatus: "not_sure",
+        reportPeriod: "July 1, 2025 through June 30, 2026",
+        reportPeriodStart: "2025-07-01",
+        reportPeriodEnd: "2026-06-30",
+        frequency: "Suggested: continuous and weekly",
+        owner: "Product Security",
+        systemScope: "Acme Metrics Cloud",
+        environment: "Production and build pipeline",
+        treatment: "inclusive",
+        evidenceReferences: [],
+        scopeAlignment: "not_sure",
+        confirmationStatus: "unreviewed",
+        notes:
+          "This locally extracted control remains a suggestion and cannot be reused until confirmed.",
+        sourceSuggestions: [
+          {
+            field: "Auditor test procedure",
+            suggestedValue: "Inspected scanner configuration and a sample of findings.",
+            sourcePage: 57,
+            sourceExcerpt: "...inspected configuration and selected vulnerability findings...",
+            extractionBasis: "Deterministic control-heading and test-procedure pattern",
+            decision: "unreviewed",
+          },
+          {
+            field: "Control frequency",
+            suggestedValue: "Continuous and weekly",
+            sourcePage: 57,
+            sourceExcerpt: "...continuous dependency checks and weekly external scans...",
+            extractionBasis: "Deterministic frequency-term pattern",
+            decision: "unreviewed",
+          },
+        ],
       },
     ],
     exceptions: [
@@ -467,41 +966,66 @@ function createAcmeMetricsProject(): BridgeProject {
       notes: "Approaching review date.",
       reviewStatus: "candidate",
     },
+    {
+      id: "evidence-network-rules",
+      title: "Network rule and flow-log review",
+      description:
+        "Fictional firewall export and observed-traffic review retained as an evidence candidate.",
+      kind: "report",
+      sourceSystem: "Example cloud network console",
+      owner: "Cloud Platform",
+      collectedAt: "2026-07-11",
+      relevantPeriod: "2026 Q2",
+      reviewDate: "2026-10-11",
+      relatedRequirementIds: ["KSI-CNA-RNT"],
+      relatedSoc2ControlIds: ["ACME-CC6.6"],
+      sha256: "5".repeat(64),
+      sensitivity: "restricted",
+      notes:
+        "Evidence candidate only; the suggestion has not been confirmed as a substantive mapping.",
+      reviewStatus: "candidate",
+    },
+    {
+      id: "evidence-hosting-review",
+      title: "Carved-out host assurance review",
+      description:
+        "Fictional vendor-review record identifying missing current host-assurance material.",
+      kind: "report",
+      sourceSystem: "Example vendor-risk register",
+      owner: "Vendor Risk",
+      collectedAt: "2026-07-01",
+      relevantPeriod: "2026",
+      reviewDate: "2026-08-01",
+      relatedRequirementIds: ["FRC-CLA-EAM", "FRC-CLA-IVV"],
+      relatedSoc2ControlIds: ["ACME-CC9.2"],
+      sha256: "6".repeat(64),
+      sensitivity: "confidential",
+      notes:
+        "Candidate shows the carve-out decision; it does not establish the host control's sufficiency.",
+      reviewStatus: "needs_review",
+    },
+    {
+      id: "evidence-prior-assessment",
+      title: "Prior-period independent assessment index",
+      description:
+        "Fictional index of independent-assessment procedures from the previous report period.",
+      kind: "external_reference",
+      sourceSystem: "Local compliance register",
+      owner: "GRC",
+      collectedAt: "2025-07-10",
+      relevantPeriod: "2024-07-01 through 2025-06-30",
+      reviewDate: "2026-07-15",
+      relatedRequirementIds: ["FRC-CLA-IVV"],
+      relatedSoc2ControlIds: ["ACME-CC4.2-PRIOR"],
+      sha256: "7".repeat(64),
+      sensitivity: "confidential",
+      notes:
+        "Evidence candidate is period-mismatched and cannot establish current assessment coverage.",
+      reviewStatus: "reviewed",
+    },
   ];
 
-  project.mappings = [
-    {
-      id: "map-change",
-      soc2ControlId: "ACME-CC8.1",
-      reportPage: 70,
-      excerpt: "Fictional change approvals were sampled.",
-      classARuleId: "KSI-CMT-LMC",
-      coverage: "partially_covered",
-      reason:
-        "The SOC 2 test supports change governance but does not by itself establish all required logging outcomes.",
-      gapDescription: "Confirm production log coverage and the current federal boundary.",
-      additionalEvidenceNeeded: "Current configuration and a dated log sample.",
-      suggested: true,
-      confirmed: true,
-      reviewer: "Taylor Morgan",
-      reviewDate: "2026-07-15",
-    },
-    {
-      id: "map-access",
-      soc2ControlId: "ACME-CC6.1",
-      reportPage: 42,
-      excerpt: "Fictional access changes were sampled.",
-      classARuleId: "KSI-IAM-AAM",
-      coverage: "supporting_evidence_only",
-      reason:
-        "The report provides a candidate operating sample; automation and scope still need confirmation.",
-      gapDescription: "Document joiner, mover, leaver automation and exception handling.",
-      additionalEvidenceNeeded:
-        "Identity configuration, workflow sample, and dormant-account review.",
-      suggested: true,
-      confirmed: false,
-    },
-  ];
+  project.mappings = structuredClone(SAMPLE_MAPPINGS);
 
   project.actions = [
     {
@@ -559,6 +1083,34 @@ function createAcmeMetricsProject(): BridgeProject {
       sourceRefs: ["KSI-CED-RAT"],
       nextRoute: "/requirements/KSI-CED-RAT",
     },
+    {
+      id: "action-prior-period",
+      origin: "provider",
+      title: "Replace prior-period assessment support",
+      description:
+        "Collect and review current-period independent assessment material before relying on the proposed reuse relationship.",
+      category: "technical_confirmation",
+      priority: "high",
+      owner: "GRC and assessment coordinator",
+      dueDate: "2026-08-12",
+      status: "open",
+      sourceRefs: ["ACME-CC4.2-PRIOR", "FRC-CLA-IVV", "IVV-CSX-AIA"],
+      nextRoute: "/soc2-reuse",
+    },
+    {
+      id: "action-network-mapping",
+      origin: "provider",
+      title: "Review the network-restriction suggestion",
+      description:
+        "Confirm the control's full boundary coverage and decide whether it is supporting material for KSI-CNA-RNT.",
+      category: "technical_confirmation",
+      priority: "medium",
+      owner: "Cloud Platform and Compliance",
+      dueDate: "2026-08-15",
+      status: "open",
+      sourceRefs: ["ACME-CC6.6", "KSI-CNA-RNT"],
+      nextRoute: "/soc2-reuse",
+    },
   ];
   project.generatedOutputs = [
     {
@@ -589,6 +1141,17 @@ function createAcmeMetricsProject(): BridgeProject {
         },
       ],
     },
+    {
+      id: "output-soc2-reuse",
+      kind: "soc2_reuse_gap_report",
+      title: `SOC 2 Reuse and Gap Report — ${SAMPLE_WATERMARK}`,
+      format: "html",
+      generatedAt: FIXED_DATE,
+      sha256: "db9ca1a2d24b2e4d5ea5f09ced1e75014cb6d5407311a85fe3455f5ff547cdd9",
+      content: SOC2_REUSE_REPORT_CONTENT,
+      validationStatus: "not_applicable",
+      validationIssues: [],
+    },
   ];
   project.approvals = [
     {
@@ -605,6 +1168,8 @@ function createAcmeMetricsProject(): BridgeProject {
   project.advisorFlags = [
     "The fictional SOC 2 scope uses carve-out treatment for a material hosting dependency.",
     "An access-control exception and its remediation need expert review.",
+    "A prior-period mapping conflicts with the current SOC 2 assessment period.",
+    "The host-related mapping remains unresolved and needs expert scope review.",
     "Several generated narratives contain unresolved provider representations.",
   ];
   project.notes =

@@ -11,6 +11,9 @@ export interface ProjectSummary {
   readonly isSample: boolean;
 }
 
+export type AttachmentOwnership =
+  { readonly kind: "owned"; readonly projectId: string } | { readonly kind: "legacy-unowned" };
+
 export interface ProjectStore {
   readonly backend: "indexeddb" | "localstorage" | "memory";
   readonly supportsAttachments: boolean;
@@ -21,6 +24,8 @@ export interface ProjectStore {
   deleteAll(): Promise<void>;
   putAttachment(id: string, bytes: Uint8Array, projectId?: string): Promise<void>;
   getAttachment(id: string): Promise<Uint8Array | undefined>;
+  getAttachmentOwner(id: string): Promise<AttachmentOwnership | undefined>;
+  isAttachmentReferencedByOtherProject(id: string, projectId: string): Promise<boolean>;
   deleteAttachment(id: string): Promise<void>;
   estimateOwnedBytes(): Promise<number>;
 }
@@ -34,6 +39,17 @@ const summary = (project: BridgeProject): ProjectSummary => ({
 });
 
 const STORAGE_PREFIX = "class-a-bridge:";
+
+function localByteIds(project: BridgeProject): ReadonlySet<string> {
+  const ids = new Set<string>();
+  if (project.soc2.sourceReport) ids.add(project.soc2.sourceReport.attachmentId);
+  for (const evidence of project.evidence)
+    if (evidence.attachmentId) ids.add(evidence.attachmentId);
+  for (const material of project.materials)
+    if (material.attachmentId) ids.add(material.attachmentId);
+  for (const output of project.generatedOutputs) ids.add(output.id);
+  return ids;
+}
 
 function browserIndexedDb(): IDBFactory | undefined {
   try {
@@ -85,7 +101,12 @@ export class MemoryProjectStore implements ProjectStore {
   delete(id: string): Promise<void> {
     this.projects.delete(id);
     for (const [attachmentId, attachment] of this.attachments) {
-      if (attachment.projectId === id) this.attachments.delete(attachmentId);
+      const nextOwner = [...this.projects.values()].find((project) =>
+        localByteIds(project).has(attachmentId),
+      )?.metadata.id;
+      if (nextOwner) attachment.projectId = nextOwner;
+      else if (attachment.projectId === id || !this.projects.has(attachment.projectId))
+        this.attachments.delete(attachmentId);
     }
     return Promise.resolve();
   }
@@ -100,6 +121,17 @@ export class MemoryProjectStore implements ProjectStore {
   }
   getAttachment(id: string): Promise<Uint8Array | undefined> {
     return Promise.resolve(this.attachments.get(id)?.bytes.slice());
+  }
+  getAttachmentOwner(id: string): Promise<AttachmentOwnership | undefined> {
+    const projectId = this.attachments.get(id)?.projectId;
+    return Promise.resolve(projectId ? { kind: "owned", projectId } : undefined);
+  }
+  isAttachmentReferencedByOtherProject(id: string, projectId: string): Promise<boolean> {
+    return Promise.resolve(
+      [...this.projects.values()].some(
+        (project) => project.metadata.id !== projectId && localByteIds(project).has(id),
+      ),
+    );
   }
   deleteAttachment(id: string): Promise<void> {
     this.attachments.delete(id);
@@ -166,6 +198,12 @@ export class LocalStorageProjectStore implements ProjectStore {
   getAttachment(): Promise<undefined> {
     return Promise.resolve(undefined);
   }
+  getAttachmentOwner(): Promise<undefined> {
+    return Promise.resolve(undefined);
+  }
+  isAttachmentReferencedByOtherProject(): Promise<false> {
+    return Promise.resolve(false);
+  }
   deleteAttachment(): Promise<void> {
     return Promise.resolve();
   }
@@ -220,18 +258,56 @@ export class IndexedDbProjectStore implements ProjectStore {
   async delete(id: string) {
     const db = await this.database;
     const transaction = db.transaction(["projects", "attachments"], "readwrite");
+    const rawProject = await transaction.objectStore("projects").get(id);
+    let targetIds = new Set<string>();
+    try {
+      if (rawProject) targetIds = new Set(localByteIds(migrateProject(rawProject)));
+    } catch {
+      // Preserve unowned legacy bytes if project metadata cannot be validated safely.
+    }
     await transaction.objectStore("projects").delete(id);
     const attachmentStore = transaction.objectStore("attachments");
     const [keys, values] = await Promise.all([
       attachmentStore.getAllKeys(),
       attachmentStore.getAll(),
     ]);
+    const remainingProjects = await transaction.objectStore("projects").getAll();
+    const referencedElsewhere = new Map<string, string>();
+    const remainingProjectIds = new Set<string>();
+    let malformedRemainingProject = false;
+    for (const raw of remainingProjects) {
+      try {
+        const remaining = migrateProject(raw);
+        remainingProjectIds.add(remaining.metadata.id);
+        for (const attachmentId of localByteIds(remaining))
+          if (!referencedElsewhere.has(attachmentId))
+            referencedElsewhere.set(attachmentId, remaining.metadata.id);
+      } catch {
+        malformedRemainingProject = true;
+      }
+    }
     await Promise.all(
       values.map((value, index) => {
         const key = keys[index];
-        return !(value instanceof Uint8Array) && value.projectId === id && key !== undefined
-          ? attachmentStore.delete(key)
-          : Promise.resolve();
+        if (key === undefined) return Promise.resolve();
+        const attachmentId = String(key);
+        const nextOwner = referencedElsewhere.get(attachmentId);
+        if (nextOwner) {
+          const bytes = value instanceof Uint8Array ? value : value.bytes;
+          return attachmentStore.put({ projectId: nextOwner, bytes }, key);
+        }
+        if (
+          !(value instanceof Uint8Array) &&
+          (value.projectId === id || !remainingProjectIds.has(value.projectId))
+        )
+          return attachmentStore.delete(key);
+        if (
+          value instanceof Uint8Array &&
+          !malformedRemainingProject &&
+          targetIds.has(attachmentId)
+        )
+          return attachmentStore.delete(key);
+        return Promise.resolve();
       }),
     );
     await transaction.done;
@@ -251,6 +327,25 @@ export class IndexedDbProjectStore implements ProjectStore {
   async getAttachment(id: string) {
     const stored = await (await this.database).get("attachments", id);
     return stored instanceof Uint8Array ? stored.slice() : stored?.bytes.slice();
+  }
+  async getAttachmentOwner(id: string) {
+    const stored = await (await this.database).get("attachments", id);
+    if (!stored) return undefined;
+    return stored instanceof Uint8Array
+      ? ({ kind: "legacy-unowned" } as const)
+      : ({ kind: "owned", projectId: stored.projectId } as const);
+  }
+  async isAttachmentReferencedByOtherProject(id: string, projectId: string) {
+    const projects = await (await this.database).getAll("projects");
+    for (const raw of projects) {
+      try {
+        const project = migrateProject(raw);
+        if (project.metadata.id !== projectId && localByteIds(project).has(id)) return true;
+      } catch {
+        return true;
+      }
+    }
+    return false;
   }
   async deleteAttachment(id: string) {
     await (await this.database).delete("attachments", id);

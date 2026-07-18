@@ -192,6 +192,7 @@ export function createDocumentProject(options: { sample?: boolean } = {}): Bridg
     additionalEvidenceNeeded: "Identity workflow configuration and execution logs.",
     suggested: true,
     confirmed: true,
+    reviewOutcome: "partial_support",
     reviewer: "Morgan Lee",
     reviewDate: "2026-07-15",
   });

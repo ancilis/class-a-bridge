@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "status": "passed",
+  "releaseThreshold": "high",
+  "vulnerabilities": {
+    "info": 0,
+    "low": 0,
+    "moderate": 0,
+    "high": 0,
+    "critical": 0
+  },
+  "blockingVulnerabilityCount": 0,
+  "nonBlockingVulnerabilityCount": 0,
+  "dependencyCount": 88,
+  "advisories": []
+}

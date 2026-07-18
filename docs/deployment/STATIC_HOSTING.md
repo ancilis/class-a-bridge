@@ -2,7 +2,7 @@
 
 ## Cloudflare Pages
 
-Set the root directory to the repository root, build command to `corepack pnpm --filter @class-a-bridge/bridge build`, and output directory to `apps/bridge/dist`. Arrange for `deploy/cloudflare-pages/_headers` to be copied into the published root as `_headers` in the deployment pipeline. Configure a custom HTTPS domain and disable analytics/injected scripts on the bridge project.
+Set the root directory to the repository root, provision pnpm 10.33.0 in the build image, use `pnpm --filter @class-a-bridge/bridge build` as the build command, and set the output directory to `apps/bridge/dist`. Arrange for `deploy/cloudflare-pages/_headers` to be copied into the published root as `_headers` in the deployment pipeline. Configure a custom HTTPS domain and disable analytics/injected scripts on the bridge project.
 
 ## Netlify
 

@@ -13,6 +13,7 @@ import {
   BridgeProjectSchema,
   ELIGIBILITY_QUESTIONS,
   browserStorageEstimate,
+  coverageForSoc2ReviewOutcome,
   createProjectStore,
   createProjectStoreSafely,
   deleteAllLocalProjectData,
@@ -21,11 +22,15 @@ import {
   exportProjectBundle,
   finalReviewApprovalScope,
   importProjectBundle,
+  isReviewedSoc2Control,
   isFinalReviewApprovalForSnapshot,
+  removeSoc2Control,
+  soc2ReviewOutcomeSupportsReuse,
   safeFilename,
   sha256Hex,
   type AnswerValue,
   type BridgeProject,
+  type Soc2Mapping,
   type ProjectStore,
   type ProjectSummary,
 } from "@class-a-bridge/project";
@@ -69,6 +74,12 @@ import {
 } from "./lib/backup";
 import { parsePdfLocally, validatePdfFile } from "./lib/pdf";
 import { websiteHref } from "./lib/website-url";
+import { Soc2Reuse } from "./features/soc2/Soc2Reuse";
+import {
+  applyExtractionCandidateDecision,
+  updateExtractionCandidateValue,
+} from "./features/soc2/pdf-review";
+import { GuidedRequirement, OfficialRuleDetails } from "./features/requirements/GuidedRequirement";
 import {
   answerEligibility,
   deriveActions,
@@ -83,6 +94,7 @@ type Route =
   | "/eligibility"
   | "/scope"
   | "/soc2-materials"
+  | "/soc2-reuse"
   | "/requirements"
   | "/evidence"
   | "/action-plan"
@@ -105,12 +117,13 @@ const NAVIGATION: readonly {
   { route: "/eligibility", label: "Eligibility", short: "02" },
   { route: "/scope", label: "Scope", short: "03" },
   { route: "/soc2-materials", label: "SOC 2 materials", short: "04" },
-  { route: "/requirements", label: "Class A requirements", short: "05" },
-  { route: "/evidence", label: "Evidence", short: "06" },
-  { route: "/action-plan", label: "Action plan", short: "07" },
-  { route: "/package", label: "Package", short: "08" },
-  { route: "/reports", label: "Reports", short: "09" },
-  { route: "/settings", label: "Project settings", short: "10" },
+  { route: "/soc2-reuse", label: "SOC 2 reuse", short: "05" },
+  { route: "/requirements", label: "Class A requirements", short: "06" },
+  { route: "/evidence", label: "Evidence", short: "07" },
+  { route: "/action-plan", label: "Action plan", short: "08" },
+  { route: "/package", label: "Package", short: "09" },
+  { route: "/reports", label: "Reports", short: "10" },
+  { route: "/settings", label: "Project settings", short: "11" },
 ] as const;
 
 const requestedStart = (() => {
@@ -627,41 +640,10 @@ function PdfReview({
   readonly update: (recipe: (draft: BridgeProject) => void) => void;
   readonly onContinue: () => void;
 }) {
-  const decide = (id: string, decision: "confirmed" | "edited" | "ignored", value?: string) =>
-    update((draft) => {
-      const candidate = draft.soc2.extractionCandidates.find((item) => item.id === id);
-      if (!candidate) return;
-      candidate.decision = decision;
-      if (value !== undefined) candidate.value = value;
-      if (decision === "confirmed" || decision === "edited") {
-        if (candidate.field === "SOC 2 report type" && /type\s+ii/iu.test(candidate.value))
-          draft.soc2.confirmedType = "type_ii";
-        if (candidate.field === "Report issuer") draft.soc2.issuer = candidate.value;
-        if (candidate.field === "Report date") draft.soc2.reportDate = candidate.value;
-        if (candidate.field === "Report period") {
-          const [start, end] = candidate.value.split(" to ", 2);
-          if (start) draft.soc2.reportStart = start;
-          if (end) draft.soc2.reportEnd = end;
-        }
-        if (candidate.field === "System or service name") draft.soc2.systemName = candidate.value;
-        if (candidate.field === "Carve-out treatment") draft.soc2.treatment = "carve_out";
-        if (candidate.field === "Inclusive treatment") draft.soc2.treatment = "inclusive";
-        if (candidate.field === "Trust Services Criteria")
-          draft.soc2.trustServicesCriteria = [
-            ...new Set([...draft.soc2.trustServicesCriteria, candidate.value]),
-          ];
-        if (candidate.field === "Subservice organization")
-          draft.soc2.subserviceOrganizations = [
-            ...new Set([...draft.soc2.subserviceOrganizations, candidate.value]),
-          ];
-        if (candidate.field === "Complementary user-entity controls")
-          draft.soc2.complementaryUserEntityControls = [
-            ...new Set([...draft.soc2.complementaryUserEntityControls, candidate.value]),
-          ];
-        if (candidate.field === "Bridge or gap letter reference")
-          draft.soc2.bridgeLetterReference = candidate.value;
-      }
-    });
+  const updateCandidateValue = (id: string, value: string) =>
+    update((draft) => updateExtractionCandidateValue(draft, id, value));
+  const decide = (id: string, decision: "confirmed" | "edited" | "ignored") =>
+    update((draft) => applyExtractionCandidateDecision(draft, id, decision));
   const reviewed = project.soc2.extractionCandidates.filter(
     (item) => item.decision !== "unreviewed",
   ).length;
@@ -722,7 +704,7 @@ function PdfReview({
                   <strong>{candidate.field}</strong>
                   <input
                     value={candidate.value}
-                    onChange={(event) => decide(candidate.id, "edited", event.target.value)}
+                    onChange={(event) => updateCandidateValue(candidate.id, event.target.value)}
                   />
                 </label>
                 <blockquote>{candidate.snippet}</blockquote>
@@ -731,10 +713,7 @@ function PdfReview({
                 </p>
                 <div className="button-row">
                   <Button onClick={() => decide(candidate.id, "confirmed")}>Confirm</Button>
-                  <Button
-                    variant="secondary"
-                    onClick={() => decide(candidate.id, "edited", candidate.value)}
-                  >
+                  <Button variant="secondary" onClick={() => decide(candidate.id, "edited")}>
                     Mark edited
                   </Button>
                   <Button variant="quiet" onClick={() => decide(candidate.id, "ignored")}>
@@ -766,6 +745,7 @@ function Shell({
   update,
   store,
   persistGeneratedProject,
+  persistAttachmentProject,
   onClose,
   onRestore,
   saveState,
@@ -784,6 +764,10 @@ function Shell({
     project: BridgeProject,
     output: { readonly id: string; readonly bytes: Uint8Array },
   ) => Promise<boolean>;
+  readonly persistAttachmentProject: (
+    project: BridgeProject,
+    attachment: { readonly id: string; readonly bytes: Uint8Array },
+  ) => Promise<void>;
   readonly onClose: () => void;
   readonly onRestore: (file: File, password: string) => Promise<void>;
   readonly saveState: SaveState;
@@ -802,8 +786,18 @@ function Shell({
     "/eligibility": <Eligibility project={project} update={update} navigate={setRoute} />,
     "/scope": <Scope project={project} update={update} />,
     "/soc2-materials": <Soc2Materials project={project} update={update} />,
-    "/requirements": <Requirements project={project} update={update} />,
-    "/evidence": <Evidence project={project} update={update} store={store} />,
+    "/soc2-reuse": <Soc2Reuse project={project} update={update} />,
+    "/requirements": (
+      <Requirements project={project} update={update} navigate={() => setRoute("/soc2-reuse")} />
+    ),
+    "/evidence": (
+      <Evidence
+        project={project}
+        update={update}
+        store={store}
+        persistAttachmentProject={persistAttachmentProject}
+      />
+    ),
     "/action-plan": <ActionPlan project={project} update={update} navigate={setRoute} />,
     "/package": (
       <Package
@@ -1729,6 +1723,17 @@ function Soc2Materials({
   readonly project: BridgeProject;
   readonly update: (recipe: (draft: BridgeProject) => void) => void;
 }) {
+  const mappingReviewOutcomes: readonly NonNullable<Soc2Mapping["reviewOutcome"]>[] = [
+    "confirmed_supporting_material",
+    "partial_support",
+    "supporting_evidence_only",
+    "fedramp_specific_work_required",
+    "scope_mismatch",
+    "period_mismatch",
+    "exception_affects_reuse",
+    "rejected_mapping",
+    "needs_expert_review",
+  ];
   const [controlId, setControlId] = useState(project.soc2.controls[0]?.id ?? "");
   const [ruleId, setRuleId] = useState<string>(RULE_SELECTIONS.mandatory[0]);
   const [page, setPage] = useState("1");
@@ -1741,6 +1746,7 @@ function Soc2Materials({
   const [newControlExcerpt, setNewControlExcerpt] = useState("");
   const [newControlExceptionId, setNewControlExceptionId] = useState("");
   const [controlError, setControlError] = useState("");
+  const [mappingError, setMappingError] = useState("");
   const [exceptionTitle, setExceptionTitle] = useState("");
   const [exceptionDescription, setExceptionDescription] = useState("");
   const [exceptionPages, setExceptionPages] = useState("");
@@ -1783,6 +1789,7 @@ function Soc2Materials({
         auditorResult: newControlResult.trim(),
         exceptionIds: newControlExceptionId ? [newControlExceptionId] : [],
         excerpt: newControlExcerpt.trim(),
+        confirmationStatus: "unreviewed",
       }),
     );
     setControlId(identifier);
@@ -1813,9 +1820,23 @@ function Soc2Materials({
     setExceptionPages("");
     setExceptionMateriality("not_sure");
   };
+  const mappingControlIsReviewed = (mapping: Soc2Mapping) => {
+    const control = project.soc2.controls.find(({ id }) => id === mapping.soc2ControlId);
+    return control ? isReviewedSoc2Control(control) : false;
+  };
   const addMapping = (event: FormEvent) => {
     event.preventDefault();
     if (!controlId || !ruleId) return;
+    if (
+      project.mappings.some(
+        (mapping) => mapping.soc2ControlId === controlId && mapping.classARuleId === ruleId,
+      )
+    ) {
+      setMappingError(
+        "This control-rule pair already has a mapping record. Review the existing record instead of creating a duplicate.",
+      );
+      return;
+    }
     update((draft) =>
       draft.mappings.push({
         id: `mapping-${crypto.randomUUID()}`,
@@ -1829,9 +1850,10 @@ function Soc2Materials({
         gapDescription: "",
         additionalEvidenceNeeded: "",
         suggested: false,
-        confirmed: true,
+        confirmed: false,
       }),
     );
+    setMappingError("");
   };
   return (
     <>
@@ -2027,17 +2049,62 @@ function Soc2Materials({
       </Card>
       {project.soc2.extractionCandidates.length > 0 && (
         <Card title="Local extraction review" eyebrow="Every value remains correctable">
-          <div className="compact-candidates">
+          <p>
+            These are deterministic suggestions, not authoritative report facts. Editing or ignoring
+            a reviewed suggestion safely reconciles the corresponding draft metadata.
+          </p>
+          <div className="candidate-list">
             {project.soc2.extractionCandidates.map((candidate) => (
-              <article key={candidate.id}>
-                <div>
-                  <strong>{candidate.field}</strong>
+              <article className="candidate" key={candidate.id}>
+                <div className="candidate__meta">
                   <span>Page {candidate.page}</span>
+                  <StatusPill tone={toneFor(candidate.decision)}>
+                    {statusLabel(candidate.decision)}
+                  </StatusPill>
                 </div>
-                <p>{candidate.value}</p>
-                <StatusPill tone={toneFor(candidate.decision)}>
-                  {statusLabel(candidate.decision)}
-                </StatusPill>
+                <Field label={candidate.field}>
+                  <input
+                    value={candidate.value}
+                    onChange={(event) =>
+                      update((draft) =>
+                        updateExtractionCandidateValue(draft, candidate.id, event.target.value),
+                      )
+                    }
+                  />
+                </Field>
+                <blockquote>{candidate.snippet}</blockquote>
+                <p className="small">Detected by: {candidate.detector}.</p>
+                <div className="button-row">
+                  <Button
+                    onClick={() =>
+                      update((draft) =>
+                        applyExtractionCandidateDecision(draft, candidate.id, "confirmed"),
+                      )
+                    }
+                  >
+                    Confirm
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    onClick={() =>
+                      update((draft) =>
+                        applyExtractionCandidateDecision(draft, candidate.id, "edited"),
+                      )
+                    }
+                  >
+                    Mark edited
+                  </Button>
+                  <Button
+                    variant="quiet"
+                    onClick={() =>
+                      update((draft) =>
+                        applyExtractionCandidateDecision(draft, candidate.id, "ignored"),
+                      )
+                    }
+                  >
+                    Ignore
+                  </Button>
+                </div>
               </article>
             ))}
           </div>
@@ -2139,12 +2206,7 @@ function Soc2Materials({
                   variant="quiet"
                   onClick={() => {
                     update((draft) => {
-                      draft.soc2.controls = draft.soc2.controls.filter(
-                        (candidate) => candidate.id !== control.id,
-                      );
-                      draft.mappings = draft.mappings.filter(
-                        (mapping) => mapping.soc2ControlId !== control.id,
-                      );
+                      Object.assign(draft, removeSoc2Control(draft, control.id));
                     });
                     if (controlId === control.id) setControlId("");
                   }}
@@ -2261,6 +2323,7 @@ function Soc2Materials({
             Add manual mapping
           </Button>
         </form>
+        {mappingError ? <p role="alert">{mappingError}</p> : null}
         {project.soc2.controls.length === 0 && (
           <Callout
             title="Add controls manually or confirm extracted control identifiers"
@@ -2285,28 +2348,30 @@ function Soc2Materials({
                 <span>Page {mapping.reportPage}</span>
               </div>
               <div className="form-grid">
-                <Field label="Coverage classification">
+                <Field
+                  label="Mapping review outcome"
+                  hint="Choose the human review decision. The coverage classification is derived from it."
+                >
                   <select
-                    aria-label={`Coverage for ${mapping.id}`}
-                    value={mapping.coverage}
+                    value={mapping.reviewOutcome ?? ""}
                     onChange={(event) =>
                       update((draft) => {
                         const item = draft.mappings.find(
                           (candidate) => candidate.id === mapping.id,
                         );
-                        if (item) item.coverage = event.target.value as typeof item.coverage;
+                        if (item) {
+                          const outcome = event.target.value as NonNullable<
+                            Soc2Mapping["reviewOutcome"]
+                          >;
+                          item.reviewOutcome = outcome;
+                          item.coverage = coverageForSoc2ReviewOutcome(outcome);
+                          item.confirmed = false;
+                        }
                       })
                     }
                   >
-                    {[
-                      "likely_covered",
-                      "partially_covered",
-                      "supporting_evidence_only",
-                      "fedramp_specific_work_required",
-                      "scope_mismatch",
-                      "no_relevant_mapping",
-                      "needs_human_review",
-                    ].map((value) => (
+                    <option value="">Select a review outcome</option>
+                    {mappingReviewOutcomes.map((value) => (
                       <option value={value} key={value}>
                         {statusLabel(value)}
                       </option>
@@ -2322,7 +2387,10 @@ function Soc2Materials({
                         const item = draft.mappings.find(
                           (candidate) => candidate.id === mapping.id,
                         );
-                        if (item) item.reason = event.target.value;
+                        if (item) {
+                          item.reason = event.target.value;
+                          item.confirmed = false;
+                        }
                       })
                     }
                   />
@@ -2336,7 +2404,10 @@ function Soc2Materials({
                         const item = draft.mappings.find(
                           (candidate) => candidate.id === mapping.id,
                         );
-                        if (item) item.excerpt = event.target.value;
+                        if (item) {
+                          item.excerpt = event.target.value;
+                          item.confirmed = false;
+                        }
                       })
                     }
                   />
@@ -2350,7 +2421,10 @@ function Soc2Materials({
                         const item = draft.mappings.find(
                           (candidate) => candidate.id === mapping.id,
                         );
-                        if (item) item.gapDescription = event.target.value;
+                        if (item) {
+                          item.gapDescription = event.target.value;
+                          item.confirmed = false;
+                        }
                       })
                     }
                   />
@@ -2364,7 +2438,10 @@ function Soc2Materials({
                         const item = draft.mappings.find(
                           (candidate) => candidate.id === mapping.id,
                         );
-                        if (item) item.additionalEvidenceNeeded = event.target.value;
+                        if (item) {
+                          item.additionalEvidenceNeeded = event.target.value;
+                          item.confirmed = false;
+                        }
                       })
                     }
                   />
@@ -2377,7 +2454,10 @@ function Soc2Materials({
                         const item = draft.mappings.find(
                           (candidate) => candidate.id === mapping.id,
                         );
-                        if (item) item.reviewer = event.target.value || undefined;
+                        if (item) {
+                          item.reviewer = event.target.value || undefined;
+                          item.confirmed = false;
+                        }
                       })
                     }
                   />
@@ -2391,7 +2471,10 @@ function Soc2Materials({
                         const item = draft.mappings.find(
                           (candidate) => candidate.id === mapping.id,
                         );
-                        if (item) item.reviewDate = event.target.value || undefined;
+                        if (item) {
+                          item.reviewDate = event.target.value || undefined;
+                          item.confirmed = false;
+                        }
                       })
                     }
                   />
@@ -2401,6 +2484,13 @@ function Soc2Materials({
                 <input
                   type="checkbox"
                   checked={mapping.confirmed}
+                  disabled={
+                    !mapping.reviewOutcome ||
+                    !mapping.reviewer?.trim() ||
+                    !mapping.reviewDate ||
+                    (soc2ReviewOutcomeSupportsReuse(mapping.reviewOutcome) &&
+                      !mappingControlIsReviewed(mapping))
+                  }
                   onChange={(event) =>
                     update((draft) => {
                       const item = draft.mappings.find((candidate) => candidate.id === mapping.id);
@@ -2410,6 +2500,20 @@ function Soc2Materials({
                 />{" "}
                 Mapping confirmed by a person
               </label>
+              {!mapping.reviewOutcome || !mapping.reviewer?.trim() || !mapping.reviewDate ? (
+                <p className="small">
+                  Select an outcome, add a named reviewer, and add a review date before
+                  confirmation.
+                </p>
+              ) : null}
+              {mapping.reviewOutcome &&
+              soc2ReviewOutcomeSupportsReuse(mapping.reviewOutcome) &&
+              !mappingControlIsReviewed(mapping) ? (
+                <p className="small">
+                  Review and confirm the source SOC 2 control in SOC 2 reuse before recording it as
+                  supporting material.
+                </p>
+              ) : null}
               <Button
                 variant="quiet"
                 onClick={() =>
@@ -2433,12 +2537,16 @@ function Soc2Materials({
 function Requirements({
   project,
   update,
+  navigate,
 }: {
   readonly project: BridgeProject;
   readonly update: (recipe: (draft: BridgeProject) => void) => void;
+  readonly navigate: () => void;
 }) {
   const [filter, setFilter] = useState("mandatory");
   const [search, setSearch] = useState("");
+  const [viewMode, setViewMode] = useState<"guided" | "record">("guided");
+  const [guidedStep, setGuidedStep] = useState(0);
   const [approvalAttested, setApprovalAttested] = useState(false);
   const [selected, setSelected] = useState(
     project.requirements.find((item) =>
@@ -2468,7 +2576,10 @@ function Requirements({
       const item = draft.requirements.find((candidate) => candidate.ruleId === selected);
       if (item) recipe(item);
     });
-  useEffect(() => setApprovalAttested(false), [selected]);
+  useEffect(() => {
+    setApprovalAttested(false);
+    setGuidedStep(0);
+  }, [selected]);
   const approvalLocked = requirement?.status === "approved_by_provider";
   const approvalReady = Boolean(
     requirement &&
@@ -2481,6 +2592,14 @@ function Requirements({
     requirement.providerApprovedAt &&
     approvalAttested,
   );
+  const officialLabel =
+    official?.officialClassASelection === "OFFICIALLY_MANDATORY"
+      ? "Officially mandatory for Class A"
+      : official?.officialClassASelection === "OFFICIALLY_RECOMMENDED"
+        ? "Officially recommended for Class A"
+        : official?.officialClassASelection === "OFFICIALLY_OPTIONAL"
+          ? "Officially optional for Class A"
+          : "Included by Ancilis for preparation";
   return (
     <>
       <PageHeading
@@ -2488,6 +2607,14 @@ function Requirements({
         title="Class A requirements"
         description="Plain-language guidance first, official details on demand. Requirement status is always controlled by a person."
       />
+      <div className="filter-tabs" role="group" aria-label="Requirement workspace mode">
+        <button aria-pressed={viewMode === "guided"} onClick={() => setViewMode("guided")}>
+          Guided mode
+        </button>
+        <button aria-pressed={viewMode === "record"} onClick={() => setViewMode("record")}>
+          Record mode
+        </button>
+      </div>
       <div className="requirement-layout">
         <aside className="requirement-index">
           <input
@@ -2534,11 +2661,23 @@ function Requirements({
             <EmptyState title="Choose a requirement">
               <p>Select a rule to open its guided workspace.</p>
             </EmptyState>
+          ) : viewMode === "guided" ? (
+            <GuidedRequirement
+              project={project}
+              ruleId={selected}
+              change={change}
+              openSoc2Reuse={navigate}
+              step={guidedStep}
+              setStep={setGuidedStep}
+            />
           ) : (
             <>
               <div className="requirement-title">
                 <div>
-                  <p className="eyebrow">{official.selectionTags.map(statusLabel).join(" · ")}</p>
+                  <p className="eyebrow">
+                    {officialLabel} · Product workflow:{" "}
+                    {official.selectionTags.map(statusLabel).join(" · ")}
+                  </p>
                   <h2>{requirement.ruleId}</h2>
                   <p className="lede-small">{String(official.official.name)}</p>
                 </div>
@@ -2548,6 +2687,12 @@ function Requirements({
               </div>
               <Callout title="What this means in practice">
                 <p>{guidance?.plainLanguage}</p>
+                <p className="small">
+                  <strong>
+                    Ancilis guidance — explanatory content, not official FedRAMP text.
+                  </strong>{" "}
+                  Content review status: {guidance?.contentReviewStatus ?? "Draft"}.
+                </p>
               </Callout>
               <div className="form-grid">
                 <Field
@@ -2944,29 +3089,7 @@ function Requirements({
                   </>
                 )}
               </Card>
-              <details className="official-details">
-                <summary>View official details</summary>
-                <p>
-                  <strong>Source version:</strong> {official.source.catalogVersion} ·{" "}
-                  <strong>Last verified:</strong> {official.source.verifiedAt}
-                </p>
-                <p>
-                  <a href={official.source.sourceUrl} target="_blank" rel="noopener noreferrer">
-                    Open the pinned official source
-                  </a>
-                </p>
-                {official.needsFedrampConfirmation && (
-                  <Callout title="Needs FedRAMP confirmation" tone="warning">
-                    <p>
-                      The current official catalog contains an applicability reference that changed
-                      in the July update. Class A Bridge preserves it without silently
-                      reinterpreting it.
-                    </p>
-                  </Callout>
-                )}
-                <pre>{JSON.stringify(official.official, null, 2)}</pre>
-                <p>{guidance?.disclaimer}</p>
-              </details>
+              <OfficialRuleDetails ruleId={selected} />
             </>
           )}
         </section>
@@ -2975,14 +3098,19 @@ function Requirements({
   );
 }
 
-function Evidence({
+export function Evidence({
   project,
   update,
   store,
+  persistAttachmentProject,
 }: {
   readonly project: BridgeProject;
   readonly update: (recipe: (draft: BridgeProject) => void) => void;
   readonly store: ProjectStore;
+  readonly persistAttachmentProject: (
+    project: BridgeProject,
+    attachment: { readonly id: string; readonly bytes: Uint8Array },
+  ) => Promise<void>;
 }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -3066,12 +3194,13 @@ function Evidence({
         nextProject.evidence.push(evidenceRecord);
         nextProject.metadata.updatedAt = new Date().toISOString();
         nextProject.actions = deriveActions(nextProject);
-        await persistProjectWithAttachmentAtomically(store, nextProject, {
+        await persistAttachmentProject(nextProject, {
           id: attachmentId,
           bytes: attachmentBytes,
         });
+      } else {
+        update((draft) => draft.evidence.push(evidenceRecord));
       }
-      update((draft) => draft.evidence.push(evidenceRecord));
       setTitle("");
       setDescription("");
       setEvidenceKind("external_reference");
@@ -3094,14 +3223,9 @@ function Evidence({
     setError("");
     setRemovingEvidenceId(item.id);
     try {
-      await removeEvidenceCandidateLocally(store, project, item.id);
+      const next = await removeEvidenceCandidateLocally(store, project, item.id);
       update((draft) => {
-        draft.evidence = draft.evidence.filter((candidate) => candidate.id !== item.id);
-        for (const requirement of draft.requirements) {
-          requirement.evidenceIds = requirement.evidenceIds.filter(
-            (evidenceId) => evidenceId !== item.id,
-          );
-        }
+        Object.assign(draft, structuredClone(next));
       });
     } catch (caught) {
       setError(
@@ -4691,6 +4815,7 @@ function Reports({ project }: { readonly project: BridgeProject }) {
     "preliminary-fit": "Preliminary fit assessment",
     "executive-readiness": "Executive readiness summary",
     "detailed-gap": "Detailed gap report",
+    "soc2-mapping": "SOC 2 Reuse and Gap Report",
     "scope-summary": "Scope summary",
     "mandatory-requirements": "Mandatory requirements report",
     "evidence-manifest": "Evidence manifest",
@@ -5415,7 +5540,7 @@ export function App({ storeFactory = DEFAULT_STORE_FACTORY }: AppProps = {}) {
     };
   }, [storeFactory]);
   useEffect(() => {
-    if (!project || mode !== "workspace") return;
+    if (!project || (mode !== "workspace" && mode !== "pdf-review")) return;
     const sequence = ++saveSequence.current;
     setSaveState({ status: "saving" });
     const timer = setTimeout(() => {
@@ -5516,6 +5641,29 @@ export function App({ storeFactory = DEFAULT_STORE_FACTORY }: AppProps = {}) {
       throw error;
     }
   };
+  const persistAttachmentProject = async (
+    next: BridgeProject,
+    attachment: { readonly id: string; readonly bytes: Uint8Array },
+  ) => {
+    const sequence = ++saveSequence.current;
+    next.metadata.lastLocalSaveAt = new Date().toISOString();
+    setSaveState({ status: "saving" });
+    try {
+      await persistProjectWithAttachmentAtomically(store, next, attachment);
+      setProject((current) =>
+        current?.metadata.id === next.metadata.id ? cloneProject(next) : current,
+      );
+      if (sequence === saveSequence.current) setSaveState({ status: "saved" });
+    } catch (error) {
+      if (sequence === saveSequence.current) {
+        setSaveState({
+          status: "error",
+          message: localErrorMessage(error, "attachment storage rejected the write"),
+        });
+      }
+      throw error;
+    }
+  };
   const enter = (next: BridgeProject, nextRoute: Route) => {
     setRestoreMessage("");
     setProject(cloneProject(next));
@@ -5557,6 +5705,13 @@ export function App({ storeFactory = DEFAULT_STORE_FACTORY }: AppProps = {}) {
     if (file.name.toLowerCase().endsWith(".encrypted"))
       bytes = await decryptBundle(bytes, password);
     const imported = await importProjectBundle(bytes);
+    const existing = await store.load(imported.project.metadata.id);
+    if (existing) {
+      const approved = globalThis.confirm(
+        `A local project named “${existing.metadata.name}” already uses this project identifier. Restoring will replace that saved record and may remove local files that are not present in the backup. The current record was last saved ${existing.metadata.lastLocalSaveAt ?? existing.metadata.updatedAt}.\n\nContinue with restore?`,
+      );
+      if (!approved) throw new Error("Restore canceled; the existing local project was unchanged.");
+    }
     const omittedBinaryCount = store.supportsAttachments
       ? 0
       : imported.attachments.size + imported.generatedOutputs.size;
@@ -5625,6 +5780,7 @@ export function App({ storeFactory = DEFAULT_STORE_FACTORY }: AppProps = {}) {
       update={update}
       store={store}
       persistGeneratedProject={persistGeneratedProject}
+      persistAttachmentProject={persistAttachmentProject}
       saveState={saveState}
       online={online}
       updateAvailable={Boolean(updateRegistration?.waiting)}
