@@ -18,6 +18,15 @@
       "reviewer": "Ancilis release engineering (automated review)",
       "reviewedOn": "2026-07-18",
       "expiresOn": "2026-10-18"
+    },
+    {
+      "ruleId": "workstation:linux-profile",
+      "relativePath": "dist/release-artifacts/Class-A-Bridge-0.9.0-Public-Beta-deployable.zip!class-a-bridge/app/assets/pdf.worker.min-Dtn11Elq.mjs",
+      "findingSha256": "f8752ca793809028ec212fc14ed14c8e6484303964670b10bd8ec1adc2da91f1",
+      "justification": "Reviewed deployable-archive copy of PDF.js uses Emscripten's fixed browser-sandbox identity; it is not a workstation path or build provenance.",
+      "reviewer": "Ancilis release engineering (automated review)",
+      "reviewedOn": "2026-07-18",
+      "expiresOn": "2026-10-18"
     }
   ]
 }
