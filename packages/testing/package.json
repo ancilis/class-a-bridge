@@ -17,7 +17,7 @@
     "@class-a-bridge/documents": "workspace:*",
     "@class-a-bridge/project": "workspace:*",
     "@class-a-bridge/rules": "workspace:*",
-    "fflate": "0.8.2"
+    "fflate": "0.8.3"
   },
   "devDependencies": {
     "tsx": "4.21.0",

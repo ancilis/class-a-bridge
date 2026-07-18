@@ -16,7 +16,7 @@
     "@class-a-bridge/project": "workspace:*",
     "@class-a-bridge/rules": "workspace:*",
     "@class-a-bridge/schemas": "workspace:*",
-    "fflate": "0.8.2"
+    "fflate": "0.8.3"
   },
   "devDependencies": {
     "typescript": "catalog:",
