@@ -52,7 +52,7 @@ importers:
         version: 8.64.0(eslint@10.7.0)(typescript@6.0.3)
       vitest:
         specifier: 4.1.10
-        version: 4.1.10(@types/node@24.10.4)(esbuild@0.27.7)(jsdom@29.1.1)(tsx@4.21.0)
+        version: 4.1.10(@types/node@24.10.4)(jsdom@29.1.1)(vite@8.1.5(@types/node@24.10.4)(esbuild@0.27.7)(tsx@4.21.0))
 
   apps/bridge:
     dependencies:
@@ -78,11 +78,11 @@ importers:
         specifier: 6.1.200
         version: 6.1.200
       react:
-        specifier: 19.2.7
-        version: 19.2.7
+        specifier: 19.2.8
+        version: 19.2.8
       react-dom:
         specifier: 19.2.7
-        version: 19.2.7(react@19.2.7)
+        version: 19.2.7(react@19.2.8)
     devDependencies:
       '@testing-library/dom':
         specifier: 10.4.1
@@ -92,7 +92,7 @@ importers:
         version: 6.9.1
       '@testing-library/react':
         specifier: 16.3.2
-        version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+        version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.8))(react@19.2.8)
       '@testing-library/user-event':
         specifier: 14.6.1
         version: 14.6.1(@testing-library/dom@10.4.1)
@@ -116,7 +116,7 @@ importers:
         version: 8.1.5(@types/node@24.10.4)(esbuild@0.27.7)(tsx@4.21.0)
       vitest:
         specifier: 'catalog:'
-        version: 4.1.10(@types/node@24.10.4)(esbuild@0.27.7)(jsdom@29.1.1)(tsx@4.21.0)
+        version: 4.1.10(@types/node@24.10.4)(jsdom@29.1.1)(vite@8.1.5(@types/node@24.10.4)(esbuild@0.27.7)(tsx@4.21.0))
 
   apps/contact-api:
     devDependencies:
@@ -125,19 +125,19 @@ importers:
         version: 6.0.3
       vitest:
         specifier: 'catalog:'
-        version: 4.1.10(@types/node@24.10.4)(esbuild@0.27.7)(jsdom@29.1.1)(tsx@4.21.0)
+        version: 4.1.10(@types/node@24.10.4)(jsdom@29.1.1)(vite@8.1.5(@types/node@24.10.4)(esbuild@0.27.7)(tsx@4.21.0))
 
   apps/website:
     dependencies:
       next:
         specifier: 16.2.10
-        version: 16.2.10(@playwright/test@1.61.1)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+        version: 16.2.10(@playwright/test@1.61.1)(react-dom@19.2.7(react@19.2.8))(react@19.2.8)
       react:
-        specifier: 19.2.7
-        version: 19.2.7
+        specifier: 19.2.8
+        version: 19.2.8
       react-dom:
         specifier: 19.2.7
-        version: 19.2.7(react@19.2.7)
+        version: 19.2.7(react@19.2.8)
     devDependencies:
       '@types/react':
         specifier: 19.2.17
@@ -150,7 +150,7 @@ importers:
         version: 6.0.3
       vitest:
         specifier: 'catalog:'
-        version: 4.1.10(@types/node@24.10.4)(esbuild@0.27.7)(jsdom@29.1.1)(tsx@4.21.0)
+        version: 4.1.10(@types/node@24.10.4)(jsdom@29.1.1)(vite@8.1.5(@types/node@24.10.4)(esbuild@0.27.7)(tsx@4.21.0))
 
   packages/documents:
     dependencies:
@@ -172,7 +172,7 @@ importers:
         version: 6.0.3
       vitest:
         specifier: 'catalog:'
-        version: 4.1.10(@types/node@24.10.4)(esbuild@0.27.7)(jsdom@29.1.1)(tsx@4.21.0)
+        version: 4.1.10(@types/node@24.10.4)(jsdom@29.1.1)(vite@8.1.5(@types/node@24.10.4)(esbuild@0.27.7)(tsx@4.21.0))
 
   packages/project:
     dependencies:
@@ -197,7 +197,7 @@ importers:
         version: 6.0.3
       vitest:
         specifier: 'catalog:'
-        version: 4.1.10(@types/node@24.10.4)(esbuild@0.27.7)(jsdom@29.1.1)(tsx@4.21.0)
+        version: 4.1.10(@types/node@24.10.4)(jsdom@29.1.1)(vite@8.1.5(@types/node@24.10.4)(esbuild@0.27.7)(tsx@4.21.0))
 
   packages/rules:
     devDependencies:
@@ -209,7 +209,7 @@ importers:
         version: 6.0.3
       vitest:
         specifier: 'catalog:'
-        version: 4.1.10(@types/node@24.10.4)(esbuild@0.27.7)(jsdom@29.1.1)(tsx@4.21.0)
+        version: 4.1.10(@types/node@24.10.4)(jsdom@29.1.1)(vite@8.1.5(@types/node@24.10.4)(esbuild@0.27.7)(tsx@4.21.0))
 
   packages/schemas:
     dependencies:
@@ -228,7 +228,7 @@ importers:
         version: 6.0.3
       vitest:
         specifier: 'catalog:'
-        version: 4.1.10(@types/node@24.10.4)(esbuild@0.27.7)(jsdom@29.1.1)(tsx@4.21.0)
+        version: 4.1.10(@types/node@24.10.4)(jsdom@29.1.1)(vite@8.1.5(@types/node@24.10.4)(esbuild@0.27.7)(tsx@4.21.0))
 
   packages/testing:
     dependencies:
@@ -253,7 +253,7 @@ importers:
         version: 6.0.3
       vitest:
         specifier: 'catalog:'
-        version: 4.1.10(@types/node@24.10.4)(esbuild@0.27.7)(jsdom@29.1.1)(tsx@4.21.0)
+        version: 4.1.10(@types/node@24.10.4)(jsdom@29.1.1)(vite@8.1.5(@types/node@24.10.4)(esbuild@0.27.7)(tsx@4.21.0))
 
   packages/ui:
     devDependencies:
@@ -265,7 +265,7 @@ importers:
         version: 6.9.1
       '@testing-library/react':
         specifier: 16.3.2
-        version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+        version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.8))(react@19.2.8)
       '@types/react':
         specifier: 19.2.17
         version: 19.2.17
@@ -276,14 +276,14 @@ importers:
         specifier: 29.1.1
         version: 29.1.1
       react:
-        specifier: 19.2.7
-        version: 19.2.7
+        specifier: 19.2.8
+        version: 19.2.8
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
       vitest:
         specifier: 'catalog:'
-        version: 4.1.10(@types/node@24.10.4)(esbuild@0.27.7)(jsdom@29.1.1)(tsx@4.21.0)
+        version: 4.1.10(@types/node@24.10.4)(jsdom@29.1.1)(vite@8.1.5(@types/node@24.10.4)(esbuild@0.27.7)(tsx@4.21.0))
 
 packages:
 
@@ -1723,8 +1723,8 @@ packages:
   react-is@17.0.2:
     resolution: {integrity: sha512-w2GsyukL62IJnlaff/nRegPQR94C/XXamvMWmSHRJ4y7Ts/4ocGRmTHvOs8PSE6pB3dWOrD/nueuU5sduBsQ4w==}
 
-  react@19.2.7:
-    resolution: {integrity: sha512-HNe9WslTbXmFK8o8cmwgAeJFSBvt1bPdHCVKtaaV+WlAN36mpT4hcRpwbf3fY56ar2oIXzsBpOAiIRHAdY0OlQ==}
+  react@19.2.8:
+    resolution: {integrity: sha512-PWaYA1L/q9u2u7xYQi+Y3L3Yfnie7XyLeaJICV1MGD6LprsBxcAqGjYyr0eY3p+QdsA+x/Irkt4Qif8D63+Sbw==}
     engines: {node: '>=0.10.0'}
 
   redent@3.0.0:
@@ -1933,6 +1933,7 @@ packages:
       '@vitest/ui': 4.1.10
       happy-dom: '*'
       jsdom: '*'
+      vite: ^6.0.0 || ^7.0.0 || ^8.0.0
     peerDependenciesMeta:
       '@edge-runtime/vm':
         optional: true
@@ -2477,12 +2478,12 @@ snapshots:
       picocolors: 1.1.1
       redent: 3.0.0
 
-  '@testing-library/react@16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
+  '@testing-library/react@16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.8))(react@19.2.8)':
     dependencies:
       '@babel/runtime': 7.29.7
       '@testing-library/dom': 10.4.1
-      react: 19.2.7
-      react-dom: 19.2.7(react@19.2.7)
+      react: 19.2.8
+      react-dom: 19.2.7(react@19.2.8)
     optionalDependencies:
       '@types/react': 19.2.17
       '@types/react-dom': 19.2.3(@types/react@19.2.17)
@@ -3073,16 +3074,16 @@ snapshots:
 
   natural-compare@1.4.0: {}
 
-  next@16.2.10(@playwright/test@1.61.1)(react-dom@19.2.7(react@19.2.7))(react@19.2.7):
+  next@16.2.10(@playwright/test@1.61.1)(react-dom@19.2.7(react@19.2.8))(react@19.2.8):
     dependencies:
       '@next/env': 16.2.10
       '@swc/helpers': 0.5.15
       baseline-browser-mapping: 2.10.43
       caniuse-lite: 1.0.30001806
       postcss: 8.5.19
-      react: 19.2.7
-      react-dom: 19.2.7(react@19.2.7)
-      styled-jsx: 5.1.6(react@19.2.7)
+      react: 19.2.8
+      react-dom: 19.2.7(react@19.2.8)
+      styled-jsx: 5.1.6(react@19.2.8)
     optionalDependencies:
       '@next/swc-darwin-arm64': 16.2.10
       '@next/swc-darwin-x64': 16.2.10
@@ -3161,14 +3162,14 @@ snapshots:
 
   punycode@2.3.1: {}
 
-  react-dom@19.2.7(react@19.2.7):
+  react-dom@19.2.7(react@19.2.8):
     dependencies:
-      react: 19.2.7
+      react: 19.2.8
       scheduler: 0.27.0
 
   react-is@17.0.2: {}
 
-  react@19.2.7: {}
+  react@19.2.8: {}
 
   redent@3.0.0:
     dependencies:
@@ -3258,10 +3259,10 @@ snapshots:
     dependencies:
       min-indent: 1.0.1
 
-  styled-jsx@5.1.6(react@19.2.7):
+  styled-jsx@5.1.6(react@19.2.8):
     dependencies:
       client-only: 0.0.1
-      react: 19.2.7
+      react: 19.2.8
 
   symbol-tree@3.2.4: {}
 
@@ -3350,7 +3351,7 @@ snapshots:
       fsevents: 2.3.3
       tsx: 4.21.0
 
-  vitest@4.1.10(@types/node@24.10.4)(esbuild@0.27.7)(jsdom@29.1.1)(tsx@4.21.0):
+  vitest@4.1.10(@types/node@24.10.4)(jsdom@29.1.1)(vite@8.1.5(@types/node@24.10.4)(esbuild@0.27.7)(tsx@4.21.0)):
     dependencies:
       '@vitest/expect': 4.1.10
       '@vitest/mocker': 4.1.10(vite@8.1.5(@types/node@24.10.4)(esbuild@0.27.7)(tsx@4.21.0))
@@ -3376,18 +3377,7 @@ snapshots:
       '@types/node': 24.10.4
       jsdom: 29.1.1
     transitivePeerDependencies:
-      - '@vitejs/devtools'
-      - esbuild
-      - jiti
-      - less
       - msw
-      - sass
-      - sass-embedded
-      - stylus
-      - sugarss
-      - terser
-      - tsx
-      - yaml
 
   w3c-xmlserializer@5.0.0:
     dependencies:
