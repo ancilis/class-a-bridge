@@ -18,7 +18,7 @@
     "@class-a-bridge/schemas": "workspace:*",
     "@class-a-bridge/testing": "workspace:*",
     "@class-a-bridge/ui": "workspace:*",
-    "pdfjs-dist": "6.1.200",
+    "pdfjs-dist": "6.2.108",
     "react": "19.2.7",
     "react-dom": "19.2.7"
   },
