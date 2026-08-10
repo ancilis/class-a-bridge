@@ -19,7 +19,7 @@
     "zod": "4.3.6"
   },
   "devDependencies": {
-    "fake-indexeddb": "6.2.4",
+    "fake-indexeddb": "6.2.5",
     "typescript": "catalog:",
     "vitest": "catalog:"
   }
