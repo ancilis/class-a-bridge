@@ -52,7 +52,7 @@ importers:
         version: 8.64.0(eslint@10.7.0)(typescript@6.0.3)
       vitest:
         specifier: 4.1.10
-        version: 4.1.10(@types/node@24.10.4)(esbuild@0.27.7)(jsdom@29.1.1)(tsx@4.21.0)
+        version: 4.1.10(@types/node@24.10.4)(jsdom@29.1.1)(vite@8.1.5(@types/node@24.10.4)(esbuild@0.27.7)(tsx@4.21.0))
 
   apps/bridge:
     dependencies:
@@ -116,7 +116,7 @@ importers:
         version: 8.1.5(@types/node@24.10.4)(esbuild@0.27.7)(tsx@4.21.0)
       vitest:
         specifier: 'catalog:'
-        version: 4.1.10(@types/node@24.10.4)(esbuild@0.27.7)(jsdom@29.1.1)(tsx@4.21.0)
+        version: 4.1.10(@types/node@24.10.4)(jsdom@29.1.1)(vite@8.1.5(@types/node@24.10.4)(esbuild@0.27.7)(tsx@4.21.0))
 
   apps/contact-api:
     devDependencies:
@@ -125,7 +125,7 @@ importers:
         version: 6.0.3
       vitest:
         specifier: 'catalog:'
-        version: 4.1.10(@types/node@24.10.4)(esbuild@0.27.7)(jsdom@29.1.1)(tsx@4.21.0)
+        version: 4.1.10(@types/node@24.10.4)(jsdom@29.1.1)(vite@8.1.5(@types/node@24.10.4)(esbuild@0.27.7)(tsx@4.21.0))
 
   apps/website:
     dependencies:
@@ -150,7 +150,7 @@ importers:
         version: 6.0.3
       vitest:
         specifier: 'catalog:'
-        version: 4.1.10(@types/node@24.10.4)(esbuild@0.27.7)(jsdom@29.1.1)(tsx@4.21.0)
+        version: 4.1.10(@types/node@24.10.4)(jsdom@29.1.1)(vite@8.1.5(@types/node@24.10.4)(esbuild@0.27.7)(tsx@4.21.0))
 
   packages/documents:
     dependencies:
@@ -172,7 +172,7 @@ importers:
         version: 6.0.3
       vitest:
         specifier: 'catalog:'
-        version: 4.1.10(@types/node@24.10.4)(esbuild@0.27.7)(jsdom@29.1.1)(tsx@4.21.0)
+        version: 4.1.10(@types/node@24.10.4)(jsdom@29.1.1)(vite@8.1.5(@types/node@24.10.4)(esbuild@0.27.7)(tsx@4.21.0))
 
   packages/project:
     dependencies:
@@ -186,8 +186,8 @@ importers:
         specifier: 8.0.3
         version: 8.0.3
       zod:
-        specifier: 4.3.6
-        version: 4.3.6
+        specifier: 4.6.2
+        version: 4.6.2
     devDependencies:
       fake-indexeddb:
         specifier: 6.2.4
@@ -197,7 +197,7 @@ importers:
         version: 6.0.3
       vitest:
         specifier: 'catalog:'
-        version: 4.1.10(@types/node@24.10.4)(esbuild@0.27.7)(jsdom@29.1.1)(tsx@4.21.0)
+        version: 4.1.10(@types/node@24.10.4)(jsdom@29.1.1)(vite@8.1.5(@types/node@24.10.4)(esbuild@0.27.7)(tsx@4.21.0))
 
   packages/rules:
     devDependencies:
@@ -209,7 +209,7 @@ importers:
         version: 6.0.3
       vitest:
         specifier: 'catalog:'
-        version: 4.1.10(@types/node@24.10.4)(esbuild@0.27.7)(jsdom@29.1.1)(tsx@4.21.0)
+        version: 4.1.10(@types/node@24.10.4)(jsdom@29.1.1)(vite@8.1.5(@types/node@24.10.4)(esbuild@0.27.7)(tsx@4.21.0))
 
   packages/schemas:
     dependencies:
@@ -228,7 +228,7 @@ importers:
         version: 6.0.3
       vitest:
         specifier: 'catalog:'
-        version: 4.1.10(@types/node@24.10.4)(esbuild@0.27.7)(jsdom@29.1.1)(tsx@4.21.0)
+        version: 4.1.10(@types/node@24.10.4)(jsdom@29.1.1)(vite@8.1.5(@types/node@24.10.4)(esbuild@0.27.7)(tsx@4.21.0))
 
   packages/testing:
     dependencies:
@@ -253,7 +253,7 @@ importers:
         version: 6.0.3
       vitest:
         specifier: 'catalog:'
-        version: 4.1.10(@types/node@24.10.4)(esbuild@0.27.7)(jsdom@29.1.1)(tsx@4.21.0)
+        version: 4.1.10(@types/node@24.10.4)(jsdom@29.1.1)(vite@8.1.5(@types/node@24.10.4)(esbuild@0.27.7)(tsx@4.21.0))
 
   packages/ui:
     devDependencies:
@@ -283,7 +283,7 @@ importers:
         version: 6.0.3
       vitest:
         specifier: 'catalog:'
-        version: 4.1.10(@types/node@24.10.4)(esbuild@0.27.7)(jsdom@29.1.1)(tsx@4.21.0)
+        version: 4.1.10(@types/node@24.10.4)(jsdom@29.1.1)(vite@8.1.5(@types/node@24.10.4)(esbuild@0.27.7)(tsx@4.21.0))
 
 packages:
 
@@ -1933,6 +1933,7 @@ packages:
       '@vitest/ui': 4.1.10
       happy-dom: '*'
       jsdom: '*'
+      vite: ^6.0.0 || ^7.0.0 || ^8.0.0
     peerDependenciesMeta:
       '@edge-runtime/vm':
         optional: true
@@ -1998,8 +1999,8 @@ packages:
     resolution: {integrity: sha512-rVksvsnNCdJ/ohGc6xgPwyN8eheCxsiLM8mxuE/t/mOVqJewPuO1miLpTHQiRgTKCLexL4MeAFVagts7HmNZ2Q==}
     engines: {node: '>=10'}
 
-  zod@4.3.6:
-    resolution: {integrity: sha512-rftlrkhHZOcjDwkGlnUtZZkvaPHCsDATp4pGpuOOMDaTdDDXF91wuVDJoWoPsKX/3YPQ5fHuF3STjcYyKr+Qhg==}
+  zod@4.6.2:
+    resolution: {integrity: sha512-lh5RCAGFa1Cm2hjtNwLQhSs/AsqdWnTQaBER9fEwN/88pSh7KOtJavtBx/0VlkN/uFd61SwYmljLMDAsHlvzBQ==}
 
 snapshots:
 
@@ -3350,7 +3351,7 @@ snapshots:
       fsevents: 2.3.3
       tsx: 4.21.0
 
-  vitest@4.1.10(@types/node@24.10.4)(esbuild@0.27.7)(jsdom@29.1.1)(tsx@4.21.0):
+  vitest@4.1.10(@types/node@24.10.4)(jsdom@29.1.1)(vite@8.1.5(@types/node@24.10.4)(esbuild@0.27.7)(tsx@4.21.0)):
     dependencies:
       '@vitest/expect': 4.1.10
       '@vitest/mocker': 4.1.10(vite@8.1.5(@types/node@24.10.4)(esbuild@0.27.7)(tsx@4.21.0))
@@ -3376,18 +3377,7 @@ snapshots:
       '@types/node': 24.10.4
       jsdom: 29.1.1
     transitivePeerDependencies:
-      - '@vitejs/devtools'
-      - esbuild
-      - jiti
-      - less
       - msw
-      - sass
-      - sass-embedded
-      - stylus
-      - sugarss
-      - terser
-      - tsx
-      - yaml
 
   w3c-xmlserializer@5.0.0:
     dependencies:
@@ -3422,4 +3412,4 @@ snapshots:
 
   yocto-queue@0.1.0: {}
 
-  zod@4.3.6: {}
+  zod@4.6.2: {}
