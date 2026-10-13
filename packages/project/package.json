@@ -15,7 +15,7 @@
   "dependencies": {
     "@class-a-bridge/rules": "workspace:*",
     "fflate": "0.8.2",
-    "idb": "8.0.3",
+    "idb": "8.0.4",
     "zod": "4.3.6"
   },
   "devDependencies": {
