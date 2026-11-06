@@ -54,7 +54,7 @@ describe(".classabridge bundles", () => {
     const bundle = await exportProjectBundle(project);
     const restored = await importProjectBundle(bundle);
     expect(restored.project).toEqual(project);
-    expect(restored.manifest.ruleCatalogVersion).toBe("2026.07.14.01");
+    expect(restored.manifest.ruleCatalogVersion).toBe("2026.11.02.01");
   });
 
   it("round-trips attachment identities instead of archive paths", async () => {

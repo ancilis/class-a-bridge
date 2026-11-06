@@ -3,6 +3,7 @@ import {
   type BridgeProject,
   type RequirementWork,
 } from "@class-a-bridge/project";
+import { RULE_REGISTRY } from "@class-a-bridge/rules";
 import { SCHEMA_MANIFEST, validateOfficialDocument } from "@class-a-bridge/schemas";
 
 import type {
@@ -145,7 +146,9 @@ function createSecurityDecisionRecord(
   options: NonNullable<OfficialDocumentOptions["securityDecisionRecord"]>,
 ): SecurityDecisionRecordDocument {
   const regular = project.requirements.filter(
-    (requirement) => !requirement.ruleId.startsWith("KSI-"),
+    (requirement) =>
+      !requirement.ruleId.startsWith("KSI-") &&
+      RULE_REGISTRY.some((rule) => rule.id === requirement.ruleId),
   );
   const ksi = project.requirements.filter((requirement) => requirement.ruleId.startsWith("KSI-"));
   return {

@@ -143,6 +143,11 @@ function auditMarkdown(report) {
       ),
       "",
     );
+  } else if (report.nonBlockingVulnerabilityCount > 0) {
+    lines.push(
+      "Non-blocking vulnerabilities remain in the severity counts above. The threshold-filtered audit returned no individual advisory details; this is not a vulnerability-free result.",
+      "",
+    );
   } else {
     lines.push("No advisory was reported by the pnpm production dependency audit.", "");
   }

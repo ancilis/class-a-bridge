@@ -235,6 +235,11 @@ export async function generatePreparationPackage(
   project: BridgeProject,
   options: PreparationPackageOptions = {},
 ): Promise<PreparationPackage> {
+  if (project.metadata.ruleCatalogVersion !== CATALOG_MANIFEST.catalogVersion) {
+    throw new Error(
+      "Review and apply the catalog update before generating a new preparation package. Existing backups and frozen packages remain available.",
+    );
+  }
   const generatedAt = options.generatedAt ?? new Date().toISOString();
   const officialOptions: OfficialDocumentOptions = {
     generatedAt,

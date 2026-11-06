@@ -1,10 +1,10 @@
 {
-  "productVersion": "0.9.0",
+  "productVersion": "0.10.0",
   "sourceCommit": null,
   "sourceCommitStatus": "Resolved from explicit release metadata or Git during release assembly; unavailable is recorded truthfully for an unannotated archive.",
-  "rulesSourceVersion": "2026.07.14.01",
-  "rulesChecksum": "135707003f0aaa5ceb10d7d32c2681e5b1585a4eaf4403d0d135837787e5ae8e",
-  "schemaManifestChecksum": "80acdad1385cc32a620c4bdf64db9df30b58fd4a530cdbfddf0f5d0649e873cb",
+  "rulesSourceVersion": "2026.11.02.01",
+  "rulesChecksum": "782faecae3eee4aa2aa9d32cdb0de4c929524f2e41dc1f3d143a94a9ca64c4e3",
+  "schemaManifestChecksum": "25f4fff1642fcbb9d9ebd8ed875bbb915a85c37d80d25600d8ac671359bf5796",
   "buildToolVersions": {
     "node": "24.x",
     "packageManager": "pnpm@10.33.0"

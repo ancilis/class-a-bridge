@@ -75,7 +75,7 @@ const ProjectMetadataSchema = z
     id: z.string().min(1),
     name: z.string().min(1),
     schemaVersion: z.literal(PROJECT_SCHEMA_VERSION),
-    ruleCatalogVersion: z.literal(RULE_CATALOG_VERSION),
+    ruleCatalogVersion: z.enum(["2026.07.14.01", RULE_CATALOG_VERSION]),
     createdAt: z.string().datetime(),
     updatedAt: z.string().datetime(),
     lastLocalSaveAt: z.string().datetime().optional(),
@@ -863,6 +863,8 @@ export const BridgeProjectSchema = z
       "ruleId",
     );
     const catalogRuleIds = new Set(RULE_REGISTRY.map(({ id: ruleId }) => ruleId));
+    // Retain retired July records so evidence references and historical work remain lossless.
+    catalogRuleIds.add("CPO-CSF-CPM");
     project.requirements.forEach((requirement, index) => {
       if (!catalogRuleIds.has(requirement.ruleId)) {
         context.addIssue({
@@ -874,6 +876,11 @@ export const BridgeProjectSchema = z
     });
     const requirementRuleIds = new Set(project.requirements.map(({ ruleId }) => ruleId));
     for (const mandatoryRuleId of RULE_SELECTIONS.mandatory) {
+      if (
+        project.metadata.ruleCatalogVersion === "2026.07.14.01" &&
+        mandatoryRuleId === "SDR-CSX-KSI"
+      )
+        continue;
       if (!requirementRuleIds.has(mandatoryRuleId)) {
         context.addIssue({
           code: "custom",

@@ -1,3 +1,9 @@
+# Current release evidence
+
+The 0.10.0 candidate uses catalog 2026.11.02.01, with 62 selected records and 24 additional mandatory Class A records. The former CPO-CSF-CPM discrepancy is resolved upstream. Current machine-readable evidence is under reports/regulatory; the engineering comparison is docs/release/2026-11-06-regulatory-delta.md. All guidance and rule-selection interpretations still require qualified review.
+
+The following is the historical July audit, retained for context. Its counts, exception and baseline statements do not describe the November release.
+
 # Rule Selection Audit
 
 ## Purpose

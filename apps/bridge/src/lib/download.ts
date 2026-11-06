@@ -20,7 +20,7 @@ export function downloadText(
 export function diagnosticReport(error?: unknown) {
   return {
     application: "Class A Bridge",
-    version: "0.9.0-public-beta",
+    version: "0.10.0-public-beta",
     createdAt: new Date().toISOString(),
     capabilities: {
       indexedDb: typeof globalThis.indexedDB !== "undefined",

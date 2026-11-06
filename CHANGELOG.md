@@ -2,6 +2,10 @@
 
 All notable project changes are recorded here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and releases use semantic versioning for software compatibility. Regulatory catalog and schema versions are recorded independently because they can change without matching application versions.
 
+## [0.10.0] — 2026-11-06
+
+Public beta with an actionable starting plan directly on the assessment result, finding-specific tasks, full-question reports with source provenance, truthful unassessed reuse states, and optional plan labels and backup guidance. Updates rules to 2026.11.02.01 and all eleven official schemas to bytes verified November 6. July projects remain portable and require explicit reconciliation before new package generation; historical work and snapshots are retained. Qualified content/package review and representative-user validation remain pending. See docs/release/0.10.0.md.
+
 ## [0.9.0] — 2026-07-18
 
 Public beta. Version 1.0.0 remains gated on qualified human review of the mandatory

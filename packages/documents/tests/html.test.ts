@@ -129,7 +129,7 @@ describe("human-readable reports", () => {
 
     expect(report.html).toContain("KSI-CMT-LMC");
     expect(report.html).toContain("Not started");
-    expect(report.html).toContain("2026.07.14.01");
+    expect(report.html).toContain("2026.11.02.01");
   });
 
   it("excludes tampered status-only records from the provider approval report", () => {

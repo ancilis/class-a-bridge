@@ -1,4 +1,4 @@
-# Known limitations — 0.9.0 Public Beta
+# Known limitations — 0.10.0 Public Beta
 
 - Ancilis SOC 2 mapping playbooks are versioned drafts. Qualified human technical,
   compliance, and claims review has not been represented as complete.
@@ -13,5 +13,4 @@
 - Browser storage can be evicted. Users should export standard or encrypted backups.
 - Class B, Class C, multiuser collaboration, cloud synchronization, infrastructure
   integrations, and automated government submission are outside this release.
-- The pinned official catalog preserves the upstream `FRC-CLA-RFR` reference to
-  `CPO-CSF-CPM`; the product flags the inconsistency and does not resolve it silently.
+- The November catalog resolves the July recommended-reference inconsistency. Older projects must explicitly reconcile their baseline before new package generation.

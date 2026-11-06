@@ -5,3 +5,5 @@ export * from "./model";
 export * from "./persistence";
 export * from "./security";
 export * from "./soc2-reuse";
+export * from "./starting-plan";
+export * from "./catalog-upgrade";

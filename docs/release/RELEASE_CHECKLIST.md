@@ -1,3 +1,5 @@
+> Historical 0.9.0 checklist template. For the 0.10.0 candidate, use docs/release/0.10.0.md and reports/release/0.10.0-RELEASE_EVIDENCE.md; do not interpret unchecked or July-passed items below as current release evidence.
+
 # Release checklist
 
 This checklist is the maintainer template. The evidence-based 0.9.0 Public Beta decision record is generated at `reports/release/RELEASE_CHECKLIST.md`. A checked item here still means a reviewer observed evidence, not that source merely appears to support it.

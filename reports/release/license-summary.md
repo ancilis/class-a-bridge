@@ -2,7 +2,7 @@
 
 Automated policy status: **PASSED**
 
-Production components inventoried: 38
+Production components inventoried: 40
 Components blocked by missing or unknown metadata: 0
 Components requiring substantive license review: 2
 
@@ -18,12 +18,12 @@ Automated status checks metadata completeness. Copyleft and Creative Commons lic
 | CC-BY-4.0 | 1 |
 | ISC | 3 |
 | LGPL-3.0-or-later | 1 |
-| MIT | 21 |
+| MIT | 23 |
 
 ## Human review required
 
 | Package | Version | Declared license |
 | --- | --- | --- |
-| @img/sharp-libvips-darwin-arm64 | 1.2.4 | LGPL-3.0-or-later |
+| @img/sharp-libvips-darwin-arm64 | 1.3.4 | LGPL-3.0-or-later |
 | caniuse-lite | 1.0.30001806 | CC-BY-4.0 |
 

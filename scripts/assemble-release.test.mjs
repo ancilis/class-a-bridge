@@ -233,13 +233,13 @@ test("assembles a real source archive without Git metadata", async () => {
     await mkdir(bridge, { recursive: true });
     await writeFile(
       path.join(root, "package.json"),
-      `${JSON.stringify({ name: "class-a-bridge", version: "0.9.0" }, null, 2)}\n`,
+      `${JSON.stringify({ name: "class-a-bridge", version: "0.10.0" }, null, 2)}\n`,
     );
     await writeFile(
       path.join(root, "SOURCE_PROVENANCE.json"),
       `${JSON.stringify(
         {
-          productVersion: "0.9.0",
+          productVersion: "0.10.0",
           sourceCommit: "archive-commit-from-embedded-provenance",
           releaseChannel: "public-beta",
         },
@@ -269,7 +269,11 @@ test("assembles a real source archive without Git metadata", async () => {
     await writeFile(path.join(bridge, "_headers"), "/*\n  X-Frame-Options: DENY\n");
 
     const result = await assembleRelease({ root, website, bridge, destination, environment: {} });
-    const sourceArchive = path.join(destination, "downloads", "class-a-bridge-0.9.0-source.tar.gz");
+    const sourceArchive = path.join(
+      destination,
+      "downloads",
+      "class-a-bridge-0.10.0-source.tar.gz",
+    );
     const bytes = await readFile(sourceArchive);
     assert.deepEqual([...bytes.subarray(0, 3)], [31, 139, 8]);
     assert.ok(bytes.byteLength > 100, "the source archive must contain real files");
@@ -292,8 +296,8 @@ test("assembles a real source archive without Git metadata", async () => {
     const releaseManifest = JSON.parse(
       await readFile(path.join(destination, "release-manifest.json"), "utf8"),
     );
-    assert.equal(releaseManifest.version, "0.9.0");
-    assert.equal(releaseManifest.sourceArchive, "/downloads/class-a-bridge-0.9.0-source.tar.gz");
+    assert.equal(releaseManifest.version, "0.10.0");
+    assert.equal(releaseManifest.sourceArchive, "/downloads/class-a-bridge-0.10.0-source.tar.gz");
     assert.match(releaseManifest.sourceArchiveSha256, /^[a-f0-9]{64}$/u);
     assert.equal(releaseManifest.sourceCommit, "archive-commit-from-embedded-provenance");
     assert.equal(releaseManifest.builtFromArchive, true);
@@ -301,7 +305,7 @@ test("assembles a real source archive without Git metadata", async () => {
     assert.match(
       checksums,
       new RegExp(
-        `^${releaseManifest.sourceArchiveSha256}  downloads/class-a-bridge-0\\.9\\.0-source\\.tar\\.gz$`,
+        `^${releaseManifest.sourceArchiveSha256}  downloads/class-a-bridge-0\\.10\\.0-source\\.tar\\.gz$`,
         "mu",
       ),
     );
@@ -332,7 +336,7 @@ test("resolves source commit provenance in the documented fallback order", async
       `${JSON.stringify(
         {
           name: "class-a-bridge",
-          version: "0.9.0",
+          version: "0.10.0",
           release: { sourceCommit: "package-commit", channel: "public-beta" },
         },
         null,
@@ -378,7 +382,7 @@ test("resolves source commit provenance in the documented fallback order", async
 
     await writeFile(
       path.join(root, "package.json"),
-      `${JSON.stringify({ name: "class-a-bridge", version: "0.9.0" }, null, 2)}\n`,
+      `${JSON.stringify({ name: "class-a-bridge", version: "0.10.0" }, null, 2)}\n`,
     );
     const gitFallback = await resolveSourceProvenance({ root, environment: {}, gitMetadata });
     assert.equal(gitFallback.sourceCommit, "git-commit");
@@ -403,7 +407,7 @@ test("records an untracked source file as a dirty Git source tree", async () => 
   try {
     await writeFile(
       path.join(root, "package.json"),
-      `${JSON.stringify({ name: "class-a-bridge", version: "0.9.0" }, null, 2)}\n`,
+      `${JSON.stringify({ name: "class-a-bridge", version: "0.10.0" }, null, 2)}\n`,
     );
     await execFileAsync("git", ["init", "--quiet"], { cwd: root });
     await execFileAsync("git", ["config", "user.name", "Release Test"], { cwd: root });
@@ -462,7 +466,7 @@ test("ignores a parent Git repository for a nested Git-less source archive", asy
     await mkdir(archiveRoot);
     await writeFile(
       path.join(archiveRoot, "package.json"),
-      `${JSON.stringify({ name: "class-a-bridge", version: "0.9.0" }, null, 2)}\n`,
+      `${JSON.stringify({ name: "class-a-bridge", version: "0.10.0" }, null, 2)}\n`,
     );
 
     const provenance = await resolveSourceProvenance({ root: archiveRoot, environment: {} });
@@ -508,7 +512,7 @@ test("rejects malformed embedded source provenance instead of silently discardin
   try {
     await writeFile(
       path.join(root, "package.json"),
-      `${JSON.stringify({ name: "class-a-bridge", version: "0.9.0" }, null, 2)}\n`,
+      `${JSON.stringify({ name: "class-a-bridge", version: "0.10.0" }, null, 2)}\n`,
     );
     await writeFile(path.join(root, "SOURCE_PROVENANCE.json"), "{not-valid-json\n");
     await assert.rejects(
@@ -530,11 +534,11 @@ test("creates byte-identical source archives for fixed source bytes and provenan
   try {
     await writeFile(
       path.join(root, "package.json"),
-      `${JSON.stringify({ name: "class-a-bridge", version: "0.9.0" }, null, 2)}\n`,
+      `${JSON.stringify({ name: "class-a-bridge", version: "0.10.0" }, null, 2)}\n`,
     );
     await writeFile(path.join(root, "README.md"), "# Reproducible archive fixture\n");
     const provenance = {
-      productVersion: "0.9.0",
+      productVersion: "0.10.0",
       sourceCommit: "fixed-commit",
       sourceArchiveCreatedAt: "2026-07-18T12:00:00.000Z",
       releaseChannel: "public-beta",
@@ -552,13 +556,13 @@ test("rejects source symlinks that escape the archive root", async () => {
   try {
     await writeFile(
       path.join(root, "package.json"),
-      `${JSON.stringify({ name: "class-a-bridge", version: "0.9.0" }, null, 2)}\n`,
+      `${JSON.stringify({ name: "class-a-bridge", version: "0.10.0" }, null, 2)}\n`,
     );
     await symlink("../../outside-source-tree", path.join(root, "unsafe-link"));
     await assert.rejects(
       () =>
         createSourceArchiveBytes(root, {
-          productVersion: "0.9.0",
+          productVersion: "0.10.0",
           sourceCommit: "fixed-commit",
           sourceArchiveCreatedAt: "2026-07-18T12:00:00.000Z",
           releaseChannel: "public-beta",

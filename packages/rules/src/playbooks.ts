@@ -529,6 +529,16 @@ const mandatoryOverrides: Record<
   string,
   { summary: string; outcome: string; specificGap: string; specificQuestion: string }
 > = {
+  "SDR-CSX-KSI": {
+    summary:
+      "Document short, high-level summaries of the measures and objectives for each applicable Key Security Indicator.",
+    outcome:
+      "Reviewers can understand how each KSI is demonstrated, verified, and validated, including the cycle for persistent measures.",
+    specificGap:
+      "SOC 2 testing alone does not supply KSI-specific measures, automation sufficiency, validation results, or accepted reasons and customer risk where measures are unavailable.",
+    specificQuestion:
+      "For each applicable KSI, what measures demonstrate the objective, how are they verified and validated, and what is the persistent measurement cycle or documented reason for not using automation?",
+  },
   "FRC-CSO-PKG": {
     summary:
       "Assemble the complete provider-owned Class A certification package and keep each representation reviewable.",
@@ -816,7 +826,7 @@ export const SOC2_MAPPING_PLAYBOOKS: readonly Soc2MappingPlaybook[] = RULE_REGIS
   const override = mandatoryOverrides[rule.id] ?? defaultOverride(rule.officialTitle);
   return {
     ruleId: rule.id,
-    contentVersion: "2026.07.18-beta.1",
+    contentVersion: "2026.11.06-beta.1",
     contentReviewStatus: "Draft",
     reviewer: null,
     reviewDate: null,
@@ -854,7 +864,7 @@ const statusCounts = SOC2_MAPPING_PLAYBOOKS.reduce<Record<string, number>>((coun
 }, {});
 
 export const SOC2_PLAYBOOK_MANIFEST = {
-  contentVersion: "2026.07.18-beta.1",
+  contentVersion: "2026.11.06-beta.1",
   catalogVersion: CATALOG_MANIFEST.catalogVersion,
   total: SOC2_MAPPING_PLAYBOOKS.length,
   byStatus: statusCounts,

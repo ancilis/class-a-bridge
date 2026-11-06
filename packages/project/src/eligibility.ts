@@ -7,6 +7,7 @@ import {
   type EligibilityQuestionId,
   type PreliminaryResult,
 } from "./model";
+import { getStartingActions } from "./starting-plan";
 
 export interface EligibilityQuestion {
   readonly id: EligibilityQuestionId;
@@ -110,7 +111,7 @@ const LABELS: Record<EligibilityClassification, string> = {
   likely_fit_with_preparation: "Likely fit with preparation work",
   needs_expert_review: "Needs expert review",
   potential_scope_mismatch: "Potential scope mismatch",
-  not_currently_eligible: "Not currently eligible",
+  not_currently_eligible: "Starting requirements need attention",
 };
 
 export function evaluateEligibility(input: Record<string, unknown>): PreliminaryResult {
@@ -195,48 +196,25 @@ export function evaluateEligibility(input: Record<string, unknown>): Preliminary
     });
   }
 
-  const actionsByClass: Record<EligibilityClassification, [string, string, string]> = {
-    likely_fit: [
-      "Confirm SOC 2 report dates and system name.",
-      "Build the proposed Class A scope inventory.",
-      "Collect the external assessment materials checklist.",
-    ],
-    likely_fit_with_preparation: [
-      "Define the federal use case and expected data.",
-      "Confirm the proposed offering boundary.",
-      "Collect current SOC 2 assessment materials.",
-    ],
-    needs_expert_review: [
-      "Resolve the highest-impact uncertain answer.",
-      "Collect evidence for carved-out services or exceptions.",
-      "Request an expert scope and interpretation review.",
-    ],
-    potential_scope_mismatch: [
-      "Compare the audited system to the proposed federal offering.",
-      "Document every federal-offering difference and dependency.",
-      "Resolve the scope mismatch with technical and compliance owners.",
-    ],
-    not_currently_eligible: [
-      "Confirm the applicable alternative-framework and freshness requirements.",
-      "Plan a qualifying independent assessment for the offering.",
-      "Re-run the preliminary assessment when the starting requirement is met.",
-    ],
-  };
   const reasons = findings.map(({ summary }) => summary);
+  const label =
+    answers.soc2_type_ii === "no" ? "Outside this SOC 2 preparation path" : LABELS[classification];
   const summary =
-    classification === "likely_fit"
-      ? "Your confirmed answers indicate a likely Class A fit, subject to source-document, scope, and provider review."
-      : `${LABELS[classification]} based on the answers provided; review the findings before relying on this result.`;
+    answers.soc2_type_ii === "no"
+      ? "This tool starts from SOC 2 Type II. FedRAMP also accepts qualifying GovRAMP and FedRAMP Rev5 assessments; review the official alternative-framework options. This result does not determine eligibility through those paths."
+      : classification === "likely_fit"
+        ? "Your confirmed answers indicate a likely Class A fit, subject to source-document, scope, and provider review."
+        : `${label} based on the answers provided; review the findings before relying on this result.`;
 
   return PreliminaryResultSchema.parse({
     classification,
-    label: LABELS[classification],
+    label,
     summary,
     reasons,
     supportingAnswerIds: [...EligibilityQuestionIdSchema.options],
     blockers,
     missingInformation: missing,
-    recommendedActions: actionsByClass[classification],
+    recommendedActions: getStartingActions(answers).map((task) => task.title),
     ruleRefs: [...new Set(findings.flatMap(({ ruleRefs }) => ruleRefs))],
     findings,
     disclaimer:

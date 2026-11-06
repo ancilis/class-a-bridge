@@ -48,7 +48,9 @@ export async function startManualAssessment(
     if (!answer) throw new Error(`Missing answer for question ${index + 1}.`);
     await page.getByRole("button", { name: answer, exact: true }).click();
   }
-  await expect(page.getByText("Deterministic from 8 confirmed answers")).toBeVisible();
+  await expect(
+    page.getByText("Based on 8 answers; source verification still required"),
+  ).toBeVisible();
 }
 
 export async function navigateTo(page: Page, name: string) {

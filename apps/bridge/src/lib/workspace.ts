@@ -1,6 +1,7 @@
 import {
   createEmptyProject,
   evaluateEligibility,
+  getPreparationActions,
   type AnswerValue,
   type BridgeProject,
   type EligibilityQuestionId,
@@ -131,20 +132,28 @@ export function deriveActions(project: BridgeProject): BridgeProject["actions"] 
   const existing = new Map(project.actions.map((item) => [item.id, item]));
   const providerAuthored = project.actions.filter((item) => item.origin === "provider");
   const generated: BridgeProject["actions"] = [];
-  for (const finding of project.eligibility.result?.findings ?? []) {
-    if (finding.certainty === "confirmed" && !finding.humanReview) continue;
-    generated.push(
-      action(
-        `eligibility-${finding.id}`,
-        finding.title,
-        finding.summary,
-        "eligibility_blockers",
-        finding.title === "Potential blocker" ? "critical" : "high",
-        "Compliance owner",
-        finding.ruleRefs,
-        "/eligibility",
-      ),
+  if (project.eligibility.result) {
+    const answers = Object.fromEntries(
+      project.eligibility.answers.map((answer) => [answer.questionId, answer.value]),
     );
+    for (const task of getPreparationActions(answers)) {
+      const finding = project.eligibility.result.findings.find((item) =>
+        item.answerRefs.some((id) => id === task.id),
+      );
+      const concern = finding && finding.id !== "finding-preliminary-alignment";
+      generated.push(
+        action(
+          `starting-${task.id}-${answers[task.id] ?? "default"}`,
+          task.title,
+          `${task.evidence} Done when: ${task.doneWhen}`,
+          concern ? "eligibility_blockers" : "before_application_preparation",
+          finding?.title === "Potential blocker" ? "critical" : "high",
+          task.owner,
+          task.ruleRefs,
+          task.route,
+        ),
+      );
+    }
   }
   project.scope.mismatchFindings.forEach((finding, index) =>
     generated.push(
@@ -186,6 +195,7 @@ export function deriveActions(project: BridgeProject): BridgeProject["actions"] 
     ...RULE_SELECTIONS.marketplaceApplication,
   ]);
   for (const requirement of project.requirements) {
+    if (!RULE_REGISTRY.some((rule) => rule.id === requirement.ruleId)) continue;
     if (["complete_for_internal_review", "approved_by_provider"].includes(requirement.status))
       continue;
     const category: BridgeProject["actions"][number]["category"] = mandatory.has(requirement.ruleId)

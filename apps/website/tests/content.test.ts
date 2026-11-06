@@ -114,7 +114,7 @@ describe("marketing content", () => {
 
     expect(links).toEqual(
       expect.arrayContaining([
-        "/downloads/class-a-bridge-0.9.0-source.tar.gz",
+        "/downloads/class-a-bridge-0.10.0-source.tar.gz",
         "https://www.apache.org/licenses/LICENSE-2.0.txt",
         "/contact/",
         "mailto:security@ancilis.ai",
@@ -151,7 +151,7 @@ describe("marketing content", () => {
     const siteCopy = JSON.stringify({ homepage, faqItems, allStaticPages });
     const releaseNotes = requirePage("/release-notes/");
 
-    expect(releaseNotes.headline).toContain("0.9.0 Public Beta");
+    expect(releaseNotes.headline).toContain("0.10.0 Public Beta");
     expect(siteCopy).not.toContain("Version 1.0");
     expect(siteCopy).not.toContain("Release 1.0");
     expect(siteCopy).not.toContain("complete Class A preparation foundation");

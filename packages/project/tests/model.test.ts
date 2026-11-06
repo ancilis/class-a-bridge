@@ -37,7 +37,7 @@ describe("BridgeProject", () => {
     expect(project.metadata).toEqual(
       expect.objectContaining({
         schemaVersion: PROJECT_SCHEMA_VERSION,
-        ruleCatalogVersion: "2026.07.14.01",
+        ruleCatalogVersion: "2026.11.02.01",
       }),
     );
     expect(project.approvals).toEqual([]);

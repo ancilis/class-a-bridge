@@ -12,7 +12,7 @@ Choose one starting path:
 2. **Start without uploading a report** uses manual entry and is fully supported.
 3. **Explore a fictional sample workspace** opens Acme Metrics, marked “Fictional demonstration — not an actual certification package” and “Fictional example — not for submission.”
 
-The report is not uploaded to Ancilis. If it is password-protected, scanned, image-only, malformed, or too large, use manual entry. Class A Bridge 0.9.0 Public Beta does not perform optical character recognition.
+The report is not uploaded to Ancilis. If it is password-protected, scanned, image-only, malformed, or too large, use manual entry. Class A Bridge 0.10.0 Public Beta does not perform optical character recognition.
 
 ## Get the early result
 
@@ -103,3 +103,13 @@ Browser storage can be cleared or evicted by the browser/device. Ancilis has no 
 | Contact form unavailable | Use the displayed email fallback without attachments                                            |
 
 For a suspected security vulnerability, do not send project data; follow [SECURITY.md](../../SECURITY.md).
+
+## Your first useful plan
+
+After the eighth answer, use **Download your starting plan** on the result screen. It includes specific tasks, suggested owners, evidence to collect and completion conditions. You may name the organization and offering before downloading, or leave those fields unchanged. Open the HTML in a browser and print to PDF if needed. The plan is preparation guidance, not a certification decision.
+
+Use **Save a portable backup** before leaving. Browser storage is not a backup. An empty reuse inventory means no gaps have been assessed; import or enter your first control to begin.
+
+## Updating a July project
+
+Restoring a July project preserves its catalog identity and all historical records. The update banner explains the new mandatory KSI documentation record and removal of the old recommended Rev5 maintenance reference. Back up first, then choose **Update catalog and reopen reviews**. Existing narratives and frozen snapshots remain; current reviews must be renewed. New preparation packages require the current baseline.
