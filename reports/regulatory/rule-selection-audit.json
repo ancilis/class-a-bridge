@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-07-18T14:01:32.975Z",
-  "catalogVersion": "2026.07.14.01",
+  "generatedAt": "2026-11-06T05:27:18.463Z",
+  "catalogVersion": "2026.11.02.01",
   "reviewSummary": {
     "status": "QUALIFIED_HUMAN_REVIEW_PENDING",
     "reviewer": null,
@@ -445,6 +445,24 @@
       "reviewDate": null
     },
     {
+      "id": "SDR-CSX-KSI",
+      "officialClassASelection": "OFFICIALLY_MANDATORY",
+      "officialIndividualForce": "MUST",
+      "officialSelectionForce": "MUST",
+      "officialSelectionSourceRuleId": "FRC-CLA-MFR",
+      "productInclusionReason": "Included in the pinned official Class A mandatory subset (FRC-CLA-MFR).",
+      "workflowCategories": [
+        "class-a-core"
+      ],
+      "mismatch": false,
+      "mismatchRationale": null,
+      "intentionalMismatch": false,
+      "intentionalMismatchRationale": null,
+      "reviewStatus": "QUALIFIED_HUMAN_REVIEW_PENDING",
+      "reviewer": null,
+      "reviewDate": null
+    },
+    {
       "id": "KSI-CMT-LMC",
       "officialClassASelection": "OFFICIALLY_MANDATORY",
       "officialIndividualForce": null,
@@ -584,24 +602,6 @@
       "mismatchRationale": null,
       "intentionalMismatch": false,
       "intentionalMismatchRationale": null,
-      "reviewStatus": "QUALIFIED_HUMAN_REVIEW_PENDING",
-      "reviewer": null,
-      "reviewDate": null
-    },
-    {
-      "id": "CPO-CSF-CPM",
-      "officialClassASelection": "OFFICIALLY_RECOMMENDED",
-      "officialIndividualForce": null,
-      "officialSelectionForce": "SHOULD",
-      "officialSelectionSourceRuleId": "FRC-CLA-RFR",
-      "productInclusionReason": "Included in the pinned official Class A recommended subset (FRC-CLA-RFR).",
-      "workflowCategories": [
-        "class-a-recommended"
-      ],
-      "mismatch": true,
-      "mismatchRationale": "The official Class A aggregate includes this rule, while the individual rule publishes no Class A branch.",
-      "intentionalMismatch": true,
-      "intentionalMismatchRationale": "Ancilis intentionally preserves the pinned upstream FRC-CLA-RFR reference to CPO-CSF-CPM; the individual rule's 2026-07-14 history says Class A applicability was removed. Human confirmation remains required.",
       "reviewStatus": "QUALIFIED_HUMAN_REVIEW_PENDING",
       "reviewer": null,
       "reviewDate": null

@@ -1,4 +1,6 @@
 import {
+  ELIGIBILITY_QUESTIONS,
+  getStartingActions,
   isProviderApprovedRequirement,
   isReviewedSoc2Mapping,
   isReviewedSoc2Control,
@@ -6,7 +8,7 @@ import {
   soc2MappingSupportsReuse,
 } from "@class-a-bridge/project";
 import type { BridgeProject } from "@class-a-bridge/project";
-import { getRule, RULE_SELECTIONS } from "@class-a-bridge/rules";
+import { CATALOG_MANIFEST, getRule, RULE_SELECTIONS } from "@class-a-bridge/rules";
 
 import { createAdvisorHandoff } from "./advisor";
 import {
@@ -72,7 +74,8 @@ const resultBody = (project: BridgeProject) => {
     );
   }
   const answers = project.eligibility.answers.map((answer) => [
-    label(answer.questionId),
+    ELIGIBILITY_QUESTIONS.find((question) => question.id === answer.questionId)?.question ??
+      label(answer.questionId),
     label(answer.value),
     answer.note ?? "",
   ]);
@@ -95,7 +98,17 @@ const resultBody = (project: BridgeProject) => {
       "Missing external assessment materials",
       table(["Material", "Status", "Why it is unresolved"], unresolvedMaterials),
     ),
-    section("Next three actions", list(result.recommendedActions)),
+    section(
+      "Next three actions",
+      table(
+        ["Task", "Suggested owner", "Evidence to collect", "Completion condition"],
+        getStartingActions(
+          Object.fromEntries(
+            project.eligibility.answers.map((answer) => [answer.questionId, answer.value]),
+          ),
+        ).map((task) => [task.title, task.owner, task.evidence, task.doneWhen]),
+      ),
+    ),
     section("Applicable rule references", list(result.ruleRefs)),
   ].join("");
 };
@@ -656,7 +669,27 @@ function bodyFor(project: BridgeProject, kind: HumanReportKind): string {
         return providerApprovalBody(project);
     }
   })();
-  return `${determination}${body}`;
+  const provenance = section(
+    "Sources and review status",
+    table(
+      ["Source", "Version or status"],
+      [
+        ["Project catalog", project.metadata.ruleCatalogVersion],
+        ["Guidance catalog", CATALOG_MANIFEST.catalogVersion],
+        ["Official source", CATALOG_MANIFEST.sourceUrl],
+        ["Source verified", CATALOG_MANIFEST.verifiedAt],
+        ["Guidance review", "Draft guidance — qualified human review pending"],
+      ],
+    ),
+  );
+  const stale =
+    project.metadata.ruleCatalogVersion !== CATALOG_MANIFEST.catalogVersion
+      ? callout(
+          "Historical project baseline: review the catalog update in Class A Bridge before relying on current guidance. Existing conclusions have not been reapproved.",
+          "warning",
+        )
+      : "";
+  return `${determination}${stale}${body}${provenance}`;
 }
 
 function decodeEntities(value: string): string {

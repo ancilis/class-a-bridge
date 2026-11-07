@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { readFile } from "node:fs/promises";
 
 import {
   ELIGIBILITY_QUESTIONS,
@@ -8,6 +9,41 @@ import {
   openSample,
   startManualAssessment,
 } from "./helpers/app";
+
+test("the first result exports actionable tasks and names the current source without leaving the result", async ({
+  page,
+}) => {
+  await startManualAssessment(page, ["Yes", "Yes", "Yes", "No", "Yes", "No", "Yes", "Yes"]);
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Needs expert review", exact: true }),
+  ).toBeInViewport();
+  const plan = page.getByRole("region", { name: "Your starting plan", exact: true });
+  await expect(plan.getByText(/Suggested owner: Compliance and cloud operations/u)).toBeVisible();
+  await expect(
+    page.getByText("Resolve the highest-impact uncertain answer.", { exact: true }),
+  ).toHaveCount(0);
+  await plan.getByText("Name your plan (optional)", { exact: true }).click();
+  await plan
+    .getByRole("textbox", { name: "Organization for this plan" })
+    .fill("Fictional release evaluation");
+  const pending = page.waitForEvent("download");
+  await plan.getByRole("button", { name: "Download your starting plan", exact: true }).click();
+  const download = await pending;
+  const path = await download.path();
+  expect(path).toBeTruthy();
+  const html = await readFile(path!, "utf8");
+  expect(html).toContain("Fictional release evaluation");
+  expect(html).toContain("Completion condition");
+  expect(html).toContain("2026.11.02.01");
+  expect(html).toContain("2026-11-06");
+  expect(html).not.toContain("Resolve the highest-impact uncertain answer");
+  await plan.getByRole("button", { name: /Continue: Review the providers/u }).click();
+  await expect(
+    page
+      .getByRole("navigation", { name: "Project navigation" })
+      .getByRole("button", { name: "Scope", exact: true }),
+  ).toHaveAttribute("aria-current", "page");
+});
 
 test("a new user starts without an account and receives a reasoned result after eight questions", async ({
   page,

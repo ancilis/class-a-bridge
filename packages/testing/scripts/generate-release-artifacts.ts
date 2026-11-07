@@ -23,7 +23,7 @@ export const GENERATED_SAMPLE_ARTIFACTS = {
   manifest: "sample-artifacts-manifest.json",
 } as const;
 
-const DEFAULT_GENERATED_AT = "2026-07-18T12:00:00.000Z";
+const DEFAULT_GENERATED_AT = "2026-11-06T12:00:00.000Z";
 const encoder = new TextEncoder();
 
 export interface GenerateReleaseSampleArtifactsOptions {
@@ -157,7 +157,7 @@ export async function generateReleaseSampleArtifacts(
   );
   const preparationPackage = await generatePreparationPackage(project, {
     generatedAt,
-    packageVersion: "0.9.0-public-beta-fictional-example",
+    packageVersion: "0.10.0-public-beta-fictional-example",
     officialDocuments: officialDocumentOptions(project),
   });
   if (!preparationPackage.validation.valid) {

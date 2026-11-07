@@ -172,7 +172,7 @@ export const faqItems: readonly FaqItem[] = [
   {
     question: "Does it support Class B or Class C?",
     answer:
-      "Version 0.9.0 Public Beta focuses on Class A preparation. The workspace can help organize early thinking, but it is not a complete Class B or Class C product.",
+      "Version 0.10.0 Public Beta focuses on Class A preparation. The workspace can help organize early thinking, but it is not a complete Class B or Class C product.",
   },
   {
     question: "Can Ancilis review the result?",

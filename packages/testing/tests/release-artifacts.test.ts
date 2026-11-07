@@ -78,7 +78,7 @@ describe("fictional release artifacts", () => {
     );
     const packageManifest: unknown = JSON.parse(decoder.decode(packageArchive["manifest.json"]));
     expect(packageManifest).toEqual(
-      expect.objectContaining({ packageVersion: "0.9.0-public-beta-fictional-example" }),
+      expect.objectContaining({ packageVersion: "0.10.0-public-beta-fictional-example" }),
     );
 
     const licenseArchive = unzipSync(

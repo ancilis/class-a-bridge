@@ -116,8 +116,14 @@ export function Soc2Reuse({ project, update }: Soc2ReuseProps) {
   const partialMappings = project.mappings.filter(({ coverage }) =>
     ["partially_covered", "supporting_evidence_only"].includes(coverage),
   ).length;
-  const fedrampGaps = project.mappings.filter(({ coverage }) =>
-    ["fedramp_specific_work_required", "scope_mismatch", "needs_human_review"].includes(coverage),
+  const reviewedMappings = project.mappings.filter(isReviewedSoc2Mapping);
+  const fedrampGaps = reviewedMappings.filter(
+    ({ reviewOutcome }) => reviewOutcome === "fedramp_specific_work_required",
+  ).length;
+  const unreviewedMappings = project.mappings.length - reviewedMappings.length;
+  const assessedRuleIds = new Set(reviewedMappings.map((mapping) => mapping.classARuleId));
+  const requirementsNotReviewed = project.requirements.filter(
+    (requirement) => !assessedRuleIds.has(requirement.ruleId),
   ).length;
   const scopeConflicts = project.mappings.filter(
     ({ coverage, scopeAlignment }) =>
@@ -292,12 +298,32 @@ export function Soc2Reuse({ project, update }: Soc2ReuseProps) {
         establishes evidence sufficiency.
       </Callout>
 
+      {project.soc2.controls.length === 0 && (
+        <Callout title="Reuse assessment not started" tone="neutral">
+          <p>
+            Import your first control using the CSV template below, or add a control under SOC 2
+            materials. No reuse gaps have been assessed yet.
+          </p>
+        </Callout>
+      )}
       <section className="soc2-reuse__metrics" aria-label="SOC 2 reuse summary">
         <SummaryMetric value={confirmedControls} labelText="confirmed SOC 2 controls" />
         <SummaryMetric value={suggestions.length} labelText="suggested reuse opportunities" />
         <SummaryMetric value={confirmedMappings} labelText="confirmed supporting mappings" />
         <SummaryMetric value={partialMappings} labelText="partial or supporting-only mappings" />
-        <SummaryMetric value={fedrampGaps} labelText="FedRAMP-specific gaps" />
+        {reviewedMappings.length > 0 ? (
+          <SummaryMetric
+            value={fedrampGaps}
+            labelText="reviewed mappings requiring FedRAMP-specific work"
+          />
+        ) : (
+          <p>FedRAMP-specific work: not assessed yet</p>
+        )}
+        <SummaryMetric value={unreviewedMappings} labelText="mapping decisions awaiting review" />
+        <SummaryMetric
+          value={requirementsNotReviewed}
+          labelText="requirements without a reviewed mapping"
+        />
         <SummaryMetric value={scopeConflicts} labelText="scope conflicts" />
         <SummaryMetric value={periodConflicts} labelText="audit-period conflicts" />
         <SummaryMetric value={exceptionConflicts} labelText="exceptions affecting reuse" />

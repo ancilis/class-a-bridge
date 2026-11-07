@@ -14,7 +14,7 @@ describe("official schema manifest", () => {
       const bytes = readFileSync(path);
       expect(createHash("sha256").update(bytes).digest("hex"), entry.file).toBe(entry.sha256);
       expect(bytes.byteLength, entry.file).toBe(entry.bytes);
-      expect(entry.retrievedAt).toBe("2026-07-17");
+      expect(entry.retrievedAt).toBe("2026-11-06");
       expect(entry.localChanges).toBe("none");
       expect(entry.url).toBe(`https://www.fedramp.gov/schemas/${entry.file}`);
       expect(entry.id).toMatch(/^https:\/\/fedramp\.gov\/schemas\//u);

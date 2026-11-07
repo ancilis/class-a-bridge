@@ -4,7 +4,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const PINNED_URL =
-  "https://raw.githubusercontent.com/FedRAMP/rules/12fe1b60f578ab448c26d143baac99d16d8bfe14/fedramp-consolidated-rules.json";
+  "https://raw.githubusercontent.com/FedRAMP/rules/64fa769510416fa75fd00a4689466094265b8083/fedramp-consolidated-rules.json";
 const CURRENT_URL =
   process.env.FEDRAMP_RULES_CANDIDATE_URL ??
   "https://raw.githubusercontent.com/FedRAMP/rules/main/fedramp-consolidated-rules.json";

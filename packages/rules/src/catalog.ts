@@ -3,12 +3,12 @@ import officialCatalogJson from "../vendor/fedramp-consolidated-rules.json";
 import { resolveEffectiveClassARule } from "./normalization";
 
 export const CATALOG_MANIFEST = {
-  catalogVersion: "2026.07.14.01",
-  commit: "12fe1b60f578ab448c26d143baac99d16d8bfe14",
-  sha256: "135707003f0aaa5ceb10d7d32c2681e5b1585a4eaf4403d0d135837787e5ae8e",
+  catalogVersion: "2026.11.02.01",
+  commit: "64fa769510416fa75fd00a4689466094265b8083",
+  sha256: "782faecae3eee4aa2aa9d32cdb0de4c929524f2e41dc1f3d143a94a9ca64c4e3",
   sourceUrl:
-    "https://github.com/FedRAMP/rules/blob/12fe1b60f578ab448c26d143baac99d16d8bfe14/fedramp-consolidated-rules.json",
-  verifiedAt: "2026-07-17",
+    "https://github.com/FedRAMP/rules/blob/64fa769510416fa75fd00a4689466094265b8083/fedramp-consolidated-rules.json",
+  verifiedAt: "2026-11-06",
 } as const;
 
 export const RULE_SELECTIONS = {
@@ -38,6 +38,7 @@ export const RULE_SELECTIONS = {
     "CCM-OCR-AVL",
     "CCM-OCR-NRD",
     "IVV-CSX-AIA",
+    "SDR-CSX-KSI",
     "KSI-CMT-LMC",
     "KSI-CNA-RNT",
     "KSI-CED-RAT",
@@ -48,7 +49,6 @@ export const RULE_SELECTIONS = {
   ],
   recommended: [
     "CDS-CSO-AVR",
-    "CPO-CSF-CPM",
     "CPO-CSX-CPM",
     "IEC-CSO-IIR",
     "IEC-CSO-OIR",
@@ -301,7 +301,6 @@ export const RULE_REGISTRY: readonly NormalizedRuleRecord[] = selectedIds.map((i
       updated: official.updated ?? [],
       verifiedAt: CATALOG_MANIFEST.verifiedAt,
     },
-    ...(id === "CPO-CSF-CPM" ? { needsFedrampConfirmation: true as const } : {}),
   };
 });
 

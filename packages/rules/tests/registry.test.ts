@@ -23,6 +23,7 @@ const MANDATORY_IDS = [
   "CCM-OCR-AVL",
   "CCM-OCR-NRD",
   "IVV-CSX-AIA",
+  "SDR-CSX-KSI",
   "KSI-CMT-LMC",
   "KSI-CNA-RNT",
   "KSI-CED-RAT",
@@ -34,7 +35,6 @@ const MANDATORY_IDS = [
 
 const RECOMMENDED_IDS = [
   "CDS-CSO-AVR",
-  "CPO-CSF-CPM",
   "CPO-CSX-CPM",
   "IEC-CSO-IIR",
   "IEC-CSO-OIR",
@@ -156,10 +156,10 @@ describe("official Class A registry", () => {
   it("pins the requested official catalog release", () => {
     expect(api.CATALOG_MANIFEST).toEqual(
       expect.objectContaining({
-        catalogVersion: "2026.07.14.01",
-        commit: "12fe1b60f578ab448c26d143baac99d16d8bfe14",
-        sha256: "135707003f0aaa5ceb10d7d32c2681e5b1585a4eaf4403d0d135837787e5ae8e",
-        verifiedAt: "2026-07-17",
+        catalogVersion: "2026.11.02.01",
+        commit: "64fa769510416fa75fd00a4689466094265b8083",
+        sha256: "782faecae3eee4aa2aa9d32cdb0de4c929524f2e41dc1f3d143a94a9ca64c4e3",
+        verifiedAt: "2026-11-06",
       }),
     );
     expect(api.CATALOG_MANIFEST?.sourceUrl).toMatch(/^https:\/\/github\.com\/FedRAMP\/rules\//u);
@@ -174,7 +174,7 @@ describe("official Class A registry", () => {
     const sha256 = existsSync(vendorPath)
       ? createHash("sha256").update(readFileSync(vendorPath)).digest("hex")
       : "missing";
-    expect(sha256).toBe("135707003f0aaa5ceb10d7d32c2681e5b1585a4eaf4403d0d135837787e5ae8e");
+    expect(sha256).toBe("782faecae3eee4aa2aa9d32cdb0de4c929524f2e41dc1f3d143a94a9ca64c4e3");
   });
 
   it("contains unique normalized rule identifiers", () => {
@@ -248,12 +248,10 @@ describe("official Class A registry", () => {
           officialClassASelection: expect.any(String),
           productInclusionReason: expect.stringMatching(/\S/u),
           workflowCategories: expect.any(Array),
-          mismatch: entry.id === "CPO-CSF-CPM",
-          mismatchRationale:
-            entry.id === "CPO-CSF-CPM" ? expect.stringMatching(/Class A|aggregate/iu) : null,
-          intentionalMismatch: entry.id === "CPO-CSF-CPM",
-          intentionalMismatchRationale:
-            entry.id === "CPO-CSF-CPM" ? expect.stringMatching(/preserv|upstream/iu) : null,
+          mismatch: false,
+          mismatchRationale: null,
+          intentionalMismatch: false,
+          intentionalMismatchRationale: null,
           reviewStatus: "QUALIFIED_HUMAN_REVIEW_PENDING",
           reviewer: null,
           reviewDate: null,
@@ -262,69 +260,24 @@ describe("official Class A registry", () => {
     }
   });
 
-  it("scopes the known CPO reference exception to the exact upstream discrepancy", () => {
-    const evaluate = api.evaluateRegulatoryIntegrity;
-    expect(typeof evaluate).toBe("function");
-    const cpo = (api.RULE_REGISTRY ?? []).find(({ id }) => id === "CPO-CSF-CPM");
-    expect(cpo).toBeDefined();
-    if (!evaluate || !cpo) return;
-
-    expect(evaluate(cpo as unknown as Record<string, unknown>)).toEqual(
-      expect.objectContaining({
-        integrityStatus: "KNOWN_UPSTREAM_INCONSISTENCY",
-        missingRequiredFields: ["effective statement"],
-        knownUpstreamInconsistency: expect.stringMatching(/FRC-CLA-RFR.*CPO-CSF-CPM/iu),
-      }),
-    );
-
-    const unrelatedDefects = [
+  it("rejects missing provenance and force without a stale upstream exemption", () => {
+    const rule = (api.RULE_REGISTRY ?? []).find((row) => row.id === "FRC-CSO-PKG")!;
+    for (const damaged of [
+      { ...rule, officialObjectPath: "" },
+      { ...rule, officialText: "", effectiveOfficial: {} },
+      { ...rule, fieldSourcePaths: {} },
       {
-        rule: { ...cpo, officialObjectPath: "" },
-        expectedField: "official source path",
+        ...rule,
+        officialIndividualForce: null,
+        officialSelectionForce: null,
+        requirementLevel: "UNSPECIFIED",
+        effectiveOfficial: { statement: rule.officialText },
       },
-      {
-        rule: {
-          ...cpo,
-          officialSelectionForce: null,
-          officialSelectionSourceRuleId: null,
-        },
-        expectedField: "effective or aggregate force",
-      },
-      {
-        rule: { ...cpo, needsFedrampConfirmation: undefined },
-        expectedField: "effective statement",
-      },
-      {
-        rule: { ...cpo, official: { ...cpo.official, updated: [] } },
-        expectedField: "effective statement",
-      },
-      {
-        rule: {
-          ...cpo,
-          effectiveOfficial: { statement: "A traceable statement", force: "SHOULD" },
-          officialText: "A traceable statement",
-          requirementLevel: "SHOULD",
-          fieldSourcePaths: {},
-        },
-        expectedField: "statement source path",
-      },
-      {
-        rule: {
-          ...cpo,
-          effectiveOfficial: { statement: "A traceable statement", force: "SHOULD" },
-          officialText: "A traceable statement",
-          requirementLevel: "SHOULD",
-          fieldSourcePaths: { statement: "statement" },
-        },
-        expectedField: "force source path",
-      },
-    ];
-
-    for (const { rule, expectedField } of unrelatedDefects) {
-      const result = evaluate(rule);
-      expect(result.integrityStatus).toBe("FAIL");
-      expect(result.missingRequiredFields).toContain(expectedField);
-      expect(result.knownUpstreamInconsistency).toBeNull();
+    ]) {
+      expect(
+        api.evaluateRegulatoryIntegrity?.(damaged as unknown as Record<string, unknown>)
+          .integrityStatus,
+      ).toBe("FAIL");
     }
   });
 
@@ -341,9 +294,9 @@ describe("official Class A registry", () => {
           requirementLevel: expect.any(String),
           applicability: expect.any(Array),
           officialSourceReference: expect.stringMatching(/^https:\/\//u),
-          sourceVersion: "2026.07.14.01",
+          sourceVersion: "2026.11.02.01",
           effectiveDateNote: expect.any(String),
-          lastVerifiedDate: "2026-07-17",
+          lastVerifiedDate: "2026-11-06",
           officialText: expect.any(String),
           changeHistory: expect.any(Array),
         }),
@@ -351,11 +304,11 @@ describe("official Class A registry", () => {
       expect(record.effectiveDate === null || typeof record.effectiveDate === "string").toBe(true);
       expect(record.source).toEqual(
         expect.objectContaining({
-          catalogVersion: "2026.07.14.01",
-          commit: "12fe1b60f578ab448c26d143baac99d16d8bfe14",
+          catalogVersion: "2026.11.02.01",
+          commit: "64fa769510416fa75fd00a4689466094265b8083",
           sourceUrl: expect.stringMatching(/^https:\/\//u),
           updated: expect.any(Array),
-          verifiedAt: "2026-07-17",
+          verifiedAt: "2026-11-06",
         }),
       );
     }
@@ -441,7 +394,7 @@ describe("official Class A registry", () => {
 
     expect(api.SOC2_PLAYBOOK_MANIFEST).toEqual(
       expect.objectContaining({
-        catalogVersion: "2026.07.14.01",
+        catalogVersion: "2026.11.02.01",
         total: playbooks.length,
         byStatus: expect.objectContaining({ Draft: playbooks.length }),
       }),
@@ -467,9 +420,8 @@ describe("official Class A registry", () => {
     }
   });
 
-  it("flags the CPO-CSF-CPM Class A inconsistency for FedRAMP confirmation", () => {
-    const record = (api.RULE_REGISTRY ?? []).find(({ id }) => id === "CPO-CSF-CPM");
-    expect(record?.needsFedrampConfirmation).toBe(true);
+  it("does not retain the resolved CPO-CSF-CPM inconsistency in current guidance", () => {
+    expect((api.RULE_REGISTRY ?? []).some((rule) => rule.needsFedrampConfirmation)).toBe(false);
   });
 
   it.each([
@@ -580,7 +532,7 @@ describe("official Class A registry", () => {
           usesClassSpecificBranch: expect.any(Boolean),
           missingRequiredFields: expect.any(Array),
           usedGenericFallbackText: false,
-          sourceVersion: "2026.07.14.01",
+          sourceVersion: "2026.11.02.01",
           officialObjectPath: expect.stringMatching(/\S/u),
           checksumStatus: "MATCHES_PINNED_MANIFEST",
           integrityStatus: expect.stringMatching(/^(PASS|KNOWN_UPSTREAM_INCONSISTENCY)$/u),
@@ -595,7 +547,7 @@ describe("official Class A registry", () => {
     const known = report.filter(
       ({ integrityStatus }) => integrityStatus === "KNOWN_UPSTREAM_INCONSISTENCY",
     );
-    expect(known.map(({ ruleId }) => ruleId)).toEqual(["CPO-CSF-CPM"]);
+    expect(known).toEqual([]);
   });
 
   it("defines seven complete, dedicated KSI workflows", () => {

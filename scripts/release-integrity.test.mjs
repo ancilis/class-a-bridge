@@ -199,7 +199,7 @@ test("CycloneDX output is deterministic, path-free, and identifies every license
   };
   const input = {
     licenseInventory,
-    rootPackage: { name: "class-a-bridge", version: "0.9.0", license: "Apache-2.0" },
+    rootPackage: { name: "class-a-bridge", version: "0.10.0", license: "Apache-2.0" },
     timestamp: "2026-07-18T12:00:00.000Z",
   };
 
@@ -274,6 +274,27 @@ test("pnpm audit summary applies the high severity release threshold", () => {
   );
 });
 
+test("audit evidence does not call non-blocking vulnerabilities an advisory-free result", async () => {
+  const rootDir = await temporaryTree();
+  const reportDir = path.join(rootDir, "reports");
+  await generateSupplyChainReports({
+    reportDir,
+    licenseInventory: { MIT: [{ name: "example", versions: ["1.0.0"], license: "MIT" }] },
+    auditData: {
+      advisories: {},
+      metadata: {
+        vulnerabilities: { info: 0, low: 2, moderate: 6, high: 0, critical: 0 },
+        totalDependencies: 1,
+      },
+    },
+    rootPackage: { name: "class-a-bridge", version: "0.10.0", license: "Apache-2.0" },
+    timestamp: "2026-11-06T12:00:00.000Z",
+  });
+  const markdown = await readFile(path.join(reportDir, "dependency-audit.md"), "utf8");
+  assert.doesNotMatch(markdown, /No advisory was reported/u);
+  assert.match(markdown, /non-blocking/iu);
+});
+
 test("report runner writes path-free integrity, CycloneDX, license, and dependency evidence", async () => {
   const rootDir = await temporaryTree();
   const reportDir = path.join(rootDir, "reports", "release");
@@ -298,7 +319,7 @@ test("report runner writes path-free integrity, CycloneDX, license, and dependen
     reportDir,
     licenseInventory,
     auditData,
-    rootPackage: { name: "class-a-bridge", version: "0.9.0", license: "Apache-2.0" },
+    rootPackage: { name: "class-a-bridge", version: "0.10.0", license: "Apache-2.0" },
     timestamp: "2026-07-18T12:00:00.000Z",
   });
 

@@ -42,7 +42,7 @@ export const softwareStructuredData = {
   applicationCategory: "BusinessApplication",
   operatingSystem: "Modern web browser",
   description: siteDescription,
-  softwareVersion: "0.9.0",
+  softwareVersion: "0.10.0",
   isAccessibleForFree: true,
   license: "https://www.apache.org/licenses/LICENSE-2.0",
   featureList: [

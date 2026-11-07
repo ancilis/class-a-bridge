@@ -4,13 +4,13 @@
   "releaseThreshold": "high",
   "vulnerabilities": {
     "info": 0,
-    "low": 0,
-    "moderate": 0,
+    "low": 2,
+    "moderate": 6,
     "high": 0,
     "critical": 0
   },
   "blockingVulnerabilityCount": 0,
-  "nonBlockingVulnerabilityCount": 0,
-  "dependencyCount": 88,
+  "nonBlockingVulnerabilityCount": 8,
+  "dependencyCount": 92,
   "advisories": []
 }

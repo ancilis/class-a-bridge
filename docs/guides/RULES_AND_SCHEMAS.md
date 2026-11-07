@@ -1,45 +1,28 @@
 # Official rules and schema maintenance
 
-## Public Beta 0.9.0 baseline
+## Public Beta 0.10.0 baseline
 
-The rule registry pins FedRAMP Consolidated Rules for 2026:
+Catalog 2026.11.02.01, official commit 64fa769510416fa75fd00a4689466094265b8083, verified 2026-11-06.
 
-- catalog version: `2026.07.14.01`;
-- official commit: `12fe1b60f578ab448c26d143baac99d16d8bfe14`;
-- verified: 2026-07-17;
-- SHA-256: `135707003f0aaa5ceb10d7d32c2681e5b1585a4eaf4403d0d135837787e5ae8e`;
-- source: <https://github.com/FedRAMP/rules/blob/12fe1b60f578ab448c26d143baac99d16d8bfe14/fedramp-consolidated-rules.json>.
+SHA-256: 782faecae3eee4aa2aa9d32cdb0de4c929524f2e41dc1f3d143a94a9ca64c4e3.
 
-The source bytes are in `packages/rules/vendor/fedramp-consolidated-rules.json`. `packages/rules/src/catalog.ts` selects application prerequisites, external-framework rules, all 23 mandatory Class A records, package dependencies, marketplace application records, and applicable recommended/optional records. Ancilis guidance lives in separate records and includes an explicit preparation-only disclaimer.
+The selected registry contains 62 records, including 24 additional mandatory Class A records. SDR-CSX-KSI is included and the former CPO-CSF-CPM recommended-reference inconsistency is resolved in the official source. Guidance remains Draft pending qualified review. See ../release/2026-11-06-regulatory-delta.md for the engineering comparison.
 
-The catalog currently contains an inconsistency: `FRC-CLA-RFR` references
-`CPO-CSF-CPM`, while the latter's 2026-07-14 change removed Class A applicability.
-The registry preserves the official content and marks it “Needs FedRAMP
-confirmation.” The integrity exception fingerprints the exact aggregate source,
-individual source record, removal-history entry, applicability state, and pinned
-catalog version. It does not exempt other missing text, force, provenance, or
-source-path defects. Maintainers must not resolve the inconsistency by silently
-editing official bytes or presenting an invented interpretation.
+All eleven schema byte streams were retrieved on 2026-11-06 without local changes. Filenames are not immutable version identifiers.
 
-## Vendored official schemas
-
-All were retrieved 2026-07-17 from `https://www.fedramp.gov/schemas/<file>` and have `localChanges: "none"`.
-
-| Schema                                      | Version | SHA-256                                                            |
-| ------------------------------------------- | ------- | ------------------------------------------------------------------ |
-| accepted vulnerability info                 | 0.1.0   | `ef470c82b3c8b1be7b90a3003d1358ae90291549f1730cb5794701b5b746c920` |
-| advisor information                         | 0.1.1   | `1ad4fc91e1dc1c4a1d47e5cb27bb48939e1310ebfbfd9fe7eedc5eb1587eb8e7` |
-| assessor information                        | 0.1.1   | `3e4ff0924d901b2703d395ed9e00858383ddeb209b698d90da96de150af3818c` |
-| certification package overview              | 0.1.2   | `279274e9c9d9ba733dcf55bbe6e63dcf227aab2343724fc007586c0fbdcb2616` |
-| common definitions                          | 0.1.1   | `6c0547589b394562daef73af08ef7de096750fc851e4daa574d746fb70ce4a10` |
-| historical validation/verification activity | 0.1.0   | `4043d034be10e67ce938d4a07bd5bef316ee21f58823ae76e641f71acd70f102` |
-| incident report                             | 0.1.1   | `54f41b44823d4e2f456110e03ed53691fe139f9a3157142be651dbb0f801ffb8` |
-| ongoing certification report                | 0.1.1   | `06285ed1742176b277f494f00b541c0b3980c9763fd5a3574a7e29e2748f709f` |
-| security decision record                    | 1.0.0   | `e076b042abb3a0b244651c562c88b709113a058dd27dca316d1c514ae1a24a2b` |
-| significant change notifications            | 0.1.1   | `8b9c61894cd80f7192b41b74d47ff5a84938eae064021922e56342fa043b2838` |
-| vulnerability detail report                 | 0.1.0   | `b5107d34bad1cd5a77e522284ede86cd04dbe6f9f319cad33f26653772bf2585` |
-
-Filenames, `$id`, byte sizes, URLs, and checksums are machine-readable in `packages/schemas/src/manifest.ts` and exported by the package index. A dated filename is not treated as immutable; checksum is authoritative for the reviewed bytes.
+| File                                                            | Schema version | SHA-256                                                            |
+| --------------------------------------------------------------- | -------------- | ------------------------------------------------------------------ |
+| fedramp-accepted-vulnerability-info-schema-2026-06-24.json      | 0.1.1          | `2c17ba6e21abd1951e29cf59d90e69d39468c01eb1ad69a6c690233e196f68e2` |
+| fedramp-advisor-information-schema-2026-06-24.json              | 2.0.0          | `c9ba938e6d1567e98e6c8b4aa784039b0574c39a66d0b1323f51b7df03ce14ea` |
+| fedramp-assessor-information-schema-2026-06-24.json             | 2.0.0          | `b353bddd70a83d7b4bda4d770b43ce2a3b4d6e812da36c46b9d71fe36aec3420` |
+| fedramp-certification-package-overview-schema-2026-06-24.json   | 0.2.0          | `3870303570bf608dc723cf338cbc3b2295ebd79475003c63699876ac0b89262d` |
+| fedramp-common-definitions-schema-2026-06-24.json               | 0.4.2          | `19dd37691779171f745ab887444f3604287006af78d261ad76c0cf2dd718e16d` |
+| fedramp-historical-ver-activity-schema-2026-06-24.json          | 0.1.1          | `51011860138687f25b858b840eefe2b077f31a183ba5d625c461ac296c58df9f` |
+| fedramp-incident-report-schema-2026-06-24.json                  | 0.2.1          | `e0871781b6a99c395b8b4854d10ca11e7600ce81c4f3dc6404caddb8ef3105e8` |
+| fedramp-ongoing-certification-report-schema-2026-06-24.json     | 0.2.1          | `c67f4e79a107f106abc2dce50043e798f9708e80a5df2c52e41ed700a3a542c8` |
+| fedramp-security-decision-record-schema-2026-06-24.json         | 1.1.1          | `6a6d7dca1a9ae0031c06df6213bf5c5631e9b9b5fb81c050403cfd723484be86` |
+| fedramp-significant-change-notifications-schema-2026-06-24.json | 0.1.3          | `e0f624b7996c2d8dfb1891c4663fb1df2ec6487a65f03fb43f1ce6ed59910372` |
+| fedramp-vulnerability-detail-report-schema-2026-06-24.json      | 0.1.1          | `92b2918106c0117ba84d14a5da33762dbb5df2acbf5303a806f6d4bbea98f60b` |
 
 ## Rule comparison procedure
 

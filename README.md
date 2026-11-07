@@ -8,6 +8,14 @@ It provides a preliminary fit assessment, guided scope and requirement workspace
 
 No account, software development kit (SDK), API key, cloud connection, terminal, or document upload to Ancilis is required for the product. The terminal instructions below are only for contributors and self-hosting operators.
 
+## First useful result
+
+Start manually without a report or account. After eight answers, download your starting plan directly from the result screen. Each task names a suggested owner, evidence to collect, and a completion condition. The HTML report can be printed to PDF. Save a portable project backup to restore work if browser storage is cleared.
+
+Existing July projects remain readable. Use the explicit catalog-update banner to add the new mandatory record and reopen reviews; historical records and frozen snapshots are retained. A new preparation package requires the current catalog.
+
+See [0.10.0 release notes](docs/release/0.10.0.md) for scope and evidence gates.
+
 ## Repository map
 
 | Path                 | Purpose                                                               | Runtime data boundary                             |
@@ -26,7 +34,7 @@ Architecture and trust boundaries are described in [docs/architecture/ARCHITECTU
 
 ## Regulatory baseline
 
-The 0.9.0 Public Beta pins FedRAMP Consolidated Rules for 2026 catalog `2026.07.14.01`, commit `12fe1b60f578ab448c26d143baac99d16d8bfe14`, verified 2026-07-17. Eleven official schema files whose filenames are dated 2026-06-24 are vendored without local changes. Exact source URLs, schema versions, checksums, and the human-review update process are documented in [docs/guides/RULES_AND_SCHEMAS.md](docs/guides/RULES_AND_SCHEMAS.md).
+The 0.10.0 Public Beta pins FedRAMP Consolidated Rules for 2026 catalog `2026.11.02.01`, commit `64fa769510416fa75fd00a4689466094265b8083`, verified 2026-11-06. Eleven official schema files whose filenames are dated 2026-06-24 are vendored without local changes. Exact source URLs, schema versions, checksums, and the human-review update process are documented in [docs/guides/RULES_AND_SCHEMAS.md](docs/guides/RULES_AND_SCHEMAS.md).
 
 Official text and Ancilis guidance are structurally separate. A rule update never silently changes product guidance or a regulatory interpretation.
 

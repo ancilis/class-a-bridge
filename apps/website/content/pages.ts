@@ -202,9 +202,9 @@ const openSourcePage: StaticPageDefinition = {
       title: "Download and review the release",
       cards: [
         {
-          title: "Version 0.9.0 Public Beta source archive",
+          title: "Version 0.10.0 Public Beta source archive",
           body: "Download the authored source, workspace packages, tests, documentation, and release configuration published with this site.",
-          href: "/downloads/class-a-bridge-0.9.0-source.tar.gz",
+          href: "/downloads/class-a-bridge-0.10.0-source.tar.gz",
           linkLabel: "Download the source archive",
         },
         {
@@ -404,7 +404,7 @@ const methodologyPage: StaticPageDefinition = {
       id: "sources",
       title: "Regulatory content is versioned and reviewable",
       body: [
-        "Release 0.9.0 Public Beta uses FedRAMP Consolidated Rules for 2026 catalog 2026.07.14.01 and pinned official schema copies dated in their filenames 2026-06-24, retrieved and checked on 2026-07-17.",
+        "Release 0.10.0 Public Beta uses FedRAMP Consolidated Rules for 2026 catalog 2026.11.02.01 and pinned official schema copies dated in their filenames 2026-06-24, retrieved and checked on 2026-11-06.",
         "When official content changes, maintainers compare source bytes and normalized records, review a readable diff, update provenance, and record interpretation changes instead of silently changing product behavior.",
       ],
     },
@@ -493,7 +493,7 @@ const guidancePage: StaticPageDefinition = {
       id: "sources",
       title: "Use official sources for official decisions",
       body: [
-        "Class A Bridge displays the rule catalog and schema versions it uses. The current product registry is pinned to catalog 2026.07.14.01 and keeps official source text separate from Ancilis guidance.",
+        "Class A Bridge displays the rule catalog and schema versions it uses. The current product registry is pinned to catalog 2026.11.02.01 and keeps official source text separate from Ancilis guidance.",
         "Official rules and schemas remain authoritative. Review the current FedRAMP source and obtain expert review where applicability, scope, evidence, or timing is uncertain.",
       ],
       cards: [
@@ -607,7 +607,7 @@ const faqPage: StaticPageDefinition = {
   eyebrow: "Frequently asked questions",
   headline: "Clear answers before you put sensitive work into the browser.",
   intro:
-    "These answers describe the product boundary for version 0.9.0 Public Beta. Official program rules and qualified reviewers remain authoritative for provider-specific decisions.",
+    "These answers describe the product boundary for version 0.10.0 Public Beta. Official program rules and qualified reviewers remain authoritative for provider-specific decisions.",
   sections: [],
   cta: {
     title: "Still deciding whether Class A fits?",
@@ -735,18 +735,19 @@ const releaseNotesPage: StaticPageDefinition = {
   path: "/release-notes/",
   title: "Class A Bridge release notes",
   description:
-    "Review the Class A Bridge 0.9.0 Public Beta scope, SOC 2 reuse accelerator, pinned regulatory sources, local-first boundary, and known limitations.",
+    "Review the Class A Bridge 0.10.0 Public Beta scope, SOC 2 reuse accelerator, pinned regulatory sources, local-first boundary, and known limitations.",
   eyebrow: "Release notes",
-  headline: "Version 0.9.0 Public Beta — a public, evidence-seeking release.",
+  headline: "Version 0.10.0 Public Beta — a public, evidence-seeking release.",
   intro:
     "Prepared July 18, 2026. This public beta provides a no-account, local-first assessment, SOC 2 reuse accelerator, and guided preparation workspace for FedRAMP 20x Class A.",
   sections: [
     {
       id: "included",
-      title: "Included in 0.9.0 Public Beta",
+      title: "Included in 0.10.0 Public Beta",
       bullets: [
         "Eight-question preliminary eligibility assessment with explainable results",
         "Local deterministic SOC 2 PDF parsing with manual fallback and confirmation",
+        "A downloadable starting plan directly after eight answers, with tailored tasks, owners, evidence requests, and completion conditions",
         "SOC 2 control inventory, deterministic reuse suggestions, human-confirmed mappings, and reuse-and-gap reporting",
         "Guided scope, materials, requirement, seven-KSI, evidence, and action-plan workflows",
         "Human-readable package artifacts, pinned-schema JSON validation, and final-review snapshots",
@@ -758,8 +759,8 @@ const releaseNotesPage: StaticPageDefinition = {
       id: "sources",
       title: "Pinned source versions",
       body: [
-        "Rule registry: FedRAMP Consolidated Rules for 2026 catalog 2026.07.14.01, verified July 17, 2026.",
-        "Schema registry: eleven official schema files dated 2026-06-24 in their filenames, retrieved July 17, 2026, with recorded checksums and no local changes to vendored bytes.",
+        "Rule registry: FedRAMP Consolidated Rules for 2026 catalog 2026.11.02.01, verified November 6, 2026.",
+        "Schema registry: eleven official schema files dated 2026-06-24 in their filenames, retrieved November 6, 2026, with recorded checksums and no local changes to vendored bytes.",
       ],
     },
     {
@@ -793,7 +794,7 @@ const privacyPage: StaticPageDefinition = {
   eyebrow: "Privacy policy",
   headline: "The assessment workspace is designed not to collect your project data.",
   intro:
-    "Effective July 17, 2026. This policy distinguishes the public website, the local-first assessment application, and the optional contact channel.",
+    "Effective November 6, 2026. This policy distinguishes the public website, the local-first assessment application, and the optional contact channel.",
   sections: [
     {
       id: "app",
@@ -857,7 +858,7 @@ const termsPage: StaticPageDefinition = {
   eyebrow: "Terms of use",
   headline: "Use the software as a preparation aid, with provider review.",
   intro:
-    "Effective July 17, 2026. These website terms supplement, but do not replace, the licenses and notices shipped with the open-source repository.",
+    "Effective November 6, 2026. These website terms supplement, but do not replace, the licenses and notices shipped with the open-source repository.",
   sections: [
     {
       id: "license",

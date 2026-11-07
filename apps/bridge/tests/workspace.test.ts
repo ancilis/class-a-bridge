@@ -1,4 +1,5 @@
 import { ACME_METRICS_PROJECT } from "@class-a-bridge/testing";
+import { evaluateEligibility } from "@class-a-bridge/project";
 import { describe, expect, it } from "vitest";
 
 import { deriveActions, initializeProject, soc2PackageFreshness } from "../src/lib/workspace";
@@ -47,9 +48,25 @@ describe("SOC 2 package freshness", () => {
 });
 
 describe("generated action plan", () => {
+  it("retains every unresolved assessment question in the work queue beyond the first three", () => {
+    const project = structuredClone(ACME_METRICS_PROJECT);
+    for (const answer of project.eligibility.answers) answer.value = "not_sure";
+    project.eligibility.result = evaluateEligibility(
+      Object.fromEntries(
+        project.eligibility.answers.map((answer) => [answer.questionId, answer.value]),
+      ),
+    );
+    const actions = deriveActions(project);
+    for (const answer of project.eligibility.answers) {
+      expect(actions.some((action) => action.id === `starting-${answer.questionId}-not_sure`)).toBe(
+        true,
+      );
+    }
+  });
   it("can represent every required action-plan category", () => {
     const project = initializeProject();
     project.eligibility.result = structuredClone(ACME_METRICS_PROJECT.eligibility.result);
+    project.eligibility.answers = structuredClone(ACME_METRICS_PROJECT.eligibility.answers);
     project.scope.mismatchFindings = ["Confirm the proposed boundary."];
     project.evidence = [structuredClone(ACME_METRICS_PROJECT.evidence[0]!)];
     delete project.organization.accountableExecutive;

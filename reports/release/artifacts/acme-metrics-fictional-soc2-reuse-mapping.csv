@@ -1,5 +1,5 @@
 ﻿"Fictional example — not for submission."
-"Generated 2026-07-18T12:00:00.000Z from the fictional Acme Metrics sample workspace. The mapping header begins on line 4."
+"Generated 2026-11-06T12:00:00.000Z from the fictional Acme Metrics sample workspace. The mapping header begins on line 4."
 
 Mapping ID,SOC 2 control,Report page,Relevant excerpt,Class A rule,Coverage,Reason,Gap,Additional evidence,Suggested,Confirmed,Reviewer,Review date
 map-change-partial,ACME-CC8.1,70,Fictional change approvals and tests were sampled.,KSI-CMT-LMC,partially_covered,"The sampled control supports change governance, but it does not establish that every deployment, emergency change, direct console change, and infrastructure change is logged.",Reconcile every production change source to approval and audit logging.,"Current configuration, deployment-to-ticket reconciliation, and a dated audit-log sample.",true,true,Taylor Morgan,2026-07-15

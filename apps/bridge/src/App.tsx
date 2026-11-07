@@ -25,6 +25,7 @@ import {
   isReviewedSoc2Control,
   isFinalReviewApprovalForSnapshot,
   removeSoc2Control,
+  upgradeProjectCatalog,
   soc2ReviewOutcomeSupportsReuse,
   safeFilename,
   sha256Hex,
@@ -74,6 +75,7 @@ import {
 } from "./lib/backup";
 import { parsePdfLocally, validatePdfFile } from "./lib/pdf";
 import { websiteHref } from "./lib/website-url";
+import { StartingPlan } from "./features/eligibility/StartingPlan";
 import { Soc2Reuse } from "./features/soc2/Soc2Reuse";
 import {
   applyExtractionCandidateDecision,
@@ -897,6 +899,29 @@ function Shell({
                   : "Local save will begin after the first change"}
             </div>
           )}
+          {project.metadata.ruleCatalogVersion !== CATALOG_MANIFEST.catalogVersion && (
+            <Callout title="Review the catalog update" tone="warning">
+              <p>
+                This project uses {project.metadata.ruleCatalogVersion}. Current guidance uses{" "}
+                {CATALOG_MANIFEST.catalogVersion}. The update adds SDR-CSX-KSI and removes
+                CPO-CSF-CPM from the recommended Class A set. Existing narratives and frozen
+                snapshots are preserved; current requirement and mapping reviews must be renewed.
+              </p>
+              <Button variant="secondary" onClick={() => setRoute("/settings")}>
+                Back up before updating
+              </Button>
+              <Button
+                onClick={() =>
+                  update((draft) => {
+                    Object.assign(draft, upgradeProjectCatalog(draft));
+                    draft.actions = deriveActions(draft);
+                  })
+                }
+              >
+                Update catalog and reopen reviews
+              </Button>
+            </Callout>
+          )}
           {updateAvailable && (
             <div className="update-state" role="status">
               <span>A Class A Bridge update is ready.</span>
@@ -1175,11 +1200,12 @@ function Eligibility({
         title={result?.label ?? "Result needs regeneration"}
         description="This preparation result explains its inputs, rules, method, uncertainty, and next actions."
       />
+      {result && <StartingPlan project={project} update={update} navigate={navigate} />}
       {result && (
         <Card title="Preliminary Class A fit result">
           <div className="result-header">
             <StatusPill tone={toneFor(result.classification)}>{result.label}</StatusPill>
-            <span>Deterministic from 8 confirmed answers</span>
+            <span>Based on 8 answers; source verification still required</span>
           </div>
           <p className="lede-small">{result.summary}</p>
           <Callout title="Important boundary" tone="warning">
@@ -1199,10 +1225,6 @@ function Eligibility({
                 items={result.missingInformation}
                 empty="No “Not sure” answers remain."
               />
-            </div>
-            <div>
-              <h3>Next three actions</h3>
-              <ListOrEmpty items={result.recommendedActions} />
             </div>
           </div>
           <div>
@@ -2592,8 +2614,9 @@ function Requirements({
     requirement.providerApprovedAt &&
     approvalAttested,
   );
-  const officialLabel =
-    official?.officialClassASelection === "OFFICIALLY_MANDATORY"
+  const officialLabel = !official
+    ? "Historical record — not in the current Class A workflow"
+    : official.officialClassASelection === "OFFICIALLY_MANDATORY"
       ? "Officially mandatory for Class A"
       : official?.officialClassASelection === "OFFICIALLY_RECOMMENDED"
         ? "Officially recommended for Class A"
